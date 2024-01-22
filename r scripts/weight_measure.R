@@ -2,16 +2,20 @@
 
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/DSS/adult")
 setwd("D:/CHUM_git")
+
 #loading libraries
 
 library("tidyverse")
 library("ggplot2")
 library("dplyr")
+library("readr")
+library("httr")
 
-
-
-#loading the file
-weight_measure_file = read.csv2("adult_dss_weight_measurement.csv")
+#downloading the csv file from github
+github_token <- "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"
+set_config(config(token = github_token))
+github_url <- "https://raw.githubusercontent.com/bioth/gut-microbiota-iron/main/adult_dss_weight_measurement.csv?token=GHSAT0AAAAAACM25B2N6R67ZC4CNFIJEMDAZNOWF4A"
+weight_measure_file <- read.csv2(url(github_url))
 
 #removing the 3 dead mice
 weight_measure_file = weight_measure_file[-c(16,27,36,37),]
