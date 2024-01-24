@@ -2,14 +2,8 @@
 library("tidyverse")
 library("ggplot2")
 library("dplyr")
-library("readr")
-library("httr")
 
-#downloading the csv file from github
-github_token <- "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"
-set_config(config(token = github_token))
-github_url <- "https://raw.githubusercontent.com/bioth/gut-microbiota-iron/main/adult_dss_weight_measurement.csv?token=GHSAT0AAAAAACM25B2M77RIPCKGLYCCNAHIZNOWY6Q"
-weight_measure_file <- read.csv2(url(github_url))
+weight_measure_file <- gh_data
 
 #removing the 3 dead mice
 weight_measure_file = weight_measure_file[-c(16,27,36,37),]
@@ -31,28 +25,47 @@ weight_measure_file$date <- as.Date(weight_measure_file$date)
 #setting the diet column data into a string format so that it can be used into ggplot
 weight_measure_file$Diet..Fe.ppm. = as.character(weight_measure_file$Diet..Fe.ppm.)
 
-#using this enables to verify is a variable is of type "date"
+#setting the weight column data into numeric values
+for(i in c(1:length(weight_measure_file$weight))){
+  weight_measure_file$weight[i] <- gsub("\\,", ".", weight_measure_file$weight[i])
+  
+}
+weight_measure_file$weight <- as.numeric(weight_measure_file$weight)
+
+#using this enables to verify if date variable is of type "date" and weight of type numeric
 str(weight_measure_file)
 
 #replacing abnormal values
 weight_measure_file$weight[5] = 24.2
 weight_measure_file$weight[29] = 23.1
 
+
+#creating 4 groups for easier graphic interpretations
+for(i in c(1:length(weight_measure_file$arbitrary.number))){
+  if(any(weight_measure_file$arbitrary.number[i] %in% c(1,3,5))){
+    weight_measure_file$group[i] <- "50 ppm FeSO4 + DSS"
+  }
+  if(any(weight_measure_file$arbitrary.number[i] %in% c(2,4,6))){
+    weight_measure_file$group[i] <- "50 ppm FeSO4 + water"
+  }
+  if(any(weight_measure_file$arbitrary.number[i] %in% c(7,9,11))){
+    weight_measure_file$group[i] <- "500 ppm FeSO4 + DSS"
+  }
+  if(any(weight_measure_file$arbitrary.number[i] %in% c(8,10,12))){
+    weight_measure_file$group[i] <- "500 ppm FeSO4 + water"
+  }
+}
+
 #creating scatter plot with the four different treatments (diet combined with dss or control)
-data = as.data.frame(weight_measure_file)
+data <- as.data.frame(weight_measure_file)
 data %>%
-  ggplot(aes(x = date, y = weight, color = treatment, shape = Diet..Fe.ppm.))+
-  geom_point()+
-  stat_summary(fun = mean, geom = "line", linetype = "dashed", aes(group = treatment)) +
-  labs(title = "Mean weight through time for different treatments",
+  ggplot(aes(x = date, y = weight, color = group))+
+  geom_point(aes(color = group), size = 2)+
+  labs(title = "Body weight through time",
        x = "Day",
-       y = "Weight (g)") +
+       y = "Weight (g)")+
   theme_minimal()+
-  ylim(0,30)
-
-
-
-
+  ylim(1,30)
 
 
 
