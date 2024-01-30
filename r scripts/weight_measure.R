@@ -1,9 +1,7 @@
 #loading libraries
-
-
-library("tidyverse")
-library("ggplot2")
-library("dplyr")
+library("tidyverse") #loading bunch of packages
+library("ggplot2") #come one everyone knows what it is used for
+library("dplyr") #arranging and manipulating data easily
 
 
 ###WEIGHT MEASURES FILE DATA
@@ -184,6 +182,7 @@ for(i in c(1:length(combined_dfa$Cage...1))){
 }
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
+#this graph has a disease index score in the y column
 data <- as.data.frame(combined_dfa)
 data %>%
   ggplot(aes(x = date...5, y = index, color = group))+
@@ -206,6 +205,8 @@ for(i in c(1:length(combined_dfa$weight))){
 }
 combined_dfa$weight <- as.numeric(combined_dfa$weight)
 
+
+#this graph has the weight measurement during the 6 days of DSS for the y column
 data <- as.data.frame(combined_dfa)
 data %>%
   ggplot(aes(x = date...5, y = weight, color = group))+
@@ -222,36 +223,25 @@ data %>%
   theme_minimal()
 
 
-#going for the statistical measurements
-library(geepack)
+
+
+###going for the statistical measurements
+library(geepack) #library for loading GEE tests
+library("lme4") #library for loading ANOVA
 
 model <- geeglm(weight ~ Diet...2 * Treatment...3, id = ID...4, data = combined_dfa)
-helsummary(model)
+helsummary(model) #NOT WORKING? Need to figure that out
 
-
-library("lme4")
+#Renaming the cols names that had been modified prior to that so that it's more intuitive
 combined_dfa$date <- as.factor(combined_dfa$date)
 colnames(combined_dfa)[1:5] <- c("Cage","Diet","Treatment","ID","Date")
 
+#defining a 3-way repeated ANOVA (3 independant variables including date, treatment and diet)
 model <- aov(weight ~ Diet * Treatment * Date + Error(ID/Date), data = combined_dfa)
-
 summary(model)
 
-# Residuals from your model
- 
-residuals(model)
-
-# Q-Q plot
-qqnorm(residuals)
-qqline(residuals)
-
-# Shapiro-Wilk test for normality
-shapiro.test(residuals)
-
-# Levene's test for homogeneity of variances
-library(car)
-leveneTest(residuals ~ Diet * Treatment * Date, data = combined_dfa)
-
+#Though you gotta verify that the residuals are normally distributed and are homoscedastic
+#To do that you need to test the residuals separately (NEED TO BE VERIFIED THOUGH)
 
 # Assuming 'model' is your mixed-effects model
 residuals_ID <- residuals(model$ID)
@@ -271,11 +261,8 @@ shapiro.test(residuals_ID_date)
 
 # Levene's test for homogeneity of variances - ID residuals
 leveneTest(residuals_ID ~ Diet * Treatment * Date, data = combined_dfa)
+#NOT WORKING
 
 # Levene's test for homogeneity of variances - ID:date residuals
 leveneTest(residuals_ID_date ~ Diet * Treatment * date, data = combined_dfa)
-
-
-model <- aov(weight ~ Diet * Treatment * Date + Error(ID/Date), data = combined_dfa)
-
-summary(model)
+#NOT WORKING
