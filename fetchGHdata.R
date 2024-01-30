@@ -8,6 +8,7 @@ require(tidyverse)
 require(httr) 
 require(rlist)
 require(jsonlite)
+library(rlist)
 
 Sys.setenv(GITHUB_PAT = "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")
 
@@ -45,7 +46,7 @@ fetchGHdata <- function(repo, path) {
       )
     )
   
-  entry <- req_meta %>% list.filter(name == file)
+  entry <- req_meta %>% rlist::list.filter(file)
   sha <- entry[1][[1]]$sha
   
   # Grab contents, using sha as a reference
@@ -64,8 +65,8 @@ fetchGHdata <- function(repo, path) {
 
 
 #Select file to load into R environment
-github_repo = "gut-microbiota-iron"
-file = "adult_dss_weight_measurement.csv"
+github_repo <- "gut-microbiota-iron"
+file <- "adult_dss_weight_measurement.csv"
 
 #Transforming the data into a data.frame usable by R
 gh_data <- read.table(text = fetchGHdata(github_repo,file), header = TRUE, sep = "\t")
