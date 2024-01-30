@@ -151,4 +151,131 @@ for(i in 1:length(combined_df$consistency)){
 }
 
 ###plotting the data during the DSS
+#creating a disease severity index, can go from 0 (no bleeding normal consistency) to 2 (bleeding and loose)
+combined_df$index <- 0
+combined_dfa <- combined_df
+for(i in 1:length(combined_dfa$consistency)){
+  if(combined_dfa$consistency[i]=="N"){
+    combined_dfa$index[i] <- combined_dfa$index[i]+0
+  }else{
+    combined_dfa$index[i] <- combined_dfa$index[i]+1
+  }
+  if(combined_dfa$hemo[i]=="No"){
+    combined_dfa$index[i] <- combined_dfa$index[i]+0
+  }else{
+    combined_dfa$index[i] <- combined_dfa$index[i]+1
+  }
+}
 
+#creating 4 groups for easier graphic interpretations
+for(i in c(1:length(combined_dfa$Cage...1))){
+  if(any(combined_dfa$Cage...1[i] %in% c(1,3,5))){
+    combined_dfa$group[i] <- "50 ppm FeSO4 + DSS"
+  }
+  if(any(combined_dfa$Cage...1[i] %in% c(2,4,6))){
+    combined_dfa$group[i] <- "50 ppm FeSO4 + water"
+  }
+  if(any(combined_dfa$Cage...1[i] %in% c(7,9,11))){
+    combined_dfa$group[i] <- "500 ppm FeSO4 + DSS"
+  }
+  if(any(combined_dfa$Cage...1[i] %in% c(8,10,12))){
+    combined_dfa$group[i] <- "500 ppm FeSO4 + water"
+  }
+}
+
+#creating scatter plot with the four different treatments (diet combined with dss or control)
+data <- as.data.frame(combined_dfa)
+data %>%
+  ggplot(aes(x = date...5, y = index, color = group))+
+  stat_summary(fun ="mean", geom = "point", shape = 18, size = 3)+
+  stat_summary(
+    fun = "mean",
+    geom = "line",
+    aes(group = group),
+    size = 1
+  ) +
+  labs(title = "Disease severity index through time",
+       x = "Day",
+       y = "Severity")+
+  theme_minimal()
+
+#setting the weight column data into numeric values
+for(i in c(1:length(combined_dfa$weight))){
+  combined_dfa$weight[i] <- gsub("\\,", ".", combined_dfa$weight[i])
+  
+}
+combined_dfa$weight <- as.numeric(combined_dfa$weight)
+
+data <- as.data.frame(combined_dfa)
+data %>%
+  ggplot(aes(x = date...5, y = weight, color = group))+
+  stat_summary(aes(group = group),fun = "mean", geom = "point", shape = 18, size =3)+
+  stat_summary(
+    fun = "mean",
+    geom = "line",
+    aes(group = group),
+    size = 1
+  ) +
+  labs(title = "Weight measurements for the DSS week",
+       x = "Day",
+       y = "Weight (g)")+
+  theme_minimal()
+
+
+#going for the statistical measurements
+library(geepack)
+
+model <- geeglm(weight ~ Diet...2 * Treatment...3, id = ID...4, data = combined_dfa)
+helsummary(model)
+
+
+library("lme4")
+combined_dfa$date <- as.factor(combined_dfa$date)
+colnames(combined_dfa)[1:5] <- c("Cage","Diet","Treatment","ID","Date")
+
+model <- aov(weight ~ Diet * Treatment * Date + Error(ID/Date), data = combined_dfa)
+
+summary(model)
+
+# Residuals from your model
+ 
+residuals(model)
+
+# Q-Q plot
+qqnorm(residuals)
+qqline(residuals)
+
+# Shapiro-Wilk test for normality
+shapiro.test(residuals)
+
+# Levene's test for homogeneity of variances
+library(car)
+leveneTest(residuals ~ Diet * Treatment * Date, data = combined_dfa)
+
+
+# Assuming 'model' is your mixed-effects model
+residuals_ID <- residuals(model$ID)
+residuals_ID_date <- residuals(model$`ID:Date`)
+
+# Q-Q plot for normality - ID residuals
+qqnorm(residuals_ID)
+qqline(residuals_ID)
+shapiro.test(residuals_ID)
+#assumed to be normally distributed
+
+# Q-Q plot for normality - ID:date residuals
+qqnorm(residuals_ID_date)
+qqline(residuals_ID_date)
+shapiro.test(residuals_ID_date)
+#assumed to be normally distributed
+
+# Levene's test for homogeneity of variances - ID residuals
+leveneTest(residuals_ID ~ Diet * Treatment * Date, data = combined_dfa)
+
+# Levene's test for homogeneity of variances - ID:date residuals
+leveneTest(residuals_ID_date ~ Diet * Treatment * date, data = combined_dfa)
+
+
+model <- aov(weight ~ Diet * Treatment * Date + Error(ID/Date), data = combined_dfa)
+
+summary(model)

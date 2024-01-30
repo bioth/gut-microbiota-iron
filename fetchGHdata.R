@@ -46,7 +46,7 @@ fetchGHdata <- function(repo, path) {
       )
     )
   
-  entry <- req_meta %>% rlist::list.filter(file)
+  entry <- req_meta %>% list.filter(name == file)
   sha <- entry[1][[1]]$sha
   
   # Grab contents, using sha as a reference
