@@ -1,6 +1,6 @@
 #loading libraries
 library("tidyverse") #loading bunch of packages
-library("ggplot2") #come one everyone knows what it is used for
+library("ggplot2") #come on, everyone knows what it is used for
 library("dplyr") #arranging and manipulating data easily
 
 
@@ -67,14 +67,19 @@ for(i in c(1:length(weight_measure_file$arbitrary.number))){
 data <- as.data.frame(weight_measure_file)
 data %>%
   ggplot(aes(x = date, y = weight, color = group))+
-  geom_point(aes(color = group), size = 2)+
+  stat_summary(aes(group = group),fun = "mean", geom = "point", shape = 18, size =3)+
+  stat_summary(fun = "mean",geom = "line",aes(group = group, linetype = ifelse(grepl("DSS", group), "Solid", "Dashed")),size = 1)+
   stat_summary(fun ="mean")+
-  labs(title = "Body weight through time",
-       x = "Day",
+  labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
+       x = "Date",
        y = "Weight (g)")+
+  #scale_color_manual(values = c("50 ppm FeSO4 + DSS" = "#96E1E3", "500 ppm FeSO4 + DSS" = "#FE918B",
+                                #"50 ppm FeSO4 + water" = "#96E1E3", "500 ppm FeSO4 + water" = "#FE918B")) +
   theme_minimal()+
-  ylim(1,30)
+  ylim(15,25)+
+  guides(linetype = "none")
 
+ggsave("your_plot.png", width = 7, height = 4, dpi = 300)
   
 
 
