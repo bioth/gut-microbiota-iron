@@ -271,3 +271,189 @@ leveneTest(residuals_ID ~ Diet * Treatment * Date, data = combined_dfa)
 # Levene's test for homogeneity of variances - ID:date residuals
 leveneTest(residuals_ID_date ~ Diet * Treatment * date, data = combined_dfa)
 #NOT WORKING
+
+
+
+
+
+###Final dissection data###
+#loading the data
+setwd("D:/CHUM_git/gut-microbiota-iron/adult-DSS-exp/")
+dissec <- read.csv("exp1_DSS_dissection.csv", sep = ";", header = TRUE)
+
+#removing null lines (corresponding to dead mice)
+#empty is an array with the lines numbers where there is nothing
+empty = NULL
+for (i in 1:length(dissec$Cage)){
+  if(dissec$ID[i] == ""){
+    empty <- c(empty,i)
+  }
+}
+dissec <- dissec[-c(empty),]
+
+
+
+#####box plots for colon, spleen, and liver
+#transforming the chr into numeric (measures, because of the ","), creating a function
+char_into_num <- function(df,start,stop) {
+  for(i in start:stop){
+    for(k in 1:nrow(df)){
+      df[k,i] <- gsub("\\,", ".", df[k,i])
+      
+    }
+  }
+  df[, start:stop] <- lapply(df[, start:stop], as.numeric)
+  return(df)
+}
+
+dissec <- char_into_num(dissec,5,8)
+
+#dividing these measures by final weight of the mice (normalization)
+dissec$std_spleen_weigth <- dissec$spleen.weight/dissec$body_weight
+dissec$std_liver_weigth <- dissec$liver.weight/dissec$body_weight
+dissec$std_colon_len <- dissec$colon.length/dissec$body_weight
+
+#creating 4 groups for easier graphic interpretations
+for(i in 1:nrow(dissec)){
+  if(any(dissec$Cage[i] %in% c(1,3,5))){
+    dissec$gg_group[i] <- "50 ppm FeSO4 + DSS"
+  }
+  if(any(dissec$Cage[i] %in% c(2,4,6))){
+    dissec$gg_group[i] <- "50 ppm FeSO4 + water"
+  }
+  if(any(dissec$Cage[i] %in% c(7,9,11))){
+    dissec$gg_group[i] <- "500 ppm FeSO4 + DSS"
+  }
+  if(any(dissec$Cage[i] %in% c(8,10,12))){
+    dissec$gg_group[i] <- "500 ppm FeSO4 + water"
+  }
+}
+
+#box plot for spleen
+spleen_box_plot <- dissec %>%
+  ggplot(aes(x = gg_group, y = std_spleen_weigth, color = gg_group))+
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Normalized spleen weight measures at final day of the experiment",
+       x = "Treatment",
+       y = "Normalized weight(spleen weight/body weight)")+
+  ylim(0,0.01)+
+  theme_minimal()
+
+#box plot for liver
+liver_box_plot <- dissec %>%
+  ggplot(aes(x = gg_group, y = std_liver_weigth, color = gg_group))+
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Normalized liver weight measures at final day of the experiment",
+       x = "Treatment",
+       y = "Normalized weight(liver weight/body weight)")+
+  theme_minimal()
+
+#box plot of colon length
+colon_box_plot <- dissec %>%
+  ggplot(aes(x = gg_group, y = colon.length, color = gg_group))+
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Colon length measures at final day of the experiment",
+       x = "Treatment",
+       y = "Colon length (cm)")+
+  theme_minimal()
+
+#box plot for standardized colon length
+nrm_colon_box_plot <- dissec %>%
+  ggplot(aes(x = gg_group, y = std_colon_len, color = gg_group))+
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Normalized colon length measures at final day of the experiment",
+       x = "Treatment",
+       y = "Normalized colon length (divided by body weight)")+
+  theme_minimal()
+
+#box plot for body weight
+body_weight_plot <- dissec %>%
+  ggplot(aes(x = gg_group, y = body_weight, color = gg_group))+
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Body weight measures at final day of the experiment",
+       x = "Treatment",
+       y = "Body weight (g)")+
+  theme_minimal()
+
+
+
+#saving figures
+setwd("D:/CHUM_git/figures/")
+ggsave(plot = spleen_box_plot,"spleen_weight.png", width = 7, height = 4, dpi = 300, bg = "white")
+ggsave(plot = liver_box_plot,"liver_weight.png", width = 7, height = 4, dpi = 300, bg = "white")
+ggsave(plot = colon_box_plot,"colon_length.png", width = 7, height = 4, dpi = 300, bg = "white")
+ggsave(plot = nrm_colon_box_plot,"normalized_colon_length.png", width = 7, height = 4, dpi = 300, bg = "white")
+ggsave(plot = colon_box_plot,"body_wweight.png", width = 7, height = 4, dpi = 300, bg = "white")
+
+
+#messing up with stats
+# Subsetting the dataframe to include only the DSS groups
+dss_data <- dissec[dissec$gg_group %in% c("50 ppm FeSO4 + DSS", "500 ppm FeSO4 + DSS"), ]
+
+
+# Shapiro-Wilk test for normality
+shapiro.test(dss_data)
+shapiro.test(group2)
+
+# Levene's test for homogeneity of variance
+library(car)
+leveneTest(group1, group2)
+
+# Perform t-test
+result_colon <- t.test(colon.length ~ gg_group, data = dss_data)
+result_spleen <- t.test(std_spleen_weigth ~ gg_group, data = dss_data)
+result_liver <- t.test(std_liver_weigth ~ gg_group, data = dss_data)
+result_nrm_colon <- t.test(std_colon_len ~ gg_group, data = dss_data)
+
+
+# Print the result
+print(result_colon)
+print(result_spleen)
+print(result_liver)
+print(result_nrm_colon)
+
+
+
+# Perform two-way ANOVA
+result <- aov(colon.length ~ Group + Diet + Group:Diet, data = dissec)
+
+# Print the summary of the ANOVA
+summary(result)
+
+
+# Perform two-way ANOVA
+result <- aov(std_colon_len ~ Group + Diet + Group:Diet, data = dissec)
+
+# Print the summary of the ANOVA
+summary(result)
+
+# Perform two-way ANOVA
+result <- aov(std_liver_weigth ~ Group + Diet + Group:Diet, data = dissec)
+
+# Print the summary of the ANOVA
+summary(result)
+
+# Perform two-way ANOVA
+result <- aov(std_spleen_weigth ~ Group + Diet + Group:Diet, data = dissec)
+
+# Print the summary of the ANOVA
+summary(result)
+
+# Perform two-way ANOVA
+result <- aov(body_weight ~ Group + Diet + Group:Diet, data = dissec)
+
+# Print the summary of the ANOVA
+summary(result)
+
+
+#ancova test (taking into account age at start of exp)
+# Fit ANCOVA model
+model <- lm(colon.length~ Diet + Group + Diet:Group + Age.start..d. + body_weight, data = dissec)
+
+# Print the summary of the model
+summary(model)
