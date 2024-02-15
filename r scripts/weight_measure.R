@@ -2,20 +2,56 @@
 library("tidyverse") #loading bunch of packages
 library("ggplot2") #come on, everyone knows what it is used for
 library("dplyr") #arranging and manipulating data easily
+library(geepack) #library for loading GEE tests
+library("lme4") #library for loading ANOVA
+library("car") #for anova too
+library(ggsignif) #adding significance bars to ggplots
+
+#If working from huawei pc
+setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
+#If working from CHUM pc
+setwd("D:/CHUM_git/gut-microbiota-iron/")
 
 
-###WEIGHT MEASURES FILE DATA
-#loading the weight_measure file from github (using function in fetchGHdata.R)
-weight_measure_file <- gh_data
 
-#if the function does not work
-setwd("D:/CHUM_git/gut-microbiota-iron/adult-DSS-exp/")
+
+
+
+#Loading weight measure file
+setwd("adult-DSS-exp/")
 weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
 
-#removing the 4 dead mice+data information for exp start
-weight_measure_file = weight_measure_file[-c(3,16,27,36,37),]
 
-#using pivot longer from dplyr package to reorganize the data
+#Function removing rows with empty values
+emptyRow <- function(df){
+  rows_to_remove <- c()  # Initialize an empty vector to store row indices to remove
+  for(i in 1:nrow(df)){
+    for(k in 1:ncol(df)){
+      if(is.na(df[i,k]) || (is.character(df[i,k]) && df[i,k] == "")){ #check if they are empty cells or empty chars
+        rows_to_remove <- c(rows_to_remove, i)  # Add the index of the row to remove
+        break  # Exit the inner loop once an empty cell is found in the row
+      }
+    }
+  }
+  df <- df[-rows_to_remove, ]  # Remove the rows with empty cells
+  return(df)  # Return the modified dataframe
+}
+
+#gets rid of empty rows (dead mice)
+weight_measure_file <- emptyRow(weight_measure_file)
+
+#removing useless cols
+print(colnames(weight_measure_file))
+weight_measure_file <- weight_measure_file[,-c(1:5,7)]
+
+#changing colnames function
+
+changeColNames <- function(df){
+  print(ncol(df))
+  print(colnames(df))
+}
+
+#using pivot longer from dplyr package to put data into tidy long format 
 weight_measure_file = pivot_longer(weight_measure_file, c(10:length(weight_measure_file)), cols_vary = "slowest", names_to = "date", values_to = "weight")
 
 #modifying the date format so that it is recognizable by R
@@ -110,7 +146,7 @@ ggsave("adults_weight.png", width = 9, height = 6, dpi = 300, bg = "white")
 #statistics
 #here we will attest for differences in weight, first need to assess normality and homoscedasticity
 #testing for homoscedasticity
-library(car)
+
 leveneTest(weight ~ treatment * diet * time_numeric, data = weight_measure_file)
 
 
@@ -334,9 +370,7 @@ data %>%
 
 
 ###going for the statistical measurements
-library(geepack) #library for loading GEE tests
-library("lme4") #library for loading ANOVA
-library("car") #for anova too
+
 
 
 
@@ -623,8 +657,8 @@ min(dissec$colon.length)
 
 #trying stuff with significance bars
 
-install.packages("ggsignif")
-library(ggsignif)
+
+
 
 
 # Extract p-value for the Group factor from ANOVA result
