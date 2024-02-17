@@ -1,17 +1,18 @@
 #loading libraries
-library("tidyverse") #loading bunch of packages
-library("ggplot2") #come on, everyone knows what it is used for
-library("dplyr") #arranging and manipulating data easily
-library(geepack) #library for loading GEE tests
-library("lme4") #library for loading ANOVA
-library("car") #for anova too
-library(ggsignif) #adding significance bars to ggplots
+{
+  library("tidyverse") #loading bunch of packages
+  library("ggplot2") #come on, everyone knows what it is used for
+  library("dplyr") #arranging and manipulating data easily
+  library("geepack") #library for loading GEE tests
+  library("lme4") #library for loading ANOVA
+  library("car") #for anova too
+  library("ggsignif") #adding significance bars to ggplots
+}
 
 #If working from huawei pc
-setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
-#If working from CHUM pc
 setwd("D:/CHUM_git/gut-microbiota-iron/")
-
+#If working from CHUM pc
+setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
 
 
 
@@ -44,53 +45,72 @@ weight_measure_file <- emptyRow(weight_measure_file)
 print(colnames(weight_measure_file))
 weight_measure_file <- weight_measure_file[,-c(1:5,7)]
 
-#changing colnames function
-
-changeColNames <- function(df){
-  print(ncol(df))
-  print(colnames(df))
+#changing colnames with dates
+changeDateCols <- function(df,startDateCol){ #startDateCol corresponds to the position where cols with dates as names start
+  for(i in startDateCol:ncol(df)){
+   colnames(df)[i] <- gsub("\\.", "-",colnames(df)[i]) #replacing . with -
+   colnames(df)[i]<- substring(colnames(df)[i], first = 2) #getting rid of X at the start
+   #colnames(weight_measure_file)[i] <- substr(colnames(weight_measure_file)[i], start = 1, stop = nchar(colnames(weight_measure_file)[i]) - 1)
+    
+  }
+  return(df)
 }
 
-#using pivot longer from dplyr package to put data into tidy long format 
-weight_measure_file = pivot_longer(weight_measure_file, c(10:length(weight_measure_file)), cols_vary = "slowest", names_to = "date", values_to = "weight")
 
-#modifying the date format so that it is recognizable by R
-for(i in c(1:length(weight_measure_file$date))){
-  weight_measure_file$date[i] <- gsub("\\.", "-", weight_measure_file$date[i])
-  weight_measure_file$date[i] <- substring(weight_measure_file$date[i], first = 3)
-  weight_measure_file$date[i] <- substr( weight_measure_file$date[i], start = 1, stop = nchar( weight_measure_file$date[i]) - 1)
-  
+print(colnames(weight_measure_file))
+weight_measure_file <- changeDateCols(weight_measure_file,4)
+colnames(weight_measure_file)[1:3] <- c("diet","cage","treatment")
+
+#function that does pivot_longer from cols corresponding to weight measurement on a particular date
+#long tidy format
+pivotLongerWeightDate <- function(df){
+  startDate <- grep("202",colnames(df))[1] #finding at which position the weight measurements date cols start appearing
+  return(as.data.frame(pivot_longer(df, c(startDate:ncol(df)), cols_vary = "slowest", names_to = "date", values_to = "weight")))
 }
 
-#tranforming in date format
+weight_measure_file <- pivotLongerWeightDate(weight_measure_file)
+
+#putting "date" col as a date variable type (not character)
 weight_measure_file$date <- as.Date(weight_measure_file$date)
 
 #setting the diet column data into a string format so that it can be used into ggplot
-weight_measure_file$Diet..Fe.ppm. = as.character(weight_measure_file$Diet..Fe.ppm.)
+weight_measure_file$diet <- as.character(weight_measure_file$diet)
 
 #setting the weight column data into numeric values
-for(i in c(1:length(weight_measure_file$weight))){
-  weight_measure_file$weight[i] <- gsub("\\,", ".", weight_measure_file$weight[i])
+charToNum <- function(df){
+  for(i in 1:ncol(df)){
+      for(k in 1:nrow(weight_measure_file)){
+        isMeasureCol <- grepl(",",df[k,i])
+        if(isMeasureCol){
+          df[k,i] <- as.numeric(gsub("\\,", ".", df[k,i]))}#replaces every "," by "." and makes it a num variable
+      }
+
   
+  }
+  return(df)
 }
-weight_measure_file$weight <- as.numeric(weight_measure_file$weight)
+
+weight_measure_file <- charToNum(weight_measure_file)
 
 #using this enables to verify if date variable is of type "date" and weight of type numeric
 str(weight_measure_file)
 
 #replacing abnormal values
-weight_measure_file$weight[5] = 24.2
-weight_measure_file$weight[29] = 23.1
+weight_measure_file$weight[4] = 24.2
+weight_measure_file$weight[28] = 23.1
 
-#changing the colnames for easier usage
-colnames(weight_measure_file)[2:8] <- c("ID","birth_date","age_start_day","age_start_week","diet","new_cage","cage")
+#Transforming dates into numeric format for statistical measurements
+dateToNum<- function(df){
+  for(i in 1:ncol(df)){
+    if(class(df[,i])=="Date"){ #check if dataframe col is of type "Date"
+      referenceDate <- min(df[,i]) #choose a the earliest date as ref
+      df$time_numeric <- as.numeric(df[,i] - referenceDate) #substraction by reference and as_numeric for every date
+      } 
+  } 
+  return(df)
+}
 
-#Transforming dates into numeric format
-# Choose a reference date
-reference_date <- min(weight_measure_file$date)
-
-# Convert dates to numeric values representing the number of days elapsed since the reference date
-weight_measure_file$time_numeric <- as.numeric(weight_measure_file$date - reference_date)
+weight_measure_file <- dateToNum(weight_measure_file)
 
 #creating 4 groups for easier graphic interpretations
 for(i in c(1:length(weight_measure_file$cage))){
