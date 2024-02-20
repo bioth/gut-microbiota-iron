@@ -16,123 +16,33 @@ setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
 #If working from la bête
 setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
 
-
-
-
-
-#Loading weight measure file
-setwd("adult-DSS-exp/")
-weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
-
-
-#Function removing rows with empty values
-emptyRow <- function(df){
-  rows_to_remove <- c()  # Initialize an empty vector to store row indices to remove
-  for(i in 1:nrow(df)){
-    for(k in 1:ncol(df)){
-      if(is.na(df[i,k]) || (is.character(df[i,k]) && df[i,k] == "")){ #check if they are empty cells or empty chars
-        rows_to_remove <- c(rows_to_remove, i)  # Add the index of the row to remove
-        break  # Exit the inner loop once an empty cell is found in the row
-      }
-    }
-  }
-  df <- df[-rows_to_remove, ]  # Remove the rows with empty cells
-  return(df)  # Return the modified dataframe
+{
+  #loading functions for data manipulation
+  setwd("r scripts/")
+  source("dataManipFunctions.R")
+  
+  #Loading weight measure file
+  setwd("../adult-DSS-exp/")
+  weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
 }
 
-#gets rid of empty rows (dead mice)
-weight_measure_file <- emptyRow(weight_measure_file)
+#check file for checking cols to remove and colnames to change
+View(weight_measure_file)
 
 #removing useless cols
-print(colnames(weight_measure_file))
 weight_measure_file <- weight_measure_file[,-c(1:5,7)]
 
-#changing colnames with dates
-changeDateCols <- function(df,startDateCol){ #startDateCol corresponds to the position where cols with dates as names start
-  for(i in startDateCol:ncol(df)){
-   colnames(df)[i] <- gsub("\\.", "-",colnames(df)[i]) #replacing . with -
-   colnames(df)[i]<- substring(colnames(df)[i], first = 2) #getting rid of X at the start
-   #colnames(weight_measure_file)[i] <- substr(colnames(weight_measure_file)[i], start = 1, stop = nchar(colnames(weight_measure_file)[i]) - 1)
-    
-  }
-  return(df)
-}
-
-
-print(colnames(weight_measure_file))
-weight_measure_file <- changeDateCols(weight_measure_file,4)
+#modifying wrong colnames (colnames with dates managed by function changeDateCols)
 colnames(weight_measure_file)[1:3] <- c("diet","cage","treatment")
 
-#function that does pivot_longer from cols corresponding to weight measurement on a particular date
-#long tidy format
-pivotLongerWeightDate <- function(df){
-  startDate <- grep("202",colnames(df))[1] #finding at which position the weight measurements date cols start appearing
-  return(as.data.frame(pivot_longer(df, c(startDate:ncol(df)), cols_vary = "slowest", names_to = "date", values_to = "weight")))
-}
+weight_measure_file <- weightDataManipulation(weight_measure_file)
 
-weight_measure_file <- pivotLongerWeightDate(weight_measure_file)
-
-#putting "date" col as a date variable type (not character)
-weight_measure_file$date <- as.Date(weight_measure_file$date)
-
-#setting the diet column data into a string format so that it can be used into ggplot
-weight_measure_file$diet <- as.character(weight_measure_file$diet)
-
-#setting the weight column data into numeric values
-charToNum <- function(df){
-  for(i in 1:ncol(df)){
-      for(k in 1:nrow(weight_measure_file)){
-        isMeasureCol <- grepl(",",df[k,i])
-        if(isMeasureCol){
-          df[k,i] <- as.numeric(gsub("\\,", ".", df[k,i]))}#replaces every "," by "." and makes it a num variable
-      }
-
-  
-  }
-  return(df)
-}
-
-weight_measure_file <- charToNum(weight_measure_file)
+#replacing abnormal values
+weight_measure_file$weight[4] <- 24.2
+weight_measure_file$weight[28] <- 23.1
 
 #using this enables to verify if date variable is of type "date" and weight of type numeric
 str(weight_measure_file)
-
-#replacing abnormal values
-weight_measure_file$weight[4] = 24.2
-weight_measure_file$weight[28] = 23.1
-
-#Transforming dates into numeric format for statistical measurements
-dateToNum<- function(df){
-  for(i in 1:ncol(df)){
-    if(class(df[,i])=="Date"){ #check if dataframe col is of type "Date"
-      referenceDate <- min(df[,i]) #choose a the earliest date as ref
-      df$time_numeric <- as.numeric(df[,i] - referenceDate) #substraction by reference and as_numeric for every date
-      } 
-  } 
-  return(df)
-}
-
-weight_measure_file <- dateToNum(weight_measure_file)
-
-#creating 4 groups for easier graphic interpretations
-for(i in c(1:length(weight_measure_file$cage))){
-  if(any(weight_measure_file$cage[i] %in% c(1,3,5))){
-    weight_measure_file$group[i] <- "50 ppm FeSO4 + DSS"
-  }
-  if(any(weight_measure_file$cage[i] %in% c(2,4,6))){
-    weight_measure_file$group[i] <- "50 ppm FeSO4 + water"
-  }
-  if(any(weight_measure_file$cage[i] %in% c(7,9,11))){
-    weight_measure_file$group[i] <- "500 ppm FeSO4 + DSS"
-  }
-  if(any(weight_measure_file$cage[i] %in% c(8,10,12))){
-    weight_measure_file$group[i] <- "500 ppm FeSO4 + water"
-  }
-}
-
-
-darker_blue = "#007577"
-darker_red = "#B5544F"
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
 data <- as.data.frame(weight_measure_file)
@@ -198,17 +108,36 @@ summary(anova_result)
 
 
 
+#YOUNG MICE
+#Loading weight measure file for young mice
+setwd("../young-DSS-exp2//")
+young_weight <- read.csv("weight_measurement.csv", header = TRUE, sep = ";")
+
+#check file for checking cols to remove and colnames to change
+View(young_weight)
+
+#removing useless cols
+young_weight <- young_weight[,-c(5,6)]
+
+#modifying wrong colnames (colnames with dates managed by function changeDateCols)
+colnames(young_weight)[1:4] <- c("diet","treatment","cage","id")
+
+young_weight <- weightDataManipulation(young_weight)
+
+
+
+
+
+
 
 
 ###DSS FOLLOW UP SHEET DATA
-#loading the dss followup sheet from github
-github_repo <- "gut-microbiota-iron"
-file <- "adult_mice_DSS1_followup.csv"
-dss_followup <- read.table(text = fetchGHdata(github_repo,file), header = TRUE, sep = "\t")
-
-#if the function is not working
-setwd("D:/CHUM_git/gut-microbiota-iron/adult-DSS-exp/")
+#loading the dss followup sheet data
+setwd("../adult-DSS-exp/")
 dss_followup <- read.csv("adult_mice_DSS1_followup.csv", header = TRUE, sep = "\t")
+
+#replacing colnames
+colnames(dss_followup)[0:4] <- c("cage","diet","treatment","id")
 
 #replacing "bleeding" for "hemoccult" for one of the columns
 dss_followup$Day.0.1[1] <- "hemoccult"
@@ -224,24 +153,19 @@ for(i in seq(from = 8, to = ncol(dss_followup), by = 3)){
   }
 }
 
-###creating 3 different dataframes for each metric (weight, hemoccult, stool consistency)
-
-#defining a function that takes a dataframe, the string we are looking for in the first row
-#and the columns we wanna ignore and add at the end
-colStringSelect <- function(df,string,cols_ignored){
-  selected_cols <- grep(string, df[1,(cols_ignored+1):ncol(df)])
-  selected_cols <- selected_cols + cols_ignored
-  df_select <- df[, selected_cols, drop = FALSE]
-  result_df <- cbind(df[,1:cols_ignored],df_select)
-  return(as.data.frame(result_df))
+#Function that replaces colnames with dates, according to DSS length and day starting
+dayColnames <- function(df,dssLength,dssStart,groupInfoCols){
+  dates <- c() #creating vector
+  dates <- c(dates, as.numeric(as.Date(dssStart))) #putting date of start of DSS in numeric
+  for(i in 1:dssLength+1){
+    dates <-c(dates, dates[i-1]+1)
+  }
+  colnames(df)[groupInfoCols+1:groupInfoCols+dssLength+1] <- format(as.Date(dates),"%Y-%m-%d")
+  return(df)
 }
 
-dss_weight <- colStringSelect(dss_followup,"weight",4)
-
-dss_hemo <- colStringSelect(dss_followup,"hemoccult",4)
-
-dss_consistency <- colStringSelect(dss_followup,"consistency",4)
-
+testing = dayColnames(dss_hemo,5,"2024-05-23",4)
+testing
 
 #replacing the colnames by the dates for the DSS
 day_colnames <- as.Date(c("2023-12-04","2023-12-05","2023-12-06","2023-12-07","2023-12-08","2023-12-09"))
