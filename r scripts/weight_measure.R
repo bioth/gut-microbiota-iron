@@ -13,6 +13,8 @@
 setwd("D:/CHUM_git/gut-microbiota-iron/")
 #If working from CHUM pc
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
+#If working from la bête
+setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
 
 
 
