@@ -20,11 +20,12 @@ setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
   #loading functions for data manipulation
   setwd("r scripts/")
   source("dataManipFunctions.R")
-  
-  #Loading weight measure file
-  setwd("../adult-DSS-exp/")
-  weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
 }
+  
+#Loading weight measure file
+setwd("../adult-DSS-exp/")
+weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
+
 
 #check file for checking cols to remove and colnames to change
 View(weight_measure_file)
@@ -142,6 +143,16 @@ colnames(dss_followup)[0:4] <- c("cage","diet","treatment","id")
 #replacing "bleeding" for "hemoccult" for one of the columns
 dss_followup$Day.0.1[1] <- "hemoccult"
 
+
+setwd("../r scripts/")
+source("dataManipFunctions.R")
+
+
+test <- dssFollowupManipulation(df = dss_followup,groupInfoCols = 4,dateStart = "2023-12-04",nbrDays = 5)
+
+
+
+
 #replacing weight values by weight variation values (see disease index calculation)
 #((Day X)/(Day 1))×100
 
@@ -153,49 +164,23 @@ for(i in seq(from = 8, to = ncol(dss_followup), by = 3)){
   }
 }
 
-#Function that replaces colnames with dates, according to DSS length and day starting
-dayColnames <- function(df,dssLength,dssStart,groupInfoCols){
-  dates <- c() #creating vector
-  dates <- c(dates, as.numeric(as.Date(dssStart))) #putting date of start of DSS in numeric
-  for(i in 1:dssLength+1){
-    dates <-c(dates, dates[i-1]+1)
-  }
-  colnames(df)[groupInfoCols+1:groupInfoCols+dssLength+1] <- format(as.Date(dates),"%Y-%m-%d")
-  return(df)
+dss_followup <- charToNum(dss_followup)
+
+
+
+
+
+test <- percentageWeightChange(dss_followup)
+a <- test
+
+
+a = c(1,5,9,12)
+for(i in a){
+  print(i)
 }
 
-testing = dayColnames(dss_hemo,5,"2024-05-23",4)
-testing
 
-#replacing the colnames by the dates for the DSS
-day_colnames <- as.Date(c("2023-12-04","2023-12-05","2023-12-06","2023-12-07","2023-12-08","2023-12-09"))
-colnames(dss_weight)[5:10] <- format(day_colnames, "%Y-%m-%d")
-colnames(dss_consistency)[5:10] <- format(day_colnames, "%Y-%m-%d")
-colnames(dss_hemo)[5:10] <- format(day_colnames, "%Y-%m-%d")
 
-#removing the first row and the mouse that died before the DSS + mouse that died day before dissection
-colnames(dss_weight)[1:4] <- dss_weight[1,1:4]
-dss_weight <- dss_weight[-c(1,4,28),]
-
-colnames(dss_consistency)[1:4] <- dss_consistency[1,1:4]
-dss_consistency <- dss_consistency[-c(1,4,28),]
-
-colnames(dss_hemo)[1:4] <- dss_hemo[1,1:4]
-dss_hemo <- dss_hemo[-c(1,4,28),]
-
-#using pivot_longer so that the TEMPORAL data can be displayed by ggplot
-dss_weight_gg <- pivot_longer(dss_weight, c(5:length(dss_weight)), cols_vary = "slowest", names_to = "date", values_to = "weight")
-dss_consistency_gg <- pivot_longer(dss_consistency, c(5:length(dss_consistency)), cols_vary = "slowest", names_to = "date", values_to = "consistency")
-dss_hemo_gg <- pivot_longer(dss_hemo, c(5:length(dss_hemo)), cols_vary = "slowest", names_to = "date", values_to = "hemo")
-
-###finally merging the data...###
-combined_df <- bind_cols(dss_weight_gg, dss_consistency_gg, dss_hemo_gg)
-
-# Identify duplicated columns
-duplicated_cols <- duplicated(names(combined_df)) | duplicated(t(combined_df))
-
-# Remove duplicated columns
-combined_df <- combined_df[, !duplicated_cols, drop = FALSE]
 
 #replace NL (normal-loose) by just loose, for the consistency, I was just misinterpreting
 for(i in 1:length(combined_df$consistency)){

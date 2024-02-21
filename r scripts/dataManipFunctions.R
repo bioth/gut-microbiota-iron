@@ -40,7 +40,11 @@
   charToNum <- function(df){
     for(i in 1:ncol(df)){
       if(any(grepl(",",df[,i]))){
-        df[,i] <- as.numeric(gsub("\\,", ".", df[,i]))
+        for(n in 1:nrow(df)){
+          if((grepl("[A-Za-z]", df[n,i]))==FALSE){
+            df[n,i] <- as.numeric(gsub("\\,", ".", df[n,i]))} #checking if character is a number
+          }
+        
       }
     }
     return(df)
@@ -72,6 +76,42 @@
     df_select <- df[, selected_cols, drop = FALSE]
     result_df <- cbind(df[,1:cols_ignored],df_select)
     return(as.data.frame(result_df))
+  }
+  
+  #Function that replaces colnames with dates, according to DSS length and day starting
+  dayColnames <- function(df,dssLength,dssStart,cols_ignored){
+    dates <- c() #creating vector
+    dates <- c(dates, as.numeric(as.Date(dssStart))) #putting date of start of DSS in numeric
+    for(i in 1:dssLength+1){
+      dates <-c(dates, dates[i-1]+1)
+    }
+    colnames(df)[(cols_ignored + 1):(cols_ignored + dssLength + 1)] <- format(as.Date(dates),"%Y-%m-%d")
+    return(df)
+  }
+  
+  #Calculates the percentage change in weight according to first weight measure in the dataframe
+  #((Day X)/(Day 1))×100 = important for disease index calcuation
+  percentageWeightChange <- function(df) {
+    weightColPositions <- grep("weight", df[1,])
+    #adjusting weightColPositons values according to shift caused by adding new cols
+    adjustedColPositions <- c()
+    for(i in 1:length(weightColPositions)){
+      adjustedColPositions <- c(adjustedColPositions, (weightColPositions[i]+i-1))
+    }
+    
+    # Loop over weight columns
+    for (i in adjustedColPositions) {
+      # Calculate percentage weight change based on day 0 weight measure
+      percentage_change <- (((as.numeric(df[, i])/as.numeric(df[, weightColPositions[1]])) * 100)-100)
+      
+      # Add the calculated percentage weight change as a new column next to the current weight column
+      new_col_index <- i
+      new_col_name <- paste0(colnames(df)[i], "_weight_change")
+      df <- cbind(df[, 1:i], new_column = percentage_change, df[, (i+1):ncol(df)])
+      colnames(df)[new_col_index+1] <- new_col_name
+    }
+    
+    return(df)
   }
 }
 
@@ -105,21 +145,61 @@ weightDataManipulation<- function(df){
   return(df)
 }
 
+
+
 #function for manipulating dss follow up sheet data
-dssFollowupManipulation <- function(df, groupInfoCols, dateStart){
+dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
   
   #getting rid of empty rows if they are (dead mice or issues)
   df <- emptyRow(df)
   
+  #transforming weight measure from char to num
+  df <- charToNum(df)
+  
+  #adding weight_change percentages cols
+  df <- percentageWeightChange(df)
+  
   #creating 3 different dataframes for each metric (weight, hemoccult, stool consistency)
-  dss_weight <- colStringSelect(dss_followup,"weight",cols_ignored = groupInfoCols) #everytime we skip the first 4 cols (diet, treatment etc)
-  dss_hemo <- colStringSelect(dss_followup,"hemoccult",cols_ignored = groupInfoCols)
-  dss_consistency <- colStringSelect(dss_followup,"consistency",cols_ignored = groupInfoCols)
+  dss_weight <- colStringSelect(df,"weight",cols_ignored = groupInfoCols) #everytime we skip the first 4 cols (diet, treatment etc)
+  dss_weight_change <- colStringSelect(df,"weight_change",cols_ignored = groupInfoCols)
+  dss_hemo <- colStringSelect(df,"hemoccult",cols_ignored = groupInfoCols)
+  dss_consistency <- colStringSelect(df,"consistency",cols_ignored = groupInfoCols)
   
+  #replacing date colnames for each individual df (Day0 replaced by "2024-xx-xx" and so on)
+  dss_weight <- dayColnames(dss_weight,nbrDays,dateStart,cols_ignored = groupInfoCols)
+  dss_weight_change <- dayColnames(dss_weight_change,nbrDays,dateStart,cols_ignored = groupInfoCols)
+  dss_hemo <- dayColnames(dss_hemo,nbrDays,dateStart,cols_ignored = groupInfoCols)
+  dss_consistency <- dayColnames(dss_consistency,nbrDays,dateStart,cols_ignored = groupInfoCols)
   
+  #removing first row (useless information)
+  dss_weight <- dss_weight[-1,]
+  dss_weight_change <- dss_weight_change[-1,]
+  dss_hemo <- dss_hemo[-1,]
+  dss_consistency <- dss_consistency[-1,]
   
+  #using pivot_longer to put data into long tidy format (makes it usable by ggplot)
+  dss_weight <- pivot_longer(dss_weight, c(5:length(dss_weight)), cols_vary = "slowest", names_to = "date", values_to = "weight")
+  dss_weight_change <- pivot_longer(dss_weight_change, c(5:length(dss_weight)), cols_vary = "slowest", names_to = "date", values_to = "weight_change_percent")
+  dss_hemo <- pivot_longer(dss_hemo, c(5:length(dss_hemo)), cols_vary = "slowest", names_to = "date", values_to = "hemo")
+  dss_consistency <- pivot_longer(dss_consistency, c(5:length(dss_consistency)), cols_vary = "slowest", names_to = "date", values_to = "consistency")
   
+  #putting inside this variable colnames from a individual dataframe for later
+  df_colnames <- colnames(dss_weight)[0:groupInfoCols]
   
+  #merging the data
+  combined_df <- bind_cols(dss_weight, dss_weight_change, dss_hemo, dss_consistency)
+  
+  #Identify duplicated columns
+  duplicated_cols <- duplicated(names(combined_df)) | duplicated(t(combined_df))
+  
+  #Remove duplicated columns
+  combined_df <- combined_df[, !duplicated_cols, drop = FALSE]
+  
+  #chqnging colnames because they are messy after the merge
+  colnames(combined_df)[0:4] <- df_colnames
+  colnames(combined_df)[groupInfoCols+1] <- "date"
+  
+  return(combined_df)
   
 }
 
