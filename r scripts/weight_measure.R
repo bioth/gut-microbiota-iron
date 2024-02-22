@@ -109,6 +109,7 @@ summary(anova_result)
 
 
 
+
 #YOUNG MICE
 #Loading weight measure file for young mice
 setwd("../young-DSS-exp2//")
@@ -123,7 +124,35 @@ young_weight <- young_weight[,-c(5,6)]
 #modifying wrong colnames (colnames with dates managed by function changeDateCols)
 colnames(young_weight)[1:4] <- c("diet","treatment","cage","id")
 
-young_weight <- weightDataManipulation(young_weight)
+young_weight <- weightDataManipulation(young_weight,4)
+
+#creating scatter plot with the four different treatments (diet combined with dss or control)
+data <- as.data.frame(young_weight)
+data %>%
+  ggplot(aes(x = time_numeric, y = weight, color = diet)) +
+  stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
+  stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("DSS", gg_group), "DSS", "Water")), size = 1) +
+  labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
+       x = "Date",
+       y = "Weight (g)",
+       color = "Diet") +
+  scale_linetype_manual(name = "Treatment", 
+                        values = c("DSS" = "dashed", "Water" = "solid")) +
+  guides(shape = 'none')+
+  theme_minimal() +
+  ylim(7, 20)+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
+  )
 
 
 
