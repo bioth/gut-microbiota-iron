@@ -31,12 +31,12 @@ weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRU
 View(weight_measure_file)
 
 #removing useless cols
-weight_measure_file <- weight_measure_file[,-c(1:5,7)]
+weight_measure_file <- weight_measure_file[,-c(1,3:5,7)]
 
 #modifying wrong colnames (colnames with dates managed by function changeDateCols)
-colnames(weight_measure_file)[1:3] <- c("diet","cage","treatment")
+colnames(weight_measure_file)[1:4] <- c("id","diet","cage","treatment")
 
-weight_measure_file <- weightDataManipulation(weight_measure_file)
+weight_measure_file <- weightDataManipulation(weight_measure_file,4)
 
 #replacing abnormal values
 weight_measure_file$weight[4] <- 24.2
@@ -135,145 +135,41 @@ young_weight <- weightDataManipulation(young_weight)
 ###DSS FOLLOW UP SHEET DATA
 #loading the dss followup sheet data
 setwd("../adult-DSS-exp/")
-dss_followup <- read.csv("adult_mice_DSS1_followup.csv", header = TRUE, sep = "\t")
+adult_dss_followup <- read.csv("adult_mice_DSS1_followup.csv", header = TRUE, sep = "\t")
+setwd("../young-DSS-exp2/")
+young_dss_followup <- read.csv("dss_followup_young_32.csv", header = TRUE, sep = ";")
 
-#replacing colnames
-colnames(dss_followup)[0:4] <- c("cage","diet","treatment","id")
-
-#replacing "bleeding" for "hemoccult" for one of the columns
-dss_followup$Day.0.1[1] <- "hemoccult"
-
-
+#loading the functions
 setwd("../r scripts/")
 source("dataManipFunctions.R")
 
 
-test <- dssFollowupManipulation(df = dss_followup,groupInfoCols = 4,dateStart = "2023-12-04",nbrDays = 5)
+###LOADING ADULT MICE DATA
+#replacing colnames
+colnames(adult_dss_followup)[0:4] <- c("cage","diet","treatment","id")
+
+#replacing "bleeding" for "hemoccult" for one of the columns
+adult_dss_followup$Day.0.1[1] <- "hemoccult"
+
+adult_dss_followup <- dssFollowupManipulation(df = adult_dss_followup,groupInfoCols = 4,dateStart = "2023-12-04",nbrDays = 5)
 
 
+###LOADING YOUNG MICE DATA
+#getting rid of useless col
+young_dss_followup <- young_dss_followup[,-3]
 
+#replacing colnames
+colnames(young_dss_followup)[0:4] <- c("cage","id","diet","treatment")
 
-#replacing weight values by weight variation values (see disease index calculation)
-#((Day X)/(Day 1))×100
-
-dss_followup[,5] <- gsub("\\,", ".", dss_followup[,5]) #the fifth column is the day0 weight (used for percentage calculation)
-for(i in seq(from = 8, to = ncol(dss_followup), by = 3)){
-  for(n in 2:(nrow(dss_followup))){
-    dss_followup[n,i] <- gsub("\\,", ".", dss_followup[n,i]) #replacing "," by "."
-    dss_followup[n,i] <- ((as.numeric(dss_followup[n,i])/as.numeric(dss_followup[n,5]))*100)
-  }
-}
-
-dss_followup <- charToNum(dss_followup)
-
-
-
-
-
-test <- percentageWeightChange(dss_followup)
-a <- test
-
-
-a = c(1,5,9,12)
-for(i in a){
-  print(i)
-}
-
-
-
-
-#replace NL (normal-loose) by just loose, for the consistency, I was just misinterpreting
-for(i in 1:length(combined_df$consistency)){
-  if(combined_df$consistency[i]=="NL"){
-    combined_df$consistency[i] <- "N"
-  }
-}
-
-###plotting the data during the DSS
-#creating a disease severity index, instructions are found in word document
-combined_df$weight <- as.numeric(combined_df$weight)
-combined_df$weight[1:34] <- 100 #corresponds to values for day0 (all 100%)
-combined_df$weight <- combined_df$weight-100 #weight difference
-combined_df$weight <- abs(combined_df$weight) #absolute difference
-combined_df$index <- 0
-
-#	Weight Variation: 0 - None, 1 - 1%-5%, 2 - 5%-10%, 3 - 10%-20%, 4 - >20%
-#Stool Consistency: 0 - Normal, 2 - Loose, 4 – Diarrhea
-#Fecal Bleeding: Fecal Bleeding: 0 - None, 2 - Hemoccult Positive, 4 - Gross rectal bleeding
-
-
-combined_dfa <- combined_df
-for(i in 1:nrow(combined_dfa)){
-  if(combined_dfa$consistency[i]=="N"){
-    combined_dfa$index[i] <- combined_dfa$index[i]+0
-  }else{
-    combined_dfa$index[i] <- combined_dfa$index[i]+2
-  }
-  if(combined_dfa$hemo[i]=="No"){
-    combined_dfa$index[i] <- combined_dfa$index[i]+0
-  }else{
-    combined_dfa$index[i] <- combined_dfa$index[i]+4
-  }
-  if (combined_dfa$weight[i] >= 0 & combined_dfa$weight[i] < 1) {
-    combined_dfa$index[i] <- combined_dfa$index[i] + 0
-  } else if (combined_dfa$weight[i] >= 1 & combined_dfa$weight[i] < 5) {
-    combined_dfa$index[i] <- combined_dfa$index[i] + 1
-  } else if (combined_dfa$weight[i] >= 5 & combined_dfa$weight[i] < 10) {
-    combined_dfa$index[i] <- combined_dfa$index[i] + 2
-  } else if (combined_dfa$weight[i] >= 10 & combined_dfa$weight[i] < 20) {
-    combined_dfa$index[i] <- combined_dfa$index[i] + 3
-  } else if (combined_dfa$weight[i] >= 20) {
-    combined_dfa$index[i] <- combined_dfa$index[i] + 4
-  }
-}
-
-#creating 4 groups for easier graphic interpretations
-for(i in c(1:length(combined_dfa$Cage...1))){
-  if(any(combined_dfa$Cage...1[i] %in% c(1,3,5))){
-    combined_dfa$group[i] <- "50 ppm FeSO4 + DSS"
-  }
-  if(any(combined_dfa$Cage...1[i] %in% c(2,4,6))){
-    combined_dfa$group[i] <- "50 ppm FeSO4 + water"
-  }
-  if(any(combined_dfa$Cage...1[i] %in% c(7,9,11))){
-    combined_dfa$group[i] <- "500 ppm FeSO4 + DSS"
-  }
-  if(any(combined_dfa$Cage...1[i] %in% c(8,10,12))){
-    combined_dfa$group[i] <- "500 ppm FeSO4 + water"
-  }
-}
-
-#replacing all the col names because this is ridiculous
-colnames(combined_dfa)[1:5] <- c("cage","diet","treatment","id","date")
+young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-02-14",nbrDays = 5)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
 #this graph has a disease index score in the y column
-data <- as.data.frame(combined_dfa)
-data %>%
-  ggplot(aes(x = date, y = index, color = diet))+
-  stat_summary(aes(group = group, shape = treatment),fun ="mean", geom = "point", size = 3)+
-  stat_summary(aes(group = group, linetype = ifelse(grepl("DSS", group), "DSS", "Water")),fun = "mean",geom = "line",size = 1)+
-  labs(title = "Disease severity index (DSI) during DSS",
-       x = "Day",
-       y = "DSI",
-       color = "Diet")+
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid"))+
-  scale_x_discrete(labels = c("0", "1", "2", "3", "4", "5"))+
-  guides(shape = 'none')+
-  theme_minimal()+
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )
+testPlot <- dssDiseaseIndexPlot(adult_dss_followup)
+testPlot
+
+testPlot2 <- dssDiseaseIndexPlot(young_dss_followup)
+testPlot2
 
 setwd("D:/CHUM_git/figures/")
 ggsave("disease_index.png", width = 7, height = 4, dpi = 300, bg = "white")

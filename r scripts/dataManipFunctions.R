@@ -40,16 +40,39 @@
   charToNum <- function(df){
     for(i in 1:ncol(df)){
       if(any(grepl(",",df[,i]))){
-        for(n in 1:nrow(df)){
-          if((grepl("[A-Za-z]", df[n,i]))==FALSE){
-            df[n,i] <- as.numeric(gsub("\\,", ".", df[n,i]))} #checking if character is a number
-          }
-        
+        df[,i] <- as.numeric(gsub("\\,", ".", df[,i]))} #checking if character is a number
+    }
+    return(df)
+  }
+  
+  #convert cols containing only decimal, negative values etc into numeric
+  charToNumRegEx <- function(df, colsToIgnore) {
+    for (i in (colsToIgnore+1):ncol(df)) {
+    # Check if the column is character
+      if (is.character(df[, i])) {
+        # Convert values to numeric if they match the regular expression pattern
+        if (all(grepl("^-?\\d*\\.?\\d+$", df[, i]))) {
+          df[, i] <- as.numeric(df[, i])
+        }
       }
     }
     return(df)
   }
   
+  #specific to DSS format
+  commaInsteadPoint <- function(df){
+    for(i in 1:ncol(df)){
+      if(any(grepl(",",df[,i]))){
+        for(n in 1:nrow(df)){
+          if((grepl("[A-Za-z]", df[n,i]))==FALSE){
+            df[n,i] <- gsub("\\,", ".", df[n,i])} #checking if character is a number
+        }
+        
+      } 
+    }
+    return(df)
+  }
+
   #Transforming dates into numeric format for statistical measurements
   dateToNum<- function(df){
     for(i in 1:ncol(df)){
@@ -62,8 +85,10 @@
   }
   
   #function producing col with combination of treatment and diet
-  ggGrouping<- function(df){
-    df$group <- paste(df$diet,df$treatment)
+  #colPlacement is where we want to place the new column 
+  ggGrouping <- function(df, colPlacement) {
+    gg_group <- paste(df$diet, df$treatment)
+    df <- cbind(df[, 1:(colPlacement - 1)], gg_group, df[, colPlacement:ncol(df)])
     return(df)
   }
   
@@ -106,11 +131,68 @@
       
       # Add the calculated percentage weight change as a new column next to the current weight column
       new_col_index <- i
-      new_col_name <- paste0(colnames(df)[i], "_weight_change")
+      new_col_name <- paste0(colnames(df)[i], "_w_change")
       df <- cbind(df[, 1:i], new_column = percentage_change, df[, (i+1):ncol(df)])
       colnames(df)[new_col_index+1] <- new_col_name
+      df[1,i+1] <- "w_change" #first row filled with this information = useful for creating the indiv dataframes and merging them
     }
     
+    return(df)
+  }
+  
+  #Function that calculates disease index for DSS
+  #	Weight Variation: 0 - None, 1 - 1%-5%, 2 - 5%-10%, 3 - 10%-20%, 4 - >20%
+  #Stool Consistency: 0 - Normal, 2 - Loose, 4 – Diarrhea
+  #Fecal Bleeding: Fecal Bleeding: 0 - None, 2 - Hemoccult Positive, 4 - Gross rectal bleeding
+  dssDiseaseIndexCalculation <- function(df,negativeOnly){ #negativeOnly TRUE if wanna test only negative weight variation, FALSE otherwise
+    df$index <- 0 #initializing disease index col
+    for(i in 1:nrow(df)){
+      #consistency, NL are considered as L and LD are considered as D
+      if(grepl("D",df$consistency[i])){
+        df$index[i] <- df$index[i]+4
+      }else if(grepl("L",df$consistency[i])){
+        df$index[i] <- df$index[i]+2
+      }else{
+        df$index[i] <- df$index[i]+0
+      }
+      #hemoccult
+      if(grepl("G",df$hemo[i])){
+        df$index[i] <- df$index[i]+4
+      }else if(grepl("Yes",df$hemo[i])){
+        df$index[i] <- df$index[i]+2
+      }else{
+        df$index[i] <- df$index[i]+0
+      }
+      if(isFALSE(negativeOnly)){
+        #weight variation, we use absolute percent variation here
+        if (abs(df$weight_change_percent[i]) >= 0 & abs(df$weight_change_percent[i]) < 1) {
+          df$index[i] <- df$index[i] + 0
+        } else if (abs(df$weight_change_percent[i]) >= 1 & abs(df$weight_change_percent[i]) < 5) {
+          df$index[i] <- df$index[i] + 1
+        } else if (abs(df$weight_change_percent[i]) >= 5 & abs(df$weight_change_percent[i]) < 10) {
+          df$index[i] <- df$index[i] + 2
+        } else if (abs(df$weight_change_percent[i]) >= 10 & abs(df$weight_change_percent[i]) < 20) {
+          df$index[i] <- df$index[i] + 3
+        } else if (abs(df$weight_change_percent[i]) >= 20) {
+          df$index[i] <- df$index[i] + 4
+        } else if(negativeOnly){
+          # Weight variation, considering only negative percent variation
+          if (df$weight_change_percent[i] < 0 & abs(df$weight_change_percent[i]) >= 0 & abs(df$weight_change_percent[i]) < 1) {
+            df$index[i] <- df$index[i] + 0
+          } else if (df$weight_change_percent[i] < 0 & abs(df$weight_change_percent[i]) >= 1 & abs(df$weight_change_percent[i]) < 5) {
+            df$index[i] <- df$index[i] + 1
+          } else if (df$weight_change_percent[i] < 0 & abs(df$weight_change_percent[i]) >= 5 & abs(df$weight_change_percent[i]) < 10) {
+            df$index[i] <- df$index[i] + 2
+          } else if (df$weight_change_percent[i] < 0 & abs(df$weight_change_percent[i]) >= 10 & abs(df$weight_change_percent[i]) < 20) {
+            df$index[i] <- df$index[i] + 3
+          } else if (df$weight_change_percent[i] < 0 & abs(df$weight_change_percent[i]) >= 20) {
+            df$index[i] <- df$index[i] + 4
+          }
+          
+        }
+      }
+      
+    }
     return(df)
   }
 }
@@ -123,8 +205,9 @@
 
 
 
+
 #function that is combination of functions above, startDateCol is position at which date cols start appearing
-weightDataManipulation<- function(df){
+weightDataManipulation<- function(df,groupInfoCols){
   df <- emptyRow(df)
   df <- changeDateCols(df)
   df <- pivotLongerWeightDate(df)
@@ -133,17 +216,25 @@ weightDataManipulation<- function(df){
   df$date <- as.Date(df$date)
   
   #setting the diet column data into a string format so that it can be used into ggplot (if its numeric)
-  if(class(df$diet)=="numeric"){
+  if(is.numeric(df$diet)){
     df$diet <- as.character(df$diet)
   }
   
   df <- charToNum(df)
   
   df <- dateToNum(df)
-  df <- ggGrouping(df)
+  df <- ggGrouping(df, colPlacement = (groupInfoCols+1))
   
   return(df)
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -153,17 +244,19 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
   #getting rid of empty rows if they are (dead mice or issues)
   df <- emptyRow(df)
   
-  #transforming weight measure from char to num
-  df <- charToNum(df)
+  #replacing "," by "."
+  df <- commaInsteadPoint(df)
   
   #adding weight_change percentages cols
   df <- percentageWeightChange(df)
   
   #creating 3 different dataframes for each metric (weight, hemoccult, stool consistency)
   dss_weight <- colStringSelect(df,"weight",cols_ignored = groupInfoCols) #everytime we skip the first 4 cols (diet, treatment etc)
-  dss_weight_change <- colStringSelect(df,"weight_change",cols_ignored = groupInfoCols)
+  dss_weight_change <- colStringSelect(df,"w_change",cols_ignored = groupInfoCols)
   dss_hemo <- colStringSelect(df,"hemoccult",cols_ignored = groupInfoCols)
   dss_consistency <- colStringSelect(df,"consistency",cols_ignored = groupInfoCols)
+  
+  print("3 df created")
   
   #replacing date colnames for each individual df (Day0 replaced by "2024-xx-xx" and so on)
   dss_weight <- dayColnames(dss_weight,nbrDays,dateStart,cols_ignored = groupInfoCols)
@@ -171,17 +264,24 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
   dss_hemo <- dayColnames(dss_hemo,nbrDays,dateStart,cols_ignored = groupInfoCols)
   dss_consistency <- dayColnames(dss_consistency,nbrDays,dateStart,cols_ignored = groupInfoCols)
   
+  print("colnames replacement")
+  
   #removing first row (useless information)
   dss_weight <- dss_weight[-1,]
   dss_weight_change <- dss_weight_change[-1,]
   dss_hemo <- dss_hemo[-1,]
   dss_consistency <- dss_consistency[-1,]
   
+  print("1st row removal")
+  
   #using pivot_longer to put data into long tidy format (makes it usable by ggplot)
-  dss_weight <- pivot_longer(dss_weight, c(5:length(dss_weight)), cols_vary = "slowest", names_to = "date", values_to = "weight")
-  dss_weight_change <- pivot_longer(dss_weight_change, c(5:length(dss_weight)), cols_vary = "slowest", names_to = "date", values_to = "weight_change_percent")
-  dss_hemo <- pivot_longer(dss_hemo, c(5:length(dss_hemo)), cols_vary = "slowest", names_to = "date", values_to = "hemo")
-  dss_consistency <- pivot_longer(dss_consistency, c(5:length(dss_consistency)), cols_vary = "slowest", names_to = "date", values_to = "consistency")
+  groupInfoCols <- groupInfoCols+1 #date col is added as information col, groupInfoCols increases then by one
+  dss_weight <- pivot_longer(dss_weight, c(groupInfoCols:length(dss_weight)), cols_vary = "slowest", names_to = "date", values_to = "weight")
+  dss_weight_change <- pivot_longer(dss_weight_change, c(groupInfoCols:length(dss_weight_change)), cols_vary = "slowest", names_to = "date", values_to = "weight_change_percent")
+  dss_hemo <- pivot_longer(dss_hemo, c(groupInfoCols:length(dss_hemo)), cols_vary = "slowest", names_to = "date", values_to = "hemo")
+  dss_consistency <- pivot_longer(dss_consistency, c(groupInfoCols:length(dss_consistency)), cols_vary = "slowest", names_to = "date", values_to = "consistency")
+  
+  print("pivot longer")
   
   #putting inside this variable colnames from a individual dataframe for later
   df_colnames <- colnames(dss_weight)[0:groupInfoCols]
@@ -189,18 +289,76 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
   #merging the data
   combined_df <- bind_cols(dss_weight, dss_weight_change, dss_hemo, dss_consistency)
   
+  print("combined df created")
+  
   #Identify duplicated columns
   duplicated_cols <- duplicated(names(combined_df)) | duplicated(t(combined_df))
   
   #Remove duplicated columns
   combined_df <- combined_df[, !duplicated_cols, drop = FALSE]
   
-  #chqnging colnames because they are messy after the merge
+  print("removal of duplicates")
+  
+  #changing colnames because they are messy after the merge
   colnames(combined_df)[0:4] <- df_colnames
-  colnames(combined_df)[groupInfoCols+1] <- "date"
+  colnames(combined_df)[groupInfoCols] <- "date"
+  
+  print("colnames modification")
+  
+  #adding a gg_grouping variable (combination of treatment and diet)
+  combined_df <- ggGrouping(combined_df,colPlacement = (groupInfoCols+1))
+  groupInfoCols <- groupInfoCols+1 #adding gg_group, new info col
+  
+  #transforming measure such as weight measures in numeric variables
+  combined_df <- charToNumRegEx(combined_df,groupInfoCols)
+  
+  #putting "date" col as a date variable type (not character)
+  combined_df$date <- as.Date(combined_df$date)
+  
+  #adding col with date as numerical values
+  combined_df <- dateToNum(combined_df)
+  
+  #calculating disease index 
+  combined_df <- dssDiseaseIndexCalculation(combined_df, negativeOnly = TRUE)
   
   return(combined_df)
-  
 }
 
+
+
+
+
+
+
+
+
+#function for plotting DSS disease index data
+dssDiseaseIndexPlot <- function(df){
+ plot <- df %>%
+    ggplot(aes(x = time_numeric, y = index, color = diet))+
+    stat_summary(aes(group = gg_group, shape = treatment),fun ="mean", geom = "point", size = 3)+
+    stat_summary(aes(group = gg_group, linetype = ifelse(grepl("DSS", gg_group), "DSS", "Water")),fun = "mean",geom = "line",size = 1)+
+    labs(title = "Disease severity index (DSI) during DSS",
+         x = "Day",
+         y = "DSI",
+         color = "Diet")+
+    scale_linetype_manual(name = "Treatment", 
+                          values = c("DSS" = "dashed", "Water" = "solid"))+
+    scale_x_discrete(labels = c("0", "1", "2", "3", "4", "5"))+
+    guides(shape = 'none')+
+    theme_minimal()+
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+      axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
+      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+      legend.text = element_text(size = 12),  # Adjust legend font size
+      panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+      panel.grid.minor = element_blank(),  # Remove minor grid lines
+      axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
+    )
+  return(plot)
+}
 
