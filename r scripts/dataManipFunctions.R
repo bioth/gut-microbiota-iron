@@ -325,7 +325,28 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
 }
 
 
-
+#function for data manipulation of the dissection measures (body weight, liver, spleen and colon length)
+dissectionDataManipulation <- function(df,groupInfoCols){
+  #getting rid of empty rows (dead mice)
+  df <- emptyRow(df)
+  #measures cols into numerical variables
+  df <- charToNum(df)
+  
+  #setting the diet column data into a string format so that it can be used into ggplot (if its numeric)
+  if(is.numeric(df$diet)){
+    df$diet <- as.character(df$diet)
+  }
+  
+  #creating groups which are combinations of treatment and diet
+  df <- ggGrouping(df, colPlacement = (groupInfoCols+1))
+  
+  #dividing these measures by final weight of the mice (normalization)
+  df$std_spleen_weigth <- df$spleen.weight/df$body_weight
+  df$std_liver_weigth <- df$liver.weight/df$body_weight
+  df$std_colon_len <- df$colon.length/df$body_weight
+  
+  return(df)
+}
 
 
 
@@ -362,3 +383,92 @@ dssDiseaseIndexPlot <- function(df){
   return(plot)
 }
 
+#plotting the weight measures scatter plot
+weightPlot <- function(df){
+  plot <- df %>%
+    ggplot(aes(x = date, y = weight, color = diet)) +
+    stat_summary(aes(group = group, shape = treatment), fun = "mean", geom = "point", size = 3) +
+    stat_summary(fun = "mean", geom = "line", aes(group = group, linetype = ifelse(grepl("DSS", group), "DSS", "Water")), size = 1) +
+    labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
+         x = "Date",
+         y = "Weight (g)",
+         color = "Diet") +
+    scale_linetype_manual(name = "Treatment", 
+                          values = c("DSS" = "dashed", "Water" = "solid")) +
+    guides(shape = 'none')+
+    theme_minimal() +
+    ylim(15, 25)+
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+      axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
+      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+      legend.text = element_text(size = 12),  # Adjust legend font size
+      panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+      panel.grid.minor = element_blank(),  # Remove minor grid lines
+      axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
+    )
+  return(plot)
+}
+
+
+#function for dissection measures box_plot
+dissecBoxplot <- function(df,organ){
+  #titles for the boxplots and Y axis labels
+  nrmString <- "Normalized"
+  plotTitle1 <- "weight measures at final day of the experiment"
+  yAxisLabel1 <- "weight ("
+  yAxisLabel2 <- "weight/body weight)"
+  plotTitle <- paste(nrmString,organ,plotTitle1,sep = " ")
+  yAxisLabel <- paste(nrmString, organ, yAxisLabel1, yAxisLabel2)
+  
+  
+  if(organ == "body"){
+    plotTitle <- "Body weight measures at final day of the experiment"
+    yAxisLabel <- "Body weight (g)"
+    responseVariable <- "body_weight"
+  }else if(organ == "liver"){
+    plotTitle <- plotTitle
+    yAxisLabel <- yAxisLabel
+    responseVariable <- "std_liver_weigth"
+  }else if(organ == "spleen"){
+    plotTitle <- plotTitle
+    yAxisLabel <- yAxisLabel
+    responseVariable <- "std_spleen_weigth"
+  }else if(organ == "colon"){
+    plotTitle <- plotTitle
+    yAxisLabel <- yAxisLabel
+    responseVariable <- "colon.length"
+  }
+
+  plot <- df %>%
+  ggplot(aes(x = factor(treatment), y = !!sym(responseVariable), color = as.character(diet)))+
+  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("^DSS", treatment), "DSS", "Water"))) +  # Customize box width and hide outliers
+  geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = treatment)) +
+  labs(title = plotTitle,
+       x = "Treatment",
+       y = yAxisLabel,
+       color = "Diet")+ 
+  scale_linetype_manual(name = "Treatment", 
+                        values = c("DSS" = "dashed", "Water" = "solid")) +
+  guides(shape = 'none')+
+  theme_minimal() +  # Use minimal theme
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
+  )+if(organ == "spleen"){
+    ylim(0,0.01)
+  }else{NULL}
+  
+  return(plot)
+}

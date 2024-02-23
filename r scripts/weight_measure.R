@@ -24,19 +24,15 @@ setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
   
 #Loading weight measure file
 setwd("../adult-DSS-exp/")
-weight_measure_file <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
-
-
-#check file for checking cols to remove and colnames to change
-View(weight_measure_file)
+adult_weight <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
 
 #removing useless cols
-weight_measure_file <- weight_measure_file[,-c(1,3:5,7)]
+adult_weight <- adult_weight[,-c(1,3:5,7)]
 
 #modifying wrong colnames (colnames with dates managed by function changeDateCols)
-colnames(weight_measure_file)[1:4] <- c("id","diet","cage","treatment")
+colnames(adult_weight)[1:4] <- c("id","diet","cage","treatment")
 
-weight_measure_file <- weightDataManipulation(weight_measure_file,4)
+adult_weight <- weightDataManipulation(adult_weight,4)
 
 #replacing abnormal values
 weight_measure_file$weight[4] <- 24.2
@@ -46,33 +42,10 @@ weight_measure_file$weight[28] <- 23.1
 str(weight_measure_file)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
-data <- as.data.frame(weight_measure_file)
-data %>%
-  ggplot(aes(x = date, y = weight, color = diet)) +
-  stat_summary(aes(group = group, shape = treatment), fun = "mean", geom = "point", size = 3) +
-  stat_summary(fun = "mean", geom = "line", aes(group = group, linetype = ifelse(grepl("DSS", group), "DSS", "Water")), size = 1) +
-  labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
-       x = "Date",
-       y = "Weight (g)",
-       color = "Diet") +
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid")) +
-  guides(shape = 'none')+
-  theme_minimal() +
-  ylim(15, 25)+
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )
+adult_weight_plot <- weightPlot(adult_weight)
+adult_weight_plot
 
+#saving scatter plot
 setwd("D:/CHUM_git/figures/")
 ggsave("adults_weight.png", width = 9, height = 6, dpi = 300, bg = "white")
   
@@ -98,25 +71,10 @@ anova_result <- aov(weight ~ treatment * diet * time_numeric + Error(ID/time_num
 
 summary(anova_result)
 
-
-
-
-
-
-
-
-
-
-
-
-
 #YOUNG MICE
 #Loading weight measure file for young mice
 setwd("../young-DSS-exp2//")
 young_weight <- read.csv("weight_measurement.csv", header = TRUE, sep = ";")
-
-#check file for checking cols to remove and colnames to change
-View(young_weight)
 
 #removing useless cols
 young_weight <- young_weight[,-c(5,6)]
@@ -124,37 +82,12 @@ young_weight <- young_weight[,-c(5,6)]
 #modifying wrong colnames (colnames with dates managed by function changeDateCols)
 colnames(young_weight)[1:4] <- c("diet","treatment","cage","id")
 
+#data manipulation
 young_weight <- weightDataManipulation(young_weight,4)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
-data <- as.data.frame(young_weight)
-data %>%
-  ggplot(aes(x = time_numeric, y = weight, color = diet)) +
-  stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
-  stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("DSS", gg_group), "DSS", "Water")), size = 1) +
-  labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
-       x = "Date",
-       y = "Weight (g)",
-       color = "Diet") +
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid")) +
-  guides(shape = 'none')+
-  theme_minimal() +
-  ylim(7, 20)+
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )
-
-
+young_weight_plot <- weightPlot(young_weight)
+young_weight_plot
 
 
 
@@ -194,42 +127,17 @@ young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoC
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
 #this graph has a disease index score in the y column
-testPlot <- dssDiseaseIndexPlot(adult_dss_followup)
-testPlot
+adult_dssflwup_plot <- dssDiseaseIndexPlot(adult_dss_followup)
+adult_dssflwup_plot
 
-testPlot2 <- dssDiseaseIndexPlot(young_dss_followup)
-testPlot2
+young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
+young_dssflwup_plot
 
+#saving figure
 setwd("D:/CHUM_git/figures/")
 ggsave("disease_index.png", width = 7, height = 4, dpi = 300, bg = "white")
 
-
-
-#this graph has the weight measurement during the 6 days of DSS for the y column = doesnt work anymore lol
-data <- as.data.frame(combined_dfa)
-data %>%
-  ggplot(aes(x = date...5, y = weight, color = group))+
-  stat_summary(aes(group = group),fun = "mean", geom = "point", shape = 18, size =3)+
-  stat_summary(
-    fun = "mean",
-    geom = "line",
-    aes(group = group),
-    size = 1
-  ) +
-  labs(title = "Weight measurements for the DSS week",
-       x = "Day",
-       y = "Weight (g)")+
-  theme_minimal()
-
-
-
-
-
 ###going for the statistical measurements
-
-
-
-
 # Convert 'date' to Date format if not already done
 combined_dfa$date <- as.Date(combined_dfa$date)
 
@@ -292,231 +200,50 @@ leveneTest(residuals_ID_date ~ Diet * Treatment * date, data = combined_dfa)
 
 
 
-
-
-
-
-
-
-
-
-
-
 ###Final dissection data###
 #loading the data
-setwd("D:/CHUM_git/gut-microbiota-iron/adult-DSS-exp/")
-dissec <- read.csv("exp1_DSS_dissection.csv", sep = ";", header = TRUE)
+setwd("../adult-DSS-exp/")
+dissec_adult <- read.csv("exp1_DSS_dissection.csv", sep = ";", header = TRUE)
+setwd("../r scripts/")
+source("dataManipFunctions.R")
 
-#removing null lines (corresponding to dead mice)
-#empty is an array with the lines numbers where there is nothing
-empty = NULL
-for (i in 1:length(dissec$Cage)){
-  if(dissec$ID[i] == ""){
-    empty <- c(empty,i)
-  }
-}
-dissec <- dissec[-c(empty),]
+#getting rid of useless cols
+dissec_adult <- dissec_adult[,-(9:10)]
 
+#changing colnames
+colnames(dissec_adult)[1:4] <- c("cage","diet","treatment","id")
 
+dissec_adult <- dissectionDataManipulation(dissec_adult,4)
 
-#####box plots for colon, spleen, and liver
-#transforming the chr into numeric (measures, because of the ","), creating a function
-char_into_num <- function(df,start,stop) {
-  for(i in start:stop){
-    for(k in 1:nrow(df)){
-      df[k,i] <- gsub("\\,", ".", df[k,i])
-      
-    }
-  }
-  df[, start:stop] <- lapply(df[, start:stop], as.numeric)
-  return(df)
-}
+#boxplot for body weight
+adult_dissec_bw <- dissecBoxplot(dissec_adult,"body") 
+adult_dissec_bw
 
-dissec <- char_into_num(dissec,5,8)
+#boxplot for std liver weight
+adult_dissec_lvr <- dissecBoxplot(dissec_adult,"liver") 
+adult_dissec_lvr
 
-#dividing these measures by final weight of the mice (normalization)
-dissec$std_spleen_weigth <- dissec$spleen.weight/dissec$body_weight
-dissec$std_liver_weigth <- dissec$liver.weight/dissec$body_weight
-dissec$std_colon_len <- dissec$colon.length/dissec$body_weight
+#boxplot for std spleen weight
+adult_dissec_spln <- dissecBoxplot(dissec_adult,"spleen") 
+adult_dissec_spln
 
-#creating 4 groups for easier graphic interpretations
-for(i in 1:nrow(dissec)){
-  if(any(dissec$Cage[i] %in% c(1,3,5))){
-    dissec$gg_group[i] <- "50 ppm FeSO4 + DSS"
-  }
-  if(any(dissec$Cage[i] %in% c(2,4,6))){
-    dissec$gg_group[i] <- "50 ppm FeSO4 + water"
-  }
-  if(any(dissec$Cage[i] %in% c(7,9,11))){
-    dissec$gg_group[i] <- "500 ppm FeSO4 + DSS"
-  }
-  if(any(dissec$Cage[i] %in% c(8,10,12))){
-    dissec$gg_group[i] <- "500 ppm FeSO4 + water"
-  }
-}
-
-
-dissec <- dissec %>%
-  mutate(grouping = ifelse(grepl("DSS", gg_group), "DSS", "Water"))
-
-#box plot for spleen
-spleen_box_plot <- dissec %>%
-  ggplot(aes(x = factor(gg_group, levels = c("50 ppm FeSO4 + DSS", "500 ppm FeSO4 + DSS", "50 ppm FeSO4 + water", "500 ppm FeSO4 + water")), 
-             y = std_spleen_weigth, color = gg_group)) +
-  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  labs(title = "Normalized spleen weight measures at final day of the experiment",
-       x = "Treatment",
-       y = "Normalized weight(spleen weight/body weight)") +
-  ylim(0, 0.01) +
-  theme_minimal()
-spleen_box_plot
-
-
-spleen_box_plot <- dissec %>%
-  ggplot(aes(x = factor(grouping), y = std_spleen_weigth, color = as.character(Diet)))+
-  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("DSS", grouping), "DSS", "Water"))) +  # Customize box width and hide outliers
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = grouping)) +
-  labs(title = "Normalized spleen weight measures at final day of the experiment",
-       x = "Treatment",
-       y = "Normalized spleen weight (liver weight/body weight)",
-       color = "Diet")+ 
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid")) +
-  guides(shape = 'none')+
-  theme_minimal() +  # Use minimal theme
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )+
-  ylim(0, 0.01)
-
-
-
-
-#box plot for liver
-liver_box_plot <- dissec %>%
-  ggplot(aes(x = factor(grouping), y = std_liver_weigth, color = as.character(Diet)))+
-  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("DSS", grouping), "DSS", "Water"))) +  # Customize box width and hide outliers
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = grouping)) +
-  labs(title = "Normalized liver weight measures at final day of the experiment",
-       x = "Treatment",
-       y = "Normalized liver weight(liver weight/body weight)",
-       color = "Diet")+ 
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid")) +
-  guides(shape = 'none')+
-  theme_minimal() +  # Use minimal theme
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )
-
-liver_box_plot
-
-#box plot of colon length
-colon_box_plot <- dissec %>%
-  ggplot(aes(x = factor(gg_group, levels = c("50 ppm FeSO4 + DSS", "500 ppm FeSO4 + DSS", "50 ppm FeSO4 + water", "500 ppm FeSO4 + water")), y = colon.length, color = gg_group))+
-  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  labs(title = "Colon length measures at final day of the experiment",
-       x = "Treatment",
-       y = "Colon length (cm)")+
-  theme_minimal()
-
-colon_box_plot <- dissec %>%
-  ggplot(aes(x = factor(grouping), y = colon.length, color = as.character(Diet)))+
-  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("DSS", grouping), "DSS", "Water"))) +  # Customize box width and hide outliers
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = grouping)) +
-  labs(title = "Colon length measures at final day of the experiment",
-       x = "Treatment",
-       y = "Colon length (cm)",
-       color = "Diet")+ 
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid")) +
-  guides(shape = 'none')+
-  theme_minimal() +  # Use minimal theme
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )
-
-#box plot for standardized colon length
-nrm_colon_box_plot <- dissec %>%
-  ggplot(aes(x = factor(gg_group, levels = c("50 ppm FeSO4 + DSS", "500 ppm FeSO4 + DSS", "50 ppm FeSO4 + water", "500 ppm FeSO4 + water")), y = std_colon_len, color = gg_group))+
-  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  labs(title = "Normalized colon length measures at final day of the experiment",
-       x = "Treatment",
-       y = "Normalized colon length (divided by body weight)")+
-  theme_minimal()
-
-#box plot for body weight
-body_weight_plot <- dissec %>%
-  ggplot(aes(x = factor(gg_group, levels = c("50 ppm FeSO4 + DSS", "500 ppm FeSO4 + DSS", "50 ppm FeSO4 + water", "500 ppm FeSO4 + water")), y = body_weight, color = gg_group))+
-  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Customize box width and hide outliers
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  labs(title = "Body weight measures at final day of the experiment",
-       x = "Treatment",
-       y = "Body weight (g)")+
-  theme_minimal()
-
-
-
+#boxplot for colon length (non std)
+adult_dissec_cln <- dissecBoxplot(dissec_adult,"colon") 
+adult_dissec_cln
 
 
 #saving figures
 setwd("D:/CHUM_git/figures/")
-ggsave(plot = spleen_box_plot,"spleen_weight.png", width = 8, height = 4, dpi = 300, bg = "white")
-ggsave(plot = liver_box_plot,"liver_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
-ggsave(plot = colon_box_plot,"colon_length.png", width = 9, height = 5, dpi = 300, bg = "white")
-ggsave(plot = nrm_colon_box_plot,"normalized_colon_length.png", width = 9, height = 5, dpi = 300, bg = "white")
-ggsave(plot = body_weight_plot,"body_wweight.png", width = 9, height = 5, dpi = 300, bg = "white")
-
-
-
-min(dissec$colon.length)
-
-
-
-
-
-
+ggsave(plot = adult_dissec_spln,"spleen_weight.png", width = 8, height = 4, dpi = 300, bg = "white")
+ggsave(plot = adult_dissec_lvr,"liver_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
+ggsave(plot = adult_dissec_cln,"colon_length.png", width = 9, height = 5, dpi = 300, bg = "white")
+ggsave(plot = adult_dissec_bw,"body_wweight.png", width = 9, height = 5, dpi = 300, bg = "white")
 
 
 
 
 
 #trying stuff with significance bars
-
-
-
-
-
 # Extract p-value for the Group factor from ANOVA result
 group_p_value <- summary(result)[[1]]$`Pr(>F)`[1]
 
@@ -529,21 +256,6 @@ if(group_p_value < 0.05) {
 } else {
   liver_box_plot
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #messing up with stats
 # Subsetting the dataframe to include only the DSS groups
