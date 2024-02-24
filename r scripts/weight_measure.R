@@ -123,7 +123,7 @@ young_dss_followup <- young_dss_followup[,-3]
 #replacing colnames
 colnames(young_dss_followup)[0:4] <- c("cage","id","diet","treatment")
 
-young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-02-14",nbrDays = 5)
+young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-02-14",nbrDays = 5, negativeOnly = FALSE)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
 #this graph has a disease index score in the y column
@@ -216,8 +216,20 @@ colnames(dissec_adult)[1:4] <- c("cage","diet","treatment","id")
 dissec_adult <- dissectionDataManipulation(dissec_adult,4)
 
 #boxplot for body weight
-adult_dissec_bw <- dissecBoxplot(dissec_adult,"body") 
+adult_dissec_bw <- dissecBoxplot(dissec_adult,"body",display_significance_bars = TRUE) 
 adult_dissec_bw
+
+
+
+
+
+
+
+
+
+
+
+
 
 #boxplot for std liver weight
 adult_dissec_lvr <- dissecBoxplot(dissec_adult,"liver") 

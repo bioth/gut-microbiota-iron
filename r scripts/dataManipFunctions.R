@@ -239,7 +239,7 @@ weightDataManipulation<- function(df,groupInfoCols){
 
 
 #function for manipulating dss follow up sheet data
-dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
+dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays, negativeOnly){
   
   #getting rid of empty rows if they are (dead mice or issues)
   df <- emptyRow(df)
@@ -319,7 +319,7 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays){
   combined_df <- dateToNum(combined_df)
   
   #calculating disease index 
-  combined_df <- dssDiseaseIndexCalculation(combined_df, negativeOnly = TRUE)
+  combined_df <- dssDiseaseIndexCalculation(combined_df, negativeOnly = negativeOnly)
   
   return(combined_df)
 }
@@ -387,8 +387,8 @@ dssDiseaseIndexPlot <- function(df){
 weightPlot <- function(df){
   plot <- df %>%
     ggplot(aes(x = date, y = weight, color = diet)) +
-    stat_summary(aes(group = group, shape = treatment), fun = "mean", geom = "point", size = 3) +
-    stat_summary(fun = "mean", geom = "line", aes(group = group, linetype = ifelse(grepl("DSS", group), "DSS", "Water")), size = 1) +
+    stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
+    stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("DSS", gg_group), "DSS", "Water")), size = 1) +
     labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
          x = "Date",
          y = "Weight (g)",
@@ -397,7 +397,6 @@ weightPlot <- function(df){
                           values = c("DSS" = "dashed", "Water" = "solid")) +
     guides(shape = 'none')+
     theme_minimal() +
-    ylim(15, 25)+
     theme(
       plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
       axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
@@ -415,7 +414,7 @@ weightPlot <- function(df){
 
 
 #function for dissection measures box_plot
-dissecBoxplot <- function(df,organ){
+dissecBoxplot <- function(df,organ, display_significance_bars){
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
   plotTitle1 <- "weight measures at final day of the experiment"
@@ -445,7 +444,12 @@ dissecBoxplot <- function(df,organ){
 
   plot <- df %>%
   ggplot(aes(x = factor(treatment), y = !!sym(responseVariable), color = as.character(diet)))+
-  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("^DSS", treatment), "DSS", "Water"))) +  # Customize box width and hide outliers
+  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("^DSS", treatment), "DSS", "Water"))) + # Customize box width and hide outliers
+    if(display_significance_bars){
+      geom_signif(data = data.frame(x = c(0.875, 1.875), xend = c(1.125, 2.125),
+                                    y = c(5.8, 8.5), annotation = c("**", "NS")),
+                  aes(x = factor(treatment), xend = xend, y = !!sym(responseVariable), yend = !!sym(responseVariable), annotation = annotation))
+    }else{NULL}+
   geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = treatment)) +
   labs(title = plotTitle,
        x = "Treatment",
