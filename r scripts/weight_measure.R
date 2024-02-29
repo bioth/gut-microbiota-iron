@@ -89,11 +89,17 @@ young_weight <- weightDataManipulation(young_weight,4)
 young_weight_plot <- weightPlot(young_weight)
 young_weight_plot
 
+#saving scatter plot
+setwd("D:/CHUM_git/figures/young32/")
+ggsave("young32_weight.png", width = 11, height = 6, dpi = 300, bg = "white")
+
+#performing a repeated ANOVA
+anova_result <- aov(weight ~ treatment * diet * time_numeric + Error(id/time_numeric),
+                    data = young_weight)
+summary(anova_result)
 
 
-
-
-
+setwd("adult-DSS-exp/")
 ###DSS FOLLOW UP SHEET DATA
 #loading the dss followup sheet data
 setwd("../adult-DSS-exp/")
@@ -134,31 +140,18 @@ young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
 young_dssflwup_plot
 
 #saving figure
-setwd("D:/CHUM_git/figures/")
-ggsave("disease_index.png", width = 7, height = 4, dpi = 300, bg = "white")
+setwd("D:/CHUM_git/figures/young32/")
+ggsave("young32_dIndex.png", width = 7, height = 4, dpi = 300, bg = "white")
 
 ###going for the statistical measurements
-# Convert 'date' to Date format if not already done
-combined_dfa$date <- as.Date(combined_dfa$date)
-
-# Choose a reference date
-reference_date <- min(combined_dfa$date)
-
-# Convert dates to numeric values representing the number of days elapsed since the reference date
-combined_dfa$time_numeric <- as.numeric(combined_dfa$date - reference_date)
-
 model <- geeglm(index ~ diet * treatment + time_numeric, id = id, data = combined_dfa)
 summary(model) #NOT WORKING? Need to figure that out
 
 
-#anova test
+#performing a repeated ANOVA
 anova_result <- aov(index ~ treatment * diet * time_numeric + Error(id/time_numeric),
-                          data = combined_dfa)
-
-
-
+                    data = young_dss_followup)
 summary(anova_result)
-
 
 
 
