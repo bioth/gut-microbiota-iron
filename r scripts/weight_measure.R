@@ -35,11 +35,11 @@ colnames(adult_weight)[1:4] <- c("id","diet","cage","treatment")
 adult_weight <- weightDataManipulation(adult_weight,4)
 
 #replacing abnormal values
-weight_measure_file$weight[4] <- 24.2
-weight_measure_file$weight[28] <- 23.1
+adult_weight$weight[4] <- 24.2
+adult_weight$weight[28] <- 23.1
 
 #using this enables to verify if date variable is of type "date" and weight of type numeric
-str(weight_measure_file)
+str(adult_weight)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
 adult_weight_plot <- weightPlot(adult_weight)
@@ -73,7 +73,7 @@ summary(anova_result)
 
 #YOUNG MICE
 #Loading weight measure file for young mice
-setwd("../young-DSS-exp2//")
+setwd("../young-DSS-exp2/")
 young_weight <- read.csv("weight_measurement.csv", header = TRUE, sep = ";")
 
 #removing useless cols
@@ -99,11 +99,11 @@ anova_result <- aov(weight ~ treatment * diet * time_numeric + Error(id/time_num
 summary(anova_result)
 
 
-setwd("adult-DSS-exp/")
+
 ###DSS FOLLOW UP SHEET DATA
 #loading the dss followup sheet data
 setwd("../adult-DSS-exp/")
-adult_dss_followup <- read.csv("adult_mice_DSS1_followup.csv", header = TRUE, sep = "\t")
+adult_dss_followup <- read.csv("adult_mice_DSS1_followup.csv", header = TRUE, sep = ";")
 setwd("../young-DSS-exp2/")
 young_dss_followup <- read.csv("dss_followup_young_32.csv", header = TRUE, sep = ";")
 
@@ -119,7 +119,7 @@ colnames(adult_dss_followup)[0:4] <- c("cage","diet","treatment","id")
 #replacing "bleeding" for "hemoccult" for one of the columns
 adult_dss_followup$Day.0.1[1] <- "hemoccult"
 
-adult_dss_followup <- dssFollowupManipulation(df = adult_dss_followup,groupInfoCols = 4,dateStart = "2023-12-04",nbrDays = 5)
+adult_dss_followup <- dssFollowupManipulation(df = adult_dss_followup,groupInfoCols = 4,dateStart = "2023-12-04",nbrDays = 5, negativeOnly = FALSE) #negative only FALSE if absolute differences in weight are taken into account 
 
 
 ###LOADING YOUNG MICE DATA
@@ -209,20 +209,8 @@ colnames(dissec_adult)[1:4] <- c("cage","diet","treatment","id")
 dissec_adult <- dissectionDataManipulation(dissec_adult,4)
 
 #boxplot for body weight
-adult_dissec_bw <- dissecBoxplot(dissec_adult,"body",display_significance_bars = TRUE) 
+adult_dissec_bw <- dissecBoxplot(dissec_adult,"body",display_significance_bars = FALSE) 
 adult_dissec_bw
-
-
-
-
-
-
-
-
-
-
-
-
 
 #boxplot for std liver weight
 adult_dissec_lvr <- dissecBoxplot(dissec_adult,"liver") 

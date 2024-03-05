@@ -358,7 +358,7 @@ dssDiseaseIndexPlot <- function(df){
  plot <- df %>%
     ggplot(aes(x = time_numeric, y = index, color = diet))+
     stat_summary(aes(group = gg_group, shape = treatment),fun ="mean", geom = "point", size = 3)+
-    stat_summary(aes(group = gg_group, linetype = ifelse(grepl("DSS", gg_group), "DSS", "Water")),fun = "mean",geom = "line",size = 1)+
+    stat_summary(aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")),fun = "mean",geom = "line",size = 1)+
     labs(title = "Disease severity index (DSI) during DSS",
          x = "Day",
          y = "DSI",
@@ -379,7 +379,8 @@ dssDiseaseIndexPlot <- function(df){
       panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-    )
+    )+
+   ylim(0, max(df$index) + 1)
   return(plot)
 }
 
@@ -388,7 +389,7 @@ weightPlot <- function(df){
   plot <- df %>%
     ggplot(aes(x = date, y = weight, color = diet)) +
     stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
-    stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("DSS", gg_group), "DSS", "Water")), size = 1) +
+    stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")), size = 1) +
     labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
          x = "Date",
          y = "Weight (g)",
@@ -408,7 +409,8 @@ weightPlot <- function(df){
       panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-    )
+    )+
+    ylim(0, max(df$weight) + 1)
   return(plot)
 }
 
@@ -444,12 +446,12 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
 
   plot <- df %>%
   ggplot(aes(x = factor(treatment), y = !!sym(responseVariable), color = as.character(diet)))+
-  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("^DSS", treatment), "DSS", "Water"))) + # Customize box width and hide outliers
-    if(display_significance_bars){
-      geom_signif(data = data.frame(x = c(0.875, 1.875), xend = c(1.125, 2.125),
-                                    y = c(5.8, 8.5), annotation = c("**", "NS")),
-                  aes(x = factor(treatment), xend = xend, y = !!sym(responseVariable), yend = !!sym(responseVariable), annotation = annotation))
-    }else{NULL}+
+  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water"))) + # Customize box width and hide outliers
+    # if(display_significance_bars){
+    #   geom_signif(data = data.frame(x = c(0.875, 1.875), xend = c(1.125, 2.125),
+    #                                 y = c(5.8, 8.5), annotation = c("**", "NS")),
+    #               aes(x = factor(treatment), xend = xend, y = !!sym(responseVariable), yend = !!sym(responseVariable), annotation = annotation))
+    # }else{NULL}+
   geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = treatment)) +
   labs(title = plotTitle,
        x = "Treatment",
@@ -470,9 +472,8 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
     panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )+if(organ == "spleen"){
-    ylim(0,0.01)
-  }else{NULL}
+  )+
+    ylim(0, max(df[[responseVariable]]))
   
   return(plot)
 }
