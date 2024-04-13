@@ -386,10 +386,21 @@ dssDiseaseIndexPlot <- function(df){
 
 #plotting the weight measures scatter plot
 weightPlot <- function(df){
+  
+  # Custom function to calculate standard error with optional scaling
+  mean_cl_normal <- function(x, mult = 1) {
+    mean_val <- mean(x)
+    se_val <- sd(x) / sqrt(length(x))
+    data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
+  }
+  
+  desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
+  
   plot <- df %>%
     ggplot(aes(x = date, y = weight, color = diet)) +
     stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
     stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")), size = 1) +
+    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = gg_group)) + #adding SEM error bars
     labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
          x = "Date",
          y = "Weight (g)",
@@ -443,36 +454,43 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
     yAxisLabel <- yAxisLabel
     responseVariable <- "colon.length"
   }
-
+  
+  # Custom function to calculate standard error with optional scaling
+  mean_cl_normal <- function(x, mult = 1) {
+    mean_val <- mean(x)
+    se_val <- sd(x) / sqrt(length(x))
+    data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
+  }
+  
+  
+  desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
+  
+  # Plot with mean points
   plot <- df %>%
-  ggplot(aes(x = factor(treatment), y = !!sym(responseVariable), color = as.character(diet)))+
-  geom_boxplot(width = 0.5, outlier.shape = NA, aes(linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water"))) + # Customize box width and hide outliers
-    # if(display_significance_bars){
-    #   geom_signif(data = data.frame(x = c(0.875, 1.875), xend = c(1.125, 2.125),
-    #                                 y = c(5.8, 8.5), annotation = c("**", "NS")),
-    #               aes(x = factor(treatment), xend = xend, y = !!sym(responseVariable), yend = !!sym(responseVariable), annotation = annotation))
-    # }else{NULL}+
-  geom_jitter(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5, aes(shape = treatment)) +
-  labs(title = plotTitle,
-       x = "Treatment",
-       y = yAxisLabel,
-       color = "Diet")+ 
-  scale_linetype_manual(name = "Treatment", 
-                        values = c("DSS" = "dashed", "Water" = "solid")) +
-  guides(shape = 'none')+
-  theme_minimal() +  # Use minimal theme
-  theme(
-    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-    legend.text = element_text(size = 12),  # Adjust legend font size
-    panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-  )+
+    ggplot(aes(x = factor(gg_group, levels = desired_order),  y = !!sym(responseVariable), color = as.character(diet))) +
+    geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black")+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black")+ 
+    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2) + #adding SEM error bars
+    #geom_segment(data = mean_values, aes(x = factor(gg_group), xend = factor(gg_group), y = mean_value, yend = mean_value), color = "black", size = 1) +  # Add mean horizontal bars
+    labs(title = plotTitle,
+         x = "Treatment",
+         y = yAxisLabel,
+         color = "Diet")+ 
+    scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) +  
+    theme_minimal() +  
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      axis.title.x = element_text(size = 14, face = "bold"),
+      axis.title.y = element_text(size = 14, face = "bold"),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 12),
+      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "black", size = 1)
+    ) +
     ylim(0, max(df[[responseVariable]]))
   
   return(plot)

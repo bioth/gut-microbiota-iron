@@ -7,6 +7,7 @@
   library("lme4") #library for loading ANOVA
   library("car") #for anova too
   library("ggsignif") #adding significance bars to ggplots
+  library("Hmisc") #idk lol
 }
 
 #If working from huawei pc
