@@ -8,7 +8,10 @@
   library("car") #for anova too
   library("ggsignif") #adding significance bars to ggplots
   library("Hmisc") #idk lol
+  library("esquisse")
 }
+
+
 
 #If working from huawei pc
 setwd("D:/CHUM_git/gut-microbiota-iron/")
@@ -24,7 +27,7 @@ setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
 }
   
 #Loading weight measure file
-setwd("../adult-DSS-exp/")
+setwd("../../adult-DSS-exp/")
 adult_weight <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
 
 #removing useless cols
@@ -47,7 +50,7 @@ adult_weight_plot <- weightPlot(adult_weight)
 adult_weight_plot
 
 #saving scatter plot
-setwd("D:/CHUM_git/figures/")
+setwd("../figures/adult36")
 ggsave("adults_weight.png", width = 9, height = 6, dpi = 300, bg = "white")
   
 #statistics
@@ -74,7 +77,7 @@ summary(anova_result)
 
 #YOUNG MICE
 #Loading weight measure file for young mice
-setwd("../young-DSS-exp2/")
+setwd("../../young-DSS-exp2/")
 young_weight <- read.csv("weight_measurement.csv", header = TRUE, sep = ";")
 
 #removing useless cols
@@ -91,8 +94,8 @@ young_weight_plot <- weightPlot(young_weight)
 young_weight_plot
 
 #saving scatter plot
-setwd("D:/CHUM_git/figures/young32/")
-ggsave("young32_weight.png", width = 11, height = 6, dpi = 300, bg = "white")
+setwd("../figures/young32/")
+ggsave("young32_weight.png", width = 10, height = 6, dpi = 300, bg = "white")
 
 #performing a repeated ANOVA
 anova_result <- aov(weight ~ treatment * diet * time_numeric + Error(id/time_numeric),
@@ -137,12 +140,23 @@ young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoC
 adult_dssflwup_plot <- dssDiseaseIndexPlot(adult_dss_followup)
 adult_dssflwup_plot
 
+#DSI measures at final day of DSS
+adult_final_DSI_plot <- dssDsiFinalDay(adult_dss_followup)
+adult_final_DSI_plot
+
+#saving figure
+setwd("../figures/adult36/")
+ggsave("adult36_dIndex.png", width = 9, height = 5, dpi = 300, bg = "white")
+
 young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
 young_dssflwup_plot
 
+young_final_DSI_plot <- dssDsiFinalDay(young_dss_followup)
+young_final_DSI_plot
+
 #saving figure
-setwd("D:/CHUM_git/figures/young32/")
-ggsave("young32_dIndex.png", width = 7, height = 4, dpi = 300, bg = "white")
+setwd("../figures/young32/")
+ggsave("young32_dIndex.png", width = 9, height = 5, dpi = 300, bg = "white")
 
 ###going for the statistical measurements
 model <- geeglm(index ~ diet * treatment + time_numeric, id = id, data = combined_dfa)
@@ -227,8 +241,8 @@ adult_dissec_cln
 
 
 #saving figures
-setwd("D:/CHUM_git/figures/")
-ggsave(plot = adult_dissec_spln,"spleen_weight.png", width = 8, height = 4, dpi = 300, bg = "white")
+setwd("../figures/adult36")
+ggsave(plot = adult_dissec_spln,"spleen_weight.png", width = 8, height = 5, dpi = 300, bg = "white")
 ggsave(plot = adult_dissec_lvr,"liver_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
 ggsave(plot = adult_dissec_cln,"colon_length.png", width = 9, height = 5, dpi = 300, bg = "white")
 ggsave(plot = adult_dissec_bw,"body_wweight.png", width = 9, height = 5, dpi = 300, bg = "white")

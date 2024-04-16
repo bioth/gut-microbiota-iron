@@ -201,9 +201,12 @@
 
 
 
-
-
-
+#Function to calculate standard error with optional scaling
+mean_cl_normal <- function(x, mult = 1) {
+  mean_val <- mean(x)
+  se_val <- sd(x) / sqrt(length(x))
+  data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
+}
 
 
 #function that is combination of functions above, startDateCol is position at which date cols start appearing
@@ -349,8 +352,8 @@ dissectionDataManipulation <- function(df,groupInfoCols){
 }
 
 
-
-
+#order in which categorical groups are displaced
+desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
 
 
 #function for plotting DSS disease index data
@@ -381,6 +384,44 @@ dssDiseaseIndexPlot <- function(df){
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
     )+
    ylim(0, max(df$index) + 1)
+  return(plot)
+}
+
+
+#plotting DSI at final day of DSS period
+dssDsiFinalDay <- function(df){
+  
+  #subsetting for only the final day 
+  df <- subset(df, time_numeric == 5)
+  
+  plot <- df %>%
+    ggplot(aes(x = factor(gg_group, levels = desired_order),  y = index, color = as.character(diet))) +
+    
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size =1)+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size =1)+ 
+    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2, size = 0.7) + #adding SEM error bars
+    geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
+    labs(title = "Disease severity index at final day of DSS admnistration",
+         x = "Treatment",
+         y = "Disease severity index",
+         color = "Diet")+ 
+    scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) +
+    scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
+    scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
+    theme_minimal() +  
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      axis.title.x = element_text(size = 14, face = "bold"),
+      axis.title.y = element_text(size = 14, face = "bold"),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 12),
+      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "black", size = 1)
+    ) +
+    ylim(0, max(df$index))
   return(plot)
 }
 
@@ -421,7 +462,7 @@ weightPlot <- function(df){
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
     )+
-    ylim(0, max(df$weight) + 1)
+    ylim(5, max(df$weight) + 1)
   return(plot)
 }
 
@@ -455,29 +496,20 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
     responseVariable <- "colon.length"
   }
   
-  # Custom function to calculate standard error with optional scaling
-  mean_cl_normal <- function(x, mult = 1) {
-    mean_val <- mean(x)
-    se_val <- sd(x) / sqrt(length(x))
-    data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
-  }
-  
-  
-  desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
-  
   # Plot with mean points
   plot <- df %>%
     ggplot(aes(x = factor(gg_group, levels = desired_order),  y = !!sym(responseVariable), color = as.character(diet))) +
     geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black")+ #adding horizontal bars representing means
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black")+ 
-    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2) + #adding SEM error bars
-    #geom_segment(data = mean_values, aes(x = factor(gg_group), xend = factor(gg_group), y = mean_value, yend = mean_value), color = "black", size = 1) +  # Add mean horizontal bars
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
+    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2, size = 0.7) + #adding SEM error bars
     labs(title = plotTitle,
          x = "Treatment",
          y = yAxisLabel,
          color = "Diet")+ 
-    scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) +  
+    scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) + 
+    scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
+    scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
     theme_minimal() +  
     theme(
       plot.title = element_text(size = 16, face = "bold"),
