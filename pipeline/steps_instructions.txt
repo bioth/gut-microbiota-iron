@@ -1,0 +1,42 @@
+Etape 1: DADA2
+
+Transformer les données 16S en ASV (amplicon single variants)
++ quality filtering
+
+-Installer bioconductor: https://bioconductor.org/install/
+Requiert de taper dans R:
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.18")
+
+ATTENTION: la version 3.18 marche uniquement avec la version 4.3.0 de R
+
+Pour build ce package, nécessite R tools d'installé (https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html)
+
+-Installer dada2:
+BiocManager::install("dada2", version = "3.18")
+
+Une fois le package installé, la documentation est accessible en utilisant
+help(package="dada2")
+?derepFastq
+?dada
+Dans le command line de R studio.
+
+
+-Utiliser dada2:
+For each sample, dada2 expects an individual fastq file (or 2, one forward and one reverse)
+We need a set of demultiplexed fastq files
+
+Once demultiplexed fastq files without non-biological nucleotides are in hand, the dada2 pipeline proceeds as follows:
+
+    1-Filter and trim: filterAndTrim()
+    2-Dereplicate: derepFastq()
+    3-Learn error rates: learnErrors()
+    4-Infer sample composition: dada()
+    5-Merge paired reads: mergePairs()
+    6-Make sequence table: makeSequenceTable()
+    7-Remove chimeras: removeBimeraDenovo()
+
+
+The fastq files in uncompressed_files folders already seem to be demultiplexed, as they have as a name the "Identifiant de lecture" variable present in the "Microbiota_10_MiSeqReadSet_2020-12-08.xlsx" file. Also, at the end there is R1 or R2 which corresponds to the direction of the sequencing, as it has been sequenced in both directions. This is okay, because dada2 can accept one forward one reverse.
+
