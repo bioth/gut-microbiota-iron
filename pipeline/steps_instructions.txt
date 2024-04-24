@@ -26,6 +26,7 @@ Dans le command line de R studio.
 -Utiliser dada2:
 For each sample, dada2 expects an individual fastq file (or 2, one forward and one reverse)
 We need a set of demultiplexed fastq files
+Fastq file = base format for high-throughput sequencing data, with data about the sequence of nucleotides and the quality of sequencing
 
 Once demultiplexed fastq files without non-biological nucleotides are in hand, the dada2 pipeline proceeds as follows:
 
@@ -40,3 +41,28 @@ Once demultiplexed fastq files without non-biological nucleotides are in hand, t
 
 The fastq files in uncompressed_files folders already seem to be demultiplexed, as they have as a name the "Identifiant de lecture" variable present in the "Microbiota_10_MiSeqReadSet_2020-12-08.xlsx" file. Also, at the end there is R1 or R2 which corresponds to the direction of the sequencing, as it has been sequenced in both directions. This is okay, because dada2 can accept one forward one reverse.
 
+The only step before using dada2, is removing the non-biological bases, that is the primers etc etc... For this, cut adapt can be used.
+
+Looking at the excel files, here are the names of the columns which seem to correspond to non-biological bases (unique counts):
+-Séquence de l'amorce sens (1)
+-Séquence de l'amorce antisens (1)
+-Adapteur read1 (1)
+-Adapteur read2 (1)
+
+R1 and R2 both read in the 5' direction. Amorce = primer
+Adapter is for attachment of the DNA fragments during cluster generation, can also serve purpose such as indexing, whereas the primer is the starting point for DNA synthesis.
+
+In the dataset I have access to, the primers contain the adapter sequence at the start. Thus they should be the only sequences I need to remove.
+
+By checking in more details the primers sequences, indeed they are 4 different versions of them.
+
+
+
+
+
+
+Detailed steps plan:
+1- Trimming (removing non-biological bases => primers) using cutAdapt (for multiple primers used on a same dataset)
+To install cutAdapt, follow this: https://cutadapt.readthedocs.io/en/stable/installation.html
+Activate the Conda environment. This needs to be done every time you open a new shell in order to be able to use Cutadapt:
+To use it => py -m cutadapt
