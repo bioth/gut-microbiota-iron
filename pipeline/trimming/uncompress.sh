@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Source directory containing compressed files
-source_dir="../../16s_data/2060250822"
+source_dir="../../../16s_data/2060250822"
 
 # Destination directory for uncompressed files
-destination_dir="../../16s_data/uncompressed_files"
+destination_dir="../../../16s_data/uncompressed_files"
 
 # Check if source directory exists and if it contains any .gz files
 if [ ! -d "$source_dir" ]; then
