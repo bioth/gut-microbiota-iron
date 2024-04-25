@@ -9,8 +9,6 @@ def writeAdaptersFasta(fasta_file_path, primers):
             fasta_file.write(string + "\n")  # Write the sequence
 
 def main():
-    writeAdaptersFasta(fasta_file_path1, r1_primers)
-    writeAdaptersFasta(fasta_file_path2, r2_primers)
     #reading excel file
     file = pd.read_excel(r"../../../16s_data/Microbiota_10_MiSeqReadSet_2020-12-08.xlsx")
 
@@ -22,6 +20,9 @@ def main():
     # Specify the file path
     fasta_file_path1 = r"../../../16s_data/r1_primers.fasta"
     fasta_file_path2 = r"../../../16s_data/r2_primers.fasta"
+
+    writeAdaptersFasta(fasta_file_path1, r1_primers)
+    writeAdaptersFasta(fasta_file_path2, r2_primers)
 
 # Call the main function if this script is run directly
 if __name__ == "__main__":
