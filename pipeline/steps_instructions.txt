@@ -62,7 +62,19 @@ By checking in more details the primers sequences, indeed they are 4 different v
 
 
 Detailed steps plan:
-1- Trimming (removing non-biological bases => primers) using cutAdapt (for multiple primers used on a same dataset)
+1- Trimming of non-biological bases (removing non-biological bases => primers) using cutAdapt (for multiple primers used on a same dataset)
 To install cutAdapt, follow this: https://cutadapt.readthedocs.io/en/stable/installation.html
 Activate the Conda environment. This needs to be done every time you open a new shell in order to be able to use Cutadapt:
 To use it => py -m cutadapt
+
+py -m cutadapt -b file:r1_primers.fasta -o test.fastq uncompressed_file/MI.M05812_0020.001.FLD0003.15172T14_R1.fastq
+Currently, bash script called "cutadapt.sh"
+
+2-DADA2
+filtering and trimming of fastq files
+To determine error rates to set up the trimming and filtering parameters, can use Figaro
+https://github.com/Zymo-Research/figaro#figaro
+python3 figaro.py -i /path/to/fastq/directory -o /path/to/output/files -a 450 -f 20 -r 20
+
+
+
