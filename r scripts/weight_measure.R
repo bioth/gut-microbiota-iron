@@ -27,14 +27,8 @@ setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
 }
   
 #Loading weight measure file
-setwd("../../adult-DSS-exp/")
-adult_weight <- read.csv("adult_dss_weight_measurement.csv", header = TRUE, sep = ";")
-
-#removing useless cols
-adult_weight <- adult_weight[,-c(1,3:5,7)]
-
-#modifying wrong colnames (colnames with dates managed by function changeDateCols)
-colnames(adult_weight)[1:4] <- c("id","diet","cage","treatment")
+setwd("../adult-DSS-exp/")
+adult_weight <- read.csv("adult36dss_weight_measurement.csv", header = TRUE, sep = ";")
 
 adult_weight <- weightDataManipulation(adult_weight,4)
 
@@ -75,16 +69,12 @@ anova_result <- aov(weight ~ treatment * diet * time_numeric + Error(ID/time_num
 
 summary(anova_result)
 
+
+
 #YOUNG MICE
 #Loading weight measure file for young mice
-setwd("../../young-DSS-exp2/")
-young_weight <- read.csv("weight_measurement.csv", header = TRUE, sep = ";")
-
-#removing useless cols
-young_weight <- young_weight[,-c(5,6)]
-
-#modifying wrong colnames (colnames with dates managed by function changeDateCols)
-colnames(young_weight)[1:4] <- c("diet","treatment","cage","id")
+setwd("../young-DSS-exp2/")
+young_weight <- read.csv("young32dss_weight.csv", header = TRUE, sep = ";")
 
 #data manipulation
 young_weight <- weightDataManipulation(young_weight,4)
@@ -107,32 +97,19 @@ summary(anova_result)
 ###DSS FOLLOW UP SHEET DATA
 #loading the dss followup sheet data
 setwd("../adult-DSS-exp/")
-adult_dss_followup <- read.csv("adult_mice_DSS1_followup.csv", header = TRUE, sep = ";")
+adult_dss_followup <- read.csv("adult36dss_followup.csv", header = TRUE, sep = ";")
 setwd("../young-DSS-exp2/")
-young_dss_followup <- read.csv("dss_followup_young_32.csv", header = TRUE, sep = ";")
+young_dss_followup <- read.csv("young32dss_followup.csv", header = TRUE, sep = ";")
 
 #loading the functions
 setwd("../r scripts/")
 source("dataManipFunctions.R")
 
-
 ###LOADING ADULT MICE DATA
-#replacing colnames
-colnames(adult_dss_followup)[0:4] <- c("cage","diet","treatment","id")
-
-#replacing "bleeding" for "hemoccult" for one of the columns
-adult_dss_followup$Day.0.1[1] <- "hemoccult"
-
 adult_dss_followup <- dssFollowupManipulation(df = adult_dss_followup,groupInfoCols = 4,dateStart = "2023-12-04",nbrDays = 5, negativeOnly = FALSE) #negative only FALSE if absolute differences in weight are taken into account 
 
 
 ###LOADING YOUNG MICE DATA
-#getting rid of useless col
-young_dss_followup <- young_dss_followup[,-3]
-
-#replacing colnames
-colnames(young_dss_followup)[0:4] <- c("cage","id","diet","treatment")
-
 young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-02-14",nbrDays = 5, negativeOnly = FALSE)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
@@ -211,15 +188,9 @@ leveneTest(residuals_ID_date ~ Diet * Treatment * date, data = combined_dfa)
 ###Final dissection data###
 #loading the data
 setwd("../adult-DSS-exp/")
-dissec_adult <- read.csv("exp1_DSS_dissection.csv", sep = ";", header = TRUE)
+dissec_adult <- read.csv("adult36dss_dissection.csv", sep = ";", header = TRUE)
 setwd("../r scripts/")
 source("dataManipFunctions.R")
-
-#getting rid of useless cols
-dissec_adult <- dissec_adult[,-(9:10)]
-
-#changing colnames
-colnames(dissec_adult)[1:4] <- c("cage","diet","treatment","id")
 
 dissec_adult <- dissectionDataManipulation(dissec_adult,4)
 
@@ -246,6 +217,42 @@ ggsave(plot = adult_dissec_spln,"spleen_weight.png", width = 8, height = 5, dpi 
 ggsave(plot = adult_dissec_lvr,"liver_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
 ggsave(plot = adult_dissec_cln,"colon_length.png", width = 9, height = 5, dpi = 300, bg = "white")
 ggsave(plot = adult_dissec_bw,"body_wweight.png", width = 9, height = 5, dpi = 300, bg = "white")
+
+
+#loading the data
+setwd("../young-DSS-exp2//")
+dissec_young <- read.csv("young32dss_dissection.csv", sep = ";", header = TRUE)
+setwd("../r scripts/")
+source("dataManipFunctions.R")
+
+dissec_young <- dissectionDataManipulation(dissec_young,4)
+
+#boxplot for body weight
+young_dissec_bw <- dissecBoxplot(dissec_young,"body",display_significance_bars = FALSE) 
+young_dissec_bw
+
+#boxplot for std liver weight
+young_dissec_lvr <- dissecBoxplot(dissec_young,"liver") 
+young_dissec_lvr
+
+#boxplot for std spleen weight
+young_dissec_spln <- dissecBoxplot(dissec_young,"spleen") 
+young_dissec_spln
+
+#boxplot for colon length (non std)
+young_dissec_cln <- dissecBoxplot(dissec_young,"colon") 
+young_dissec_cln
+
+
+
+
+
+
+
+
+
+
+
 
 
 

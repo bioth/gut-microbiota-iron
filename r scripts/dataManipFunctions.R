@@ -256,7 +256,7 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays, negat
   #creating 3 different dataframes for each metric (weight, hemoccult, stool consistency)
   dss_weight <- colStringSelect(df,"weight",cols_ignored = groupInfoCols) #everytime we skip the first 4 cols (diet, treatment etc)
   dss_weight_change <- colStringSelect(df,"w_change",cols_ignored = groupInfoCols)
-  dss_hemo <- colStringSelect(df,"hemoccult",cols_ignored = groupInfoCols)
+  dss_hemo <- colStringSelect(df,"bleeding",cols_ignored = groupInfoCols)
   dss_consistency <- colStringSelect(df,"consistency",cols_ignored = groupInfoCols)
   
   print("3 df created")
@@ -311,17 +311,17 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays, negat
   #adding a gg_grouping variable (combination of treatment and diet)
   combined_df <- ggGrouping(combined_df,colPlacement = (groupInfoCols+1))
   groupInfoCols <- groupInfoCols+1 #adding gg_group, new info col
-  
+
   #transforming measure such as weight measures in numeric variables
   combined_df <- charToNumRegEx(combined_df,groupInfoCols)
-  
+
   #putting "date" col as a date variable type (not character)
   combined_df$date <- as.Date(combined_df$date)
-  
+
   #adding col with date as numerical values
   combined_df <- dateToNum(combined_df)
-  
-  #calculating disease index 
+
+  #calculating disease index
   combined_df <- dssDiseaseIndexCalculation(combined_df, negativeOnly = negativeOnly)
   
   return(combined_df)
@@ -344,16 +344,16 @@ dissectionDataManipulation <- function(df,groupInfoCols){
   df <- ggGrouping(df, colPlacement = (groupInfoCols+1))
   
   #dividing these measures by final weight of the mice (normalization)
-  df$std_spleen_weigth <- df$spleen.weight/df$body_weight
-  df$std_liver_weigth <- df$liver.weight/df$body_weight
-  df$std_colon_len <- df$colon.length/df$body_weight
+  df$std_spleen_weigth <- df$spleen_weight/df$body_weight
+  df$std_liver_weigth <- df$liver_weight/df$body_weight
+  df$std_colon_len <- df$colon_length/df$body_weight
   
   return(df)
 }
 
 
 #order in which categorical groups are displaced
-desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
+desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 
 
 #function for plotting DSS disease index data
@@ -405,7 +405,7 @@ dssDsiFinalDay <- function(df){
          x = "Treatment",
          y = "Disease severity index",
          color = "Diet")+ 
-    scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) +
+    scale_shape_manual(name = "Treatment", values = c("dss" = 1, "water" = 2)) +
     scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
     scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
     theme_minimal() +  
@@ -493,7 +493,7 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
   }else if(organ == "colon"){
     plotTitle <- plotTitle
     yAxisLabel <- yAxisLabel
-    responseVariable <- "colon.length"
+    responseVariable <- "colon_length"
   }
   
   # Plot with mean points
