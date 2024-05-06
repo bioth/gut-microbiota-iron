@@ -1,7 +1,7 @@
 library("dada2"); packageVersion("dada2")
 
 #Setting working directory
-setwd("D:/CHUM_git/16s_data/trimmed_fastq/")
+setwd("D:/CHUM_git/16s_data_test/trimmed_fastq/")
 
 #Listing files in the current working directory
 list.files()
@@ -16,38 +16,11 @@ sample_names <- gsub("^((?:[^_]*_){2}).*", "\\1", basename(r1_fastq))
 sample_names <- substr(sample_names, 1, nchar(sample_names) - 1)
 
 
-#look at reads size
-read_sizes <- nchar(unlist(r1_fastq))
+plotQualityProfile(r1_fastq)
+plotQualityProfile(r2_fastq)
 
 
-
-plotQualityProfile(r1_fastq[1:2])
-plotQualityProfile(r2_fastq[1:2])
-
-#R1 primers length
-R1primers_len = nchar(c("ACACTGACGACATGGTTCTACACCTACGGGNGGCWGCAG","ACACTGACGACATGGTTCTACATCCTACGGGNGGCWGCAG","ACACTGACGACATGGTTCTACAACCCTACGGGNGGCWGCAG","ACACTGACGACATGGTTCTACACTACCTACGGGNGGCWGCAG"))
-
-#R2 primers length
-R2primers_len = nchar(c("TACGGTAGCAGAGACTTGGTCTGACTACHVGGGTATCTAATCC","TACGGTAGCAGAGACTTGGTCTTGACTACHVGGGTATCTAATCC","TACGGTAGCAGAGACTTGGTCTACGACTACHVGGGTATCTAATCC","TACGGTAGCAGAGACTTGGTCTCTAGACTACHVGGGTATCTAATCC"))
-
-#R1 adapter length (part of the primer)
-nchar("ACACTGACGACATGGTTCTACA")
-
-#R2 adapter length
-nchar("TACGGTAGCAGAGACTTGGTCT")
-
-R1primers_len -22
-R2primers_len - 22
-
-#estimating overlap size resulting from truncLen
-overlapEstim <- function(R1trunc,R2trunc){
-  overlap <- 464-(R1trunc+R2trunc)
-  print(overlap)
-}
-
-overlapEstim(240,240)
-
-#Quality filtering of the reads
+#Quality filtering of the reads, merging of reverse and forward reads
 # Place filtered files in filtered/ subdirectory
 path = "../dada2_filtered_and_trimmed"
 
@@ -56,18 +29,16 @@ filtR2 <- file.path(path, paste0(sample_names, "_R2_filt.fastq.gz"))
 names(filtR1) <- sample_names
 names(filtR2) <- sample_names
 
-out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(160,160),
+out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(220,200),
                      maxN=0, maxEE=c(2,5), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=FALSE, matchIDs=TRUE) # On Windows set multithread=FALSE
+                     compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
 head(out)
 out
 
 
-
-
 #error rates estimation
 #change working directory
-setwd("D:/CHUM_git/16s_data/dada2_filtered_and_trimmed/")
+setwd("D:/CHUM_git/16s_data_test/dada2_filtered_and_trimmed/")
 list.files()
 
 #load filtered files
@@ -85,4 +56,32 @@ plotErrors(errR1, nominalQ=TRUE)
 plotErrors(errR2, nominalQ=TRUE)
 
 
-#running the inference algorithm => based on trimmed/filtered fastq and error rates
+#sample inference (core DADA2 algorithm)
+dadaFs <- dada(filtR1, err=errR1, multithread=TRUE)
+dadaRs <- dada(filtR2, err=errR2, multithread=TRUE)
+
+#merge paired reads
+merge_data <- mergePairs(dadaFs, filtR1, dadaRs, filtR2, verbose=TRUE)
+
+
+
+
+
+
+#comparing size of the files untrimmed
+
+#Setting working directory
+setwd("D:/CHUM_git/16s_data_test/uncompressed_files/")
+
+#Listing files in the current working directory
+list.files()
+
+#Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
+r1_fastq <- sort(list.files(pattern="R1.fastq", full.names = TRUE))
+r2_fastq <- sort(list.files(pattern="R2.fastq", full.names = TRUE))
+
+r1_fastq[1]
+
+
+plotQualityProfile(r1_fastq)
+plotQualityProfile(r2_fastq)

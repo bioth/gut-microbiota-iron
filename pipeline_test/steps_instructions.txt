@@ -23,11 +23,6 @@
 
 
 
-Pour checker la longueurs des reads pour un folder des fichiers fastq donné:
-chmod +x readLengthDistribution.sh
-source readLengthDistribution.sh
-path="D:\CHUM_git\16s_data_test\uncompressed_files"
-read_length_distribution
 
 
 
