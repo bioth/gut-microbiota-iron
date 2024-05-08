@@ -187,7 +187,7 @@ leveneTest(residuals_ID_date ~ Diet * Treatment * date, data = combined_dfa)
 
 ###Final dissection data###
 #loading the data
-setwd("../adult-DSS-exp/")
+setwd("../../adult-DSS-exp/")
 dissec_adult <- read.csv("adult36dss_dissection.csv", sep = ";", header = TRUE)
 setwd("../r scripts/")
 source("dataManipFunctions.R")
@@ -244,7 +244,12 @@ young_dissec_cln <- dissecBoxplot(dissec_young,"colon")
 young_dissec_cln
 
 
-
+#saving figures
+setwd("../figures/young32")
+ggsave(plot = young_dissec_spln,"spleen_weight.png", width = 8, height = 5, dpi = 300, bg = "white")
+ggsave(plot = young_dissec_lvr,"liver_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
+ggsave(plot = young_dissec_cln,"colon_length.png", width = 9, height = 5, dpi = 300, bg = "white")
+ggsave(plot = young_dissec_bw,"body_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
 
 
 
@@ -272,6 +277,9 @@ if(group_p_value < 0.05) {
   liver_box_plot
 }
 
+
+dissec <- dissec_young
+
 #messing up with stats
 # Subsetting the dataframe to include only the DSS groups
 dss_data <- dissec[dissec$gg_group %in% c("50 ppm FeSO4 + DSS", "500 ppm FeSO4 + DSS"), ]
@@ -286,7 +294,7 @@ library(car)
 leveneTest(group1, group2)
 
 # Perform t-test
-result_colon <- t.test(colon.length ~ gg_group, data = dss_data)
+result_colon <- t.test(colon_length ~ gg_group, data = dss_data)
 result_spleen <- t.test(std_spleen_weigth ~ gg_group, data = dss_data)
 result_liver <- t.test(std_liver_weigth ~ gg_group, data = dss_data)
 result_nrm_colon <- t.test(std_colon_len ~ gg_group, data = dss_data)
