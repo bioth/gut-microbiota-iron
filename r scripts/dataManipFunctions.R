@@ -140,6 +140,29 @@
     return(df)
   }
   
+  # Function to calculate weight percentage change
+  calculate_weight_percentage <- function(df) {
+    df$weight_pct_change <- 0  # Initialize PercentageChange column
+    
+    nmice <- length(unique(df$id)) #Count number of mice
+    
+      # Calculate percentage change for each time point
+      for (i in (nmice+1):nrow(df)) {
+        current_weight <- df$weight[i]
+        prev_weight <- df$weight[i - nmice]
+        
+        # Calculate percentage change and update the PercentageChange column
+        df$weight_pct_change[i] <- ((current_weight - prev_weight) / prev_weight) * 100
+      
+    }
+    
+    return(df)
+  }
+
+  
+  
+  
+  
   #Function that calculates disease index for DSS
   #	Weight Variation: 0 - None, 1 - 1%-5%, 2 - 5%-10%, 3 - 10%-20%, 4 - >20%
   #Stool Consistency: 0 - Normal, 2 - Loose, 4 – Diarrhea
@@ -227,6 +250,7 @@ weightDataManipulation<- function(df,groupInfoCols){
   
   df <- dateToNum(df)
   df <- ggGrouping(df, colPlacement = (groupInfoCols+1))
+  df <- calculate_weight_percentage(df)
   
   return(df)
 }
@@ -355,6 +379,11 @@ dissectionDataManipulation <- function(df,groupInfoCols){
 #order in which categorical groups are displaced
 desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 
+# Define your custom color palette
+custom_colors <- c("#00BFC4","#F8766D")
+
+
+
 
 #function for plotting DSS disease index data
 dssDiseaseIndexPlot <- function(df){
@@ -368,6 +397,7 @@ dssDiseaseIndexPlot <- function(df){
          color = "Diet")+
     scale_linetype_manual(name = "Treatment", 
                           values = c("DSS" = "dashed", "Water" = "solid"))+
+   scale_color_manual(values = custom_colors)+
     scale_x_discrete(labels = c("0", "1", "2", "3", "4", "5"))+
     guides(shape = 'none')+
     theme_minimal()+
@@ -407,6 +437,7 @@ dssDsiFinalDay <- function(df){
          color = "Diet")+ 
     scale_shape_manual(name = "Treatment", values = c("dss" = 1, "water" = 2)) +
     scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
+    scale_color_manual(values = custom_colors)+
     scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
     theme_minimal() +  
     theme(
@@ -422,11 +453,28 @@ dssDsiFinalDay <- function(df){
       axis.line = element_line(color = "black", size = 1)
     ) +
     ylim(0, max(df$index))
+  
+  #Statistical measurements
+  #Subsetting the dataframe to include only the DSS groups
+  data <- df[df$treatment == "dss",]
+  group1 <- data[data$diet == "50", ]
+  group2 <- data[data$diet == "500", ]
+  
+  # Shapiro-Wilk test for normality
+  print(shapiro.test(group1$index))
+  print(shapiro.test(group2$index))
+  
+  # Levene's test for homogeneity of variance
+  print(leveneTest(group1$index, group2$index))
+  
+  # Perform t-test
+  print(t.test(index ~ diet, data = data))
+  
   return(plot)
 }
 
 #plotting the weight measures scatter plot
-weightPlot <- function(df){
+weightPlot <- function(df, percentage = FALSE){
   
   # Custom function to calculate standard error with optional scaling
   mean_cl_normal <- function(x, mult = 1) {
@@ -438,16 +486,17 @@ weightPlot <- function(df){
   desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
   
   plot <- df %>%
-    ggplot(aes(x = date, y = weight, color = diet)) +
+    ggplot(aes(x = date, y = if(percentage) { weight_pct_change } else { weight }, color = diet)) +
     stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
     stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")), size = 1) +
     stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = gg_group)) + #adding SEM error bars
-    labs(title = "Adult mice exposed to iron diets and later DSS, body weight evolution",
+    labs(title = "Body weight change over time",
          x = "Date",
-         y = "Weight (g)",
+         y = if(percentage) {"Weight % change"} else {"Weight (g)"},
          color = "Diet") +
     scale_linetype_manual(name = "Treatment", 
                           values = c("DSS" = "dashed", "Water" = "solid")) +
+    scale_color_manual(values = custom_colors)+
     guides(shape = 'none')+
     theme_minimal() +
     theme(
@@ -461,8 +510,7 @@ weightPlot <- function(df){
       panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-    )+
-    ylim(5, max(df$weight) + 1)
+    )
   return(plot)
 }
 
@@ -471,9 +519,9 @@ weightPlot <- function(df){
 dissecBoxplot <- function(df,organ, display_significance_bars){
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
-  plotTitle1 <- "weight measures at final day of the experiment"
+  plotTitle1 <- "weight measures"
   yAxisLabel1 <- "weight ("
-  yAxisLabel2 <- "weight/body weight)"
+  yAxisLabel2 <- "mg/g)"
   plotTitle <- paste(nrmString,organ,plotTitle1,sep = " ")
   yAxisLabel <- paste(nrmString, organ, yAxisLabel1, yAxisLabel2)
   
@@ -491,8 +539,8 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
     yAxisLabel <- yAxisLabel
     responseVariable <- "std_spleen_weigth"
   }else if(organ == "colon"){
-    plotTitle <- plotTitle
-    yAxisLabel <- yAxisLabel
+    plotTitle <- "Colon length measures"
+    yAxisLabel <- "Colon length (cm)"
     responseVariable <- "colon_length"
   }
   
@@ -509,6 +557,7 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
          color = "Diet")+ 
     scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) + 
     scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
+    scale_color_manual(values = custom_colors)+
     scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
     theme_minimal() +  
     theme(
@@ -524,6 +573,25 @@ dissecBoxplot <- function(df,organ, display_significance_bars){
       axis.line = element_line(color = "black", size = 1)
     ) +
     ylim(0, max(df[[responseVariable]]))
+  
+  #Statistical measurements
+  dss50 <- df[df$gg_group == "50 dss",]
+  dss500 <- df[df$gg_group == "500 dss",]
+  water50 <- df[df$gg_group == "50 water",]
+  water500 <- df[df$gg_group == "500 water",]
+  
+  # Shapiro-Wilk test for normality
+  print(shapiro.test(dss50[[responseVariable]]))
+  print(shapiro.test(dss500[[responseVariable]]))
+  print(shapiro.test(water50[[responseVariable]]))
+  print(shapiro.test(water500[[responseVariable]]))
+  
+  # Levene's test for homogeneity of variance
+  print(leveneTest(df[[responseVariable]] ~ gg_group, data = df))
+  
+  # Perform anova
+  result <- aov(df[[responseVariable]] ~ treatment + diet + treatment:diet, data = df)
+  print(summary(result))
   
   return(plot)
 }
