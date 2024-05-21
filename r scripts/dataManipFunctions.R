@@ -474,7 +474,7 @@ dssDsiFinalDay <- function(df){
 }
 
 #plotting the weight measures scatter plot
-weightPlot <- function(df, percentage = FALSE){
+weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
   
   # Custom function to calculate standard error with optional scaling
   mean_cl_normal <- function(x, mult = 1) {
@@ -487,9 +487,9 @@ weightPlot <- function(df, percentage = FALSE){
   
   plot <- df %>%
     ggplot(aes(x = date, y = if(percentage) { weight_pct_change } else { weight }, color = diet)) +
-    stat_summary(aes(group = gg_group, shape = treatment), fun = "mean", geom = "point", size = 3) +
+    stat_summary(aes(group = if(diet_only) {diet} else {gg_group}, shape = if(diet_only) {NULL} else {treatment}), fun = "mean", geom = "point", size = 3) +
     stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")), size = 1) +
-    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = gg_group)) + #adding SEM error bars
+    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
     labs(title = "Body weight change over time",
          x = "Date",
          y = if(percentage) {"Weight % change"} else {"Weight (g)"},
