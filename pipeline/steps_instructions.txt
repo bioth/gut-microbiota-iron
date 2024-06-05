@@ -11,7 +11,9 @@
 
 
 
+testing figaro for finding optimal trunclen parameters:
 
+py figaro.py -i ../../16s_data/uncompressed_file -o ../../16s_data/figaro_output -a 450 -f 22 -r 22
 
 
 

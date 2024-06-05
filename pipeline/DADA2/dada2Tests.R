@@ -1,4 +1,7 @@
 library("dada2"); packageVersion("dada2")
+library(ShortRead)
+library(ggplot2)
+library(reshape2)
 
 #Setting working directory
 setwd("D:/CHUM_git/16s_data/trimmed_fastq/")
@@ -15,38 +18,6 @@ sample_names <- gsub("^((?:[^_]*_){2}).*", "\\1", basename(r1_fastq))
 # Remove the last character
 sample_names <- substr(sample_names, 1, nchar(sample_names) - 1)
 
-
-#look at reads size
-read_sizes <- nchar(unlist(r1_fastq))
-
-
-
-plotQualityProfile(r1_fastq[1:2])
-plotQualityProfile(r2_fastq[1:2])
-
-#R1 primers length
-R1primers_len = nchar(c("ACACTGACGACATGGTTCTACACCTACGGGNGGCWGCAG","ACACTGACGACATGGTTCTACATCCTACGGGNGGCWGCAG","ACACTGACGACATGGTTCTACAACCCTACGGGNGGCWGCAG","ACACTGACGACATGGTTCTACACTACCTACGGGNGGCWGCAG"))
-
-#R2 primers length
-R2primers_len = nchar(c("TACGGTAGCAGAGACTTGGTCTGACTACHVGGGTATCTAATCC","TACGGTAGCAGAGACTTGGTCTTGACTACHVGGGTATCTAATCC","TACGGTAGCAGAGACTTGGTCTACGACTACHVGGGTATCTAATCC","TACGGTAGCAGAGACTTGGTCTCTAGACTACHVGGGTATCTAATCC"))
-
-#R1 adapter length (part of the primer)
-nchar("ACACTGACGACATGGTTCTACA")
-
-#R2 adapter length
-nchar("TACGGTAGCAGAGACTTGGTCT")
-
-R1primers_len -22
-R2primers_len - 22
-
-#estimating overlap size resulting from truncLen
-overlapEstim <- function(R1trunc,R2trunc){
-  overlap <- 464-(R1trunc+R2trunc)
-  print(overlap)
-}
-
-overlapEstim(240,240)
-
 #Quality filtering of the reads
 # Place filtered files in filtered/ subdirectory
 path = "../dada2_filtered_and_trimmed"
@@ -56,8 +27,8 @@ filtR2 <- file.path(path, paste0(sample_names, "_R2_filt.fastq.gz"))
 names(filtR1) <- sample_names
 names(filtR2) <- sample_names
 
-out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(160,160),
-                     maxN=0, maxEE=c(2,5), truncQ=2, rm.phix=TRUE,
+out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(230,225),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
                      compress=TRUE, multithread=FALSE, matchIDs=TRUE) # On Windows set multithread=FALSE
 head(out)
 out
@@ -79,10 +50,46 @@ sample_names <- gsub("^((?:[^_]*_){2}).*", "\\1", basename(filtR1))
 # Remove the last character
 sample_names <- substr(sample_names, 1, nchar(sample_names) - 1)
 
-errR1 <- learnErrors(filtR1, multithread=TRUE)
-errR2 <- learnErrors(filtR2, multithread=TRUE)
+errR1 <- learnErrors(filtR1, multithread=FALSE)
+errR2 <- learnErrors(filtR2, multithread=FALSE)
 plotErrors(errR1, nominalQ=TRUE)
 plotErrors(errR2, nominalQ=TRUE)
 
 
 #running the inference algorithm => based on trimmed/filtered fastq and error rates
+dadaFs <- dada(filtR1, err=errR1, multithread=FALSE)
+dadaRs <- dada(filtR2, err=errR2, multithread=FALSE)
+
+
+#merge paired reads 
+mergers <- mergePairs(dadaFs, filtR1, dadaRs, filtR2, verbose=TRUE)
+
+#construct sequence table
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+
+# Inspect distribution of sequence lengths
+table(nchar(getSequences(seqtab)))
+
+#removing chimeras
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+
+#what percentage of chimears over the total dataset
+sum(seqtab.nochim)/sum(seqtab)
+
+
+#trying to export the data
+setwd("../")
+rownames(seqtab.nochim)[1]
+write.table(seqtab.nochim, sep = ";", file = "seqtab.nochim2.csv", col.names = TRUE)
+
+
+
+#tracking what reads made it through the pipeline
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(track) <- sample.names
+head(track)

@@ -6,6 +6,10 @@ cd ../../../16s_data/uncompressed_files
 # Check if destination directory exists, create it if not
 mkdir -p "../trimmed_fastq"
 
+# Supprimer les fichiers de logs existants s'ils existent
+rm -f ../trimmed_fastq/combined_r1_cutadapt_logs.txt
+rm -f ../trimmed_fastq/combined_r2_cutadapt_logs.txt
+
 # Loop through each R1 FASTQ file
 for file in *R1.fastq; do
 
