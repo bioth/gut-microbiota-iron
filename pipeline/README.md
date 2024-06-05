@@ -1,3 +1,7 @@
+pipeline/photos/Capture d'écran 2024-06-05 151326.png
+<a img align="center" src="pipeline/photos/Capture d'écran 2024-06-05 151326.png" height="100" /></a>
+
+
 # 1- Remove the primers at the end of the reads (trimming of non-biological bases):
 
 ## First uncompress the fastq files with: 
