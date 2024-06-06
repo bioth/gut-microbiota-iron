@@ -1,11 +1,32 @@
 # Welcome to the gut microbiota analysis pipeline!
+<p align="center">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/pipeline.png?raw=true"/>
+</p>
+
 Here is a walkthrough of the pipeline as well as the instructions to run it properly. Pipeline is designed to function with MiSeq V3-V4 16S sequencing data (see example below).
+
+# The requirements:
+Running this pipeline cannot be done without the required versions and packages:
+
+- A bash command line (not powershell)
+- Python (3.0 or later)
+- pandas (python library)
+- R (4.3.0 or later)
+- R tools (build packages)
+- BiocManager (version 3.18)
+- DADA2 (version 3.18)
+- ggplot2 (version 3.4.4 or later)
+- phyloseq (version 1.46.0 or later)
 
 # 1- Prepare you data folder:
 You data folder should contain a file with your compressed reads, and a folder called metadata which contains the metadata as well as the MiSeqReadSet excel file which contains all the information about the primers and adapters.
 
 <p align="center">
-  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/folder_format.png?raw=true" height="100" />
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/data_folder_format.png?raw=true" height="100" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/metadata_folder_format.png?raw=true" height="100" />
 </p>
 
 
