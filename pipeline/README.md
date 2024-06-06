@@ -1,6 +1,22 @@
 # Welcome to the gut microbiota analysis pipeline!
 Here is a walkthrough of the pipeline as well as the instructions to run it properly. Pipeline is designed to function with MiSeq V3-V4 16S sequencing data (see example below).
 
+# The requirements:
+Running this pipeline cannot be done without the required versions and packages:
+
+- A bash command line (not powershell)
+- Python (3.0 or later)
+- pandas (python library)
+- R (4.3.0 or later)
+- R tools (build packages)
+- BiocManager (version 3.18)
+- DADA2 (version 3.18)
+- ggplot2 (version 3.4.4 or later)
+- phyloseq (version 1.46.0 or later)
+
+Detailed information about how to install the packages can be found below:
+
+
 # 1- Prepare you data folder:
 You data folder should contain a file with your compressed reads, and a folder called metadata which contains the metadata as well as the MiSeqReadSet excel file which contains all the information about the primers and adapters.
 
