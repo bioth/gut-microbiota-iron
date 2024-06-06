@@ -73,7 +73,7 @@ young_weight <- read.csv("young48_weight.csv", header = TRUE, sep = ";")
 young_weight <- weightDataManipulation(young_weight,4)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
-young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = TRUE)
+young_weight_plot <- weightPlot(young_weight, percentage = FALSE, diet_only = FALSE)
 young_weight_plot
 
 
