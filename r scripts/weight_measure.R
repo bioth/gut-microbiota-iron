@@ -77,7 +77,20 @@ young_weight_plot <- weightPlot(young_weight, percentage = FALSE, diet_only = FA
 young_weight_plot
 
 
+#Loading weight measure file
+setwd("../young-DSS-exp3/")
+young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
 
+#Manipulating weight measures data
+young_weight <- weightDataManipulation(young_weight,4)
+
+#creating scatter plot with the four different treatments (diet combined with dss or control)
+young_weight_plot <- weightPlot(young_weight, percentage = FALSE, diet_only = FALSE)
+young_weight_plot
+
+#saving scatter plot
+setwd("../figures/young48")
+ggsave("young_weight_percent.png", width = 11, height = 6, dpi = 300, bg = "white")
 
 
 
@@ -92,6 +105,7 @@ setwd("../adult-DSS-exp/")
 adult_dss_followup <- read.csv("adult36dss_followup.csv", header = TRUE, sep = ";")
 setwd("../young-DSS-exp2/")
 young_dss_followup <- read.csv("young32dss_followup.csv", header = TRUE, sep = ";")
+
 
 #loading the functions
 setwd("../r scripts/")
@@ -129,6 +143,26 @@ setwd("../young32/")
 ggsave("young32_dIndex.png", width = 9, height = 5, dpi = 300, bg = "white")
 
 
+
+
+
+
+#repeated young mice experiment
+###LOADING YOUNG MICE DATA
+setwd("../young-DSS-exp3/")
+young_dss_followup <- read.csv("young48_dss_followup.csv", header = TRUE, sep = ";")
+
+young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-05-29",nbrDays = 5, negativeOnly = TRUE)
+
+
+#creating scatter plot with the four different treatments (diet combined with dss or control)
+#this graph has a disease index score in the y column
+young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
+young_dssflwup_plot
+
+#DSI measures at final day of DSS
+young_final_DSI_plot <- dssDsiFinalDay(young_dss_followup)
+young_final_DSI_plot
 
 
 

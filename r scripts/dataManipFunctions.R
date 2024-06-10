@@ -175,7 +175,12 @@
         df$index[i] <- df$index[i]+4
       }else if(grepl("L",df$consistency[i])){
         df$index[i] <- df$index[i]+2
-      }else{
+        
+      }else if(grepl("NL",df$consistency[i])){
+        df$index[i] <- df$index[i]+1
+        
+      }
+      else{
         df$index[i] <- df$index[i]+0
       }
       #hemoccult
@@ -421,11 +426,14 @@ dssDiseaseIndexPlot <- function(df){
 #plotting DSI at final day of DSS period
 dssDsiFinalDay <- function(df){
   
+  #order in which categorical groups are displaced
+  desired_order1 <- c("50 dss", "500 dss")
+  
   #subsetting for only the final day 
   df <- subset(df, time_numeric == 5)
   
   plot <- df %>%
-    ggplot(aes(x = factor(gg_group, levels = desired_order),  y = index, color = as.character(diet))) +
+    ggplot(aes(x = factor(gg_group, levels = desired_order1),  y = index, color = as.character(diet))) +
     
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size =1)+ #adding horizontal bars representing means
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size =1)+ 
@@ -435,10 +443,9 @@ dssDsiFinalDay <- function(df){
          x = "Treatment",
          y = "Disease severity index",
          color = "Diet")+ 
-    scale_shape_manual(name = "Treatment", values = c("dss" = 1, "water" = 2)) +
     scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
     scale_color_manual(values = custom_colors)+
-    scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
+    scale_x_discrete(labels = c("50 ppm + DSS", "500 ppm + DSS"))+
     theme_minimal() +  
     theme(
       plot.title = element_text(size = 16, face = "bold"),
@@ -459,16 +466,19 @@ dssDsiFinalDay <- function(df){
   data <- df[df$treatment == "dss",]
   group1 <- data[data$diet == "50", ]
   group2 <- data[data$diet == "500", ]
-  
+
   # Shapiro-Wilk test for normality
   print(shapiro.test(group1$index))
   print(shapiro.test(group2$index))
-  
+
   # Levene's test for homogeneity of variance
   print(leveneTest(group1$index, group2$index))
-  
+
   # Perform t-test
   print(t.test(index ~ diet, data = data))
+  
+  #perform Kruskal-Wallis test
+  print(kruskal.test(index ~ diet, data = data))
   
   return(plot)
 }
