@@ -147,13 +147,20 @@
     nmice <- length(unique(df$id)) #Count number of mice
     
     if(fromDay0) {
-      # Calculate percentage change relative to the first body weight measurement for each mouse
-      for (i in 1:nmice) {
-        mouse_data <- df[df$id == unique(df$id)[i], ]
-        initial_weight <- mouse_data$weight[1]
-        df$weight_pct_change[df$id == unique(df$id)[i]] <- ((mouse_data$weight - initial_weight) / initial_weight) * 100
+      initial_weights <- df$weight[1:nmice]
+      k = 1
+      for (i in (nmice + 1):nrow(df)) {
+        current_weight <- df$weight[i]
+        
+        if(i %% 48 != 0){
+          k <- k+1
+          }
+        
+        # Calculate percentage change and update the weight_pct_change column
+        df$weight_pct_change[i] <- ((current_weight - initial_weights[i-nmice*k]) / initial_weights[i-nmice*k]) * 100
       }
-    } else {
+    }
+    else {
       # Calculate percentage change for each time point relative to the previous time point
       for (i in (nmice + 1):nrow(df)) {
         current_weight <- df$weight[i]

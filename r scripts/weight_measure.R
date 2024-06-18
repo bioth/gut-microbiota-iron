@@ -66,14 +66,14 @@ ggsave("young32_weight.png", width = 10, height = 6, dpi = 300, bg = "white")
 
 
 #Young 48 mice
-setwd("../young-DSS-exp3")
+setwd("../gut-microbiota-iron/young-DSS-exp3")
 young_weight <- read.csv("young48_weight.csv", header = TRUE, sep = ";")
 
 #data manipulation
-young_weight <- weightDataManipulation(young_weight,4)
+young_weight <- weightDataManipulation(young_weight,4, fromDay0 = TRUE)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
-young_weight_plot <- weightPlot(young_weight, percentage = FALSE, diet_only = FALSE)
+young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE)
 young_weight_plot
 
 
@@ -85,7 +85,7 @@ young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = 
 young_weight <- young_weight[,-c(6:10)]
 
 #Manipulating weight measures data
-young_weight <- weightDataManipulation(young_weight,4, fromDay0 = FALSE)
+young_weight <- weightDataManipulation(young_weight,4, fromDay0 = TRUE)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
 young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE)
