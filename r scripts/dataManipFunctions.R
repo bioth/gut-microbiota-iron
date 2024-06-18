@@ -141,19 +141,27 @@
   }
   
   # Function to calculate weight percentage change
-  calculate_weight_percentage <- function(df) {
+  calculate_weight_percentage <- function(df, fromDay0) {
     df$weight_pct_change <- 0  # Initialize PercentageChange column
     
     nmice <- length(unique(df$id)) #Count number of mice
     
-      # Calculate percentage change for each time point
-      for (i in (nmice+1):nrow(df)) {
+    if(fromDay0) {
+      # Calculate percentage change relative to the first body weight measurement for each mouse
+      for (i in 1:nmice) {
+        mouse_data <- df[df$id == unique(df$id)[i], ]
+        initial_weight <- mouse_data$weight[1]
+        df$weight_pct_change[df$id == unique(df$id)[i]] <- ((mouse_data$weight - initial_weight) / initial_weight) * 100
+      }
+    } else {
+      # Calculate percentage change for each time point relative to the previous time point
+      for (i in (nmice + 1):nrow(df)) {
         current_weight <- df$weight[i]
         prev_weight <- df$weight[i - nmice]
         
-        # Calculate percentage change and update the PercentageChange column
+        # Calculate percentage change and update the weight_pct_change column
         df$weight_pct_change[i] <- ((current_weight - prev_weight) / prev_weight) * 100
-      
+      }
     }
     
     return(df)
@@ -238,7 +246,7 @@ mean_cl_normal <- function(x, mult = 1) {
 
 
 #function that is combination of functions above, startDateCol is position at which date cols start appearing
-weightDataManipulation<- function(df,groupInfoCols){
+weightDataManipulation<- function(df,groupInfoCols, fromDay0){
   df <- emptyRow(df)
   df <- changeDateCols(df)
   df <- pivotLongerWeightDate(df)
@@ -255,7 +263,7 @@ weightDataManipulation<- function(df,groupInfoCols){
   
   df <- dateToNum(df)
   df <- ggGrouping(df, colPlacement = (groupInfoCols+1))
-  df <- calculate_weight_percentage(df)
+  df <- calculate_weight_percentage(df, if(fromDay0 == TRUE){fromDay0 = TRUE}else{fromDay0 = FALSE})
   
   return(df)
 }
@@ -403,7 +411,6 @@ dssDiseaseIndexPlot <- function(df){
     scale_linetype_manual(name = "Treatment", 
                           values = c("DSS" = "dashed", "Water" = "solid"))+
    scale_color_manual(values = custom_colors)+
-    scale_x_discrete(labels = c("0", "1", "2", "3", "4", "5"))+
     guides(shape = 'none')+
     theme_minimal()+
     theme(
@@ -418,7 +425,7 @@ dssDiseaseIndexPlot <- function(df){
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
     )+
-   ylim(0, max(df$index) + 1)
+   ylim(0, max(df$index))
   return(plot)
 }
 
@@ -439,9 +446,9 @@ dssDsiFinalDay <- function(df){
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size =1)+ 
     stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2, size = 0.7) + #adding SEM error bars
     geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-    labs(title = "Disease severity index at final day of DSS admnistration",
+    labs(title = "DSI at day 5 of DSS administration",
          x = "Treatment",
-         y = "Disease severity index",
+         y = "DSI",
          color = "Diet")+ 
     scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
     scale_color_manual(values = custom_colors)+
@@ -496,12 +503,12 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
   desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
   
   plot <- df %>%
-    ggplot(aes(x = date, y = if(percentage) { weight_pct_change } else { weight }, color = diet)) +
+    ggplot(aes(x = time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = diet)) +
     stat_summary(aes(group = if(diet_only) {diet} else {gg_group}, shape = if(diet_only) {NULL} else {treatment}), fun = "mean", geom = "point", size = 3) +
     stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")), size = 1) +
     stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
     labs(title = "Body weight change over time",
-         x = "Date",
+         x = "Time (days)",
          y = if(percentage) {"Weight % change"} else {"Weight (g)"},
          color = "Diet") +
     scale_linetype_manual(name = "Treatment", 

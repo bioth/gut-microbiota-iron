@@ -81,16 +81,19 @@ young_weight_plot
 setwd("../young-DSS-exp3/")
 young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
 
+#removing first week body weight measurements
+young_weight <- young_weight[,-c(6:10)]
+
 #Manipulating weight measures data
-young_weight <- weightDataManipulation(young_weight,4)
+young_weight <- weightDataManipulation(young_weight,4, fromDay0 = FALSE)
 
 #creating scatter plot with the four different treatments (diet combined with dss or control)
-young_weight_plot <- weightPlot(young_weight, percentage = FALSE, diet_only = FALSE)
+young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE)
 young_weight_plot
 
 #saving scatter plot
 setwd("../figures/young48")
-ggsave("young_weight_percent.png", width = 11, height = 6, dpi = 300, bg = "white")
+ggsave("young_weight_percentage.png", width = 11, height = 6, dpi = 300, bg = "white")
 
 
 
@@ -160,9 +163,14 @@ young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoC
 young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
 young_dssflwup_plot
 
+#saving figure
+setwd("../figures/young48/")
+ggsave("young48_dIndex_evolution.png", width = 5, height = 5, dpi = 300, bg = "white")
+
 #DSI measures at final day of DSS
 young_final_DSI_plot <- dssDsiFinalDay(young_dss_followup)
 young_final_DSI_plot
+ggsave("young48_final_dIndex.png", width = 5, height = 5, dpi = 300, bg = "white")
 
 
 
