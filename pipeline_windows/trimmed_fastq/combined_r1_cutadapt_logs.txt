@@ -1,0 +1,2 @@
+This is cutadapt 4.8 with Python 3.12.5
+Command line parameters: -b file:../r1_primers.fasta -o ../trimmed_fastq/*R1_trimmed.fastq *R1.fastq
