@@ -266,7 +266,7 @@ asv_table2 <- read.csv("seqtab.nochim_run_m1.csv", sep = ";")
 
 #transforming asv_table into matrix so that it can be used by dada2 taxonomic assignment algorithm
 asv_table <- as.matrix(asv_table2)
-taxa <- assignTaxonomy(asv_table, "../../training_set/silva_nr99_v138.1_wSpecies_train_set.fa.gz")
+taxa <- assignTaxonomy(asv_table2, "../../training_set/silva_nr99_v138.1_wSpecies_train_set.fa.gz")
 taxa.print <- taxa #removing rownames for display
 rownames(taxa.print) <- NULL
 head(taxa.print)
