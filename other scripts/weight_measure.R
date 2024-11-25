@@ -9,6 +9,7 @@
   library("ggsignif") #adding significance bars to ggplots
   library("Hmisc") #idk lol
   library("esquisse")
+  library("readxl")
 }
 
 
@@ -20,11 +21,8 @@ setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
 #If working from la bête
 setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
 
-{
-  #loading functions for data manipulation
-  setwd("other scripts")
-  source("dataManipFunctions.R")
-}
+#loading functions for data manipulation
+source("other scripts/dataManipFunctions.R")
   
 #Loading weight measure file
 setwd("../adult-DSS-exp/")
@@ -379,4 +377,60 @@ ggsave(plot = young_dissec_spln,"spleen_weight.png", width = 8, height = 5, dpi 
 ggsave(plot = young_dissec_lvr,"liver_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
 ggsave(plot = young_dissec_cln,"colon_length.png", width = 7, height = 5, dpi = 300, bg = "white")
 ggsave(plot = young_dissec_bw,"body_weight.png", width = 9, height = 5, dpi = 300, bg = "white")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Iron content measurements
+#For young48 dss experiment
+setwd("experiments/finished exp/young-DSS-exp3/")
+
+
+#T35 ferrozine assay for stools
+df <- read_xlsx("young48_dss_ferrozine_t35.xlsx")
+df <- df[,c(2,14:16)]
+colnames(df) <- df[2,]
+colnames(df)[1:2] <- c("id","iron_concentration")
+df <- df[-c(1,2,27),]
+df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
+df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$iron_concentration <- as.numeric(df$iron_concentration)
+
+ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+
+#Tf ferrozine assay for liver
 

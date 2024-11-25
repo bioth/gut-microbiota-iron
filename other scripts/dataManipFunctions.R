@@ -245,11 +245,11 @@
 
 
 #Function to calculate standard error with optional scaling
-mean_cl_normal <- function(x, mult = 1.96) {
-  mean_val <- mean(x)
-  se_val <- sd(x) / sqrt(length(x))
-  data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
-}
+# mean_cl_normal <- function(x, mult = 1.96) {
+#   mean_val <- mean(x)
+#   se_val <- sd(x) / sqrt(length(x))
+#   data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
+# }
 
 
 #function that is combination of functions above, startDateCol is position at which date cols start appearing
@@ -411,13 +411,13 @@ dssDiseaseIndexPlot <- function(df){
  plot <- df %>%
     ggplot(aes(x = time_numeric, y = index, color = diet))+
     stat_summary(aes(group = gg_group, shape = treatment),fun ="mean", geom = "point", size = 3)+
-    stat_summary(aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")),fun = "mean",geom = "line",size = 1)+
+    stat_summary(aes(group = gg_group), fun = "mean", geom = "line", size = 1)+
+    stat_summary(aes(color = diet), fun.data = mean_cl_normal, geom="errorbar", width=0.1, size = 1) + #adding SEM error bars
+   
     labs(title = "Disease severity index (DSI) during DSS",
          x = "Day",
          y = "DSI",
          color = "Diet")+
-    scale_linetype_manual(name = "Treatment", 
-                          values = c("DSS" = "dashed", "Water" = "solid"))+
    scale_color_manual(values = custom_colors)+
     guides(shape = 'none')+
     theme_minimal()+
@@ -447,13 +447,38 @@ dssDsiFinalDay <- function(df){
   #subsetting for only the final day 
   df <- subset(df, time_numeric == 5)
   
+  #Statistical measurements
+  #Subsetting the dataframe to include only the DSS groups
+  data <- df[df$treatment == "dss",]
+  group1 <- data[data$diet == "50", ]
+  group2 <- data[data$diet == "500", ]
+  
+  # Shapiro-Wilk test for normality
+  print(shapiro.test(group1$index))
+  print(shapiro.test(group2$index))
+  
+  # Levene's test for homogeneity of variance
+  print(leveneTest(group1$index, group2$index))
+  
+  good_test <- wilcox.test(index ~ gg_group, data = data, exact = FALSE)
+  print(good_test)
+  p_value <- good_test$p.value
+  print(str(p_value))
+  
   plot <- df %>%
     ggplot(aes(x = factor(gg_group, levels = desired_order1),  y = index, color = as.character(diet))) +
     
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size =1)+ #adding horizontal bars representing means
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size =1)+ 
-    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2, size = 0.7) + #adding SEM error bars
-    geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y.., color = diet), size =1)+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y.., color = diet), size =1)+ 
+    stat_summary(aes(color = diet), fun.data="mean_cl_normal", geom="errorbar", width=0.2, size = 1) + #adding SEM error bars
+    #geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
+    
+    geom_signif(comparisons =   desired_order1,
+                map_signif_level = TRUE, # Pour afficher l'étoile
+                y_position = 9, # Ajuste cette valeur selon ton graphique
+                annotations = ifelse(p_value < 0.05, "*", "ns")) + # Affiche * si significatif +
+    
+    
     labs(title = "DSI at day 5 of DSS administration",
          x = "Treatment",
          y = "DSI",
@@ -470,30 +495,21 @@ dssDsiFinalDay <- function(df){
       axis.text.y = element_text(size = 12),
       legend.title = element_text(size = 12, face = "bold"),
       legend.text = element_text(size = 12),
-      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.major =element_blank(),
       panel.grid.minor = element_blank(),
       axis.line = element_line(color = "black", size = 1)
     ) +
     ylim(0, max(df$index))
   
-  #Statistical measurements
-  #Subsetting the dataframe to include only the DSS groups
-  data <- df[df$treatment == "dss",]
-  group1 <- data[data$diet == "50", ]
-  group2 <- data[data$diet == "500", ]
-
-  # Shapiro-Wilk test for normality
-  print(shapiro.test(group1$index))
-  print(shapiro.test(group2$index))
-
-  # Levene's test for homogeneity of variance
-  print(leveneTest(group1$index, group2$index))
-
-  # Perform t-test
-  print(t.test(index ~ diet, data = data))
   
-  #perform Kruskal-Wallis test
-  print(kruskal.test(index ~ diet, data = data))
+
+  # # Perform t-test
+  # print(t.test(index ~ diet, data = data))
+  # 
+  # #perform Kruskal-Wallis test
+  # print(kruskal.test(index ~ diet, data = data))
+  
+
   
   return(plot)
 }
@@ -532,7 +548,7 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, stats = TRUE){
       axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
       legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
       legend.text = element_text(size = 12),  # Adjust legend font size
-      panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+      panel.grid.major = element_blank(),  # Remove major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
     )
@@ -654,6 +670,74 @@ dissecBoxplot <- function(df,organ, display_significance_bars, permAnova = FALSE
     print(TukeyHSD(result))
   }
 
+  
+  
+  # print("this is non parametric")
+  # kruskal_test(df[[responseVariable]] ~ treatment * diet, data=df)
+  # post_hoc <- data %>%
+  #   dunn_test(body_weight ~ treatment, p.adjust.method = "bonferroni")
+  # 
+  # print(post_hoc)
+  
+  
+  return(plot)
+}
+
+
+#Function for ior iron measurements, gg_group must be a factor and ordered, diet must be as character
+ironBoxplot <- function(df, measure, display_significance_bars = TRUE, title, y_axis_title, custom_colors, path){
+  
+  #Plot with mean points
+  plot <- df %>%
+    ggplot(aes(x = gg_group,  y = !!sym(measure), color = diet)) +
+    geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
+    stat_summary(fun.data="mean_cl_normal", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
+    labs(title = title,
+         y = y_axis_title,
+         x = "",
+         color = "Diet")+ 
+    scale_color_manual(values = custom_colors)+
+    theme_minimal() +  
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      axis.title.x = element_text(size = 14, face = "bold"),
+      axis.title.y = element_text(size = 14, face = "bold"),
+      axis.text.x = element_text(size = 9),
+      axis.text.y = element_text(size = 12),
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 12),
+      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "black", size = 1)
+    )
+  
+  # #Statistical measurements
+  # dss50 <- df[df$gg_group == "50 dss",]
+  # dss500 <- df[df$gg_group == "500 dss",]
+  # water50 <- df[df$gg_group == "50 water",]
+  # water500 <- df[df$gg_group == "500 water",]
+  # 
+  # # Shapiro-Wilk test for normality
+  # print(shapiro.test(dss50[[responseVariable]]))
+  # print(shapiro.test(dss500[[responseVariable]]))
+  # print(shapiro.test(water50[[responseVariable]]))
+  # print(shapiro.test(water500[[responseVariable]]))
+  # 
+  # # Levene's test for homogeneity of variance
+  # print(leveneTest(df[[responseVariable]] ~ gg_group, data = df))
+  # 
+  # # Perform anova
+  # if(permAnova){
+  #   model <- lmp(df[[responseVariable]] ~ treatment * diet, data = df)
+  #   print(summary(model))
+  # }else{
+  #   result <- aov(df[[responseVariable]] ~ treatment * diet, data = df)
+  #   print(summary(result))
+  #   print(TukeyHSD(result))
+  # }
+  
   
   
   # print("this is non parametric")
