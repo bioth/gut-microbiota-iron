@@ -173,6 +173,17 @@
     
     return(df)
   }
+  
+  read_excel_allsheets <- function(filename, tibble = FALSE) {
+    # I prefer straight data.frames
+    # but if you like tidyverse tibbles (the default with read_excel)
+    # then just pass tibble = TRUE
+    sheets <- readxl::excel_sheets(filename)
+    x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X))
+    if(!tibble) x <- lapply(x, as.data.frame)
+    names(x) <- sheets
+    x
+  }
 
   
   
@@ -699,6 +710,7 @@ ironBoxplot <- function(df, measure, display_significance_bars = TRUE, title, y_
          x = "",
          color = "Diet")+ 
     scale_color_manual(values = custom_colors)+
+    ylim(0,NA)
     theme_minimal() +  
     theme(
       plot.title = element_text(size = 16, face = "bold"),

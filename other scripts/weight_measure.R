@@ -433,4 +433,61 @@ df$iron_concentration <- as.numeric(df$iron_concentration)
 ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
 
 #Tf ferrozine assay for liver
+#They are multiple sheets so we use a custom function
+sheets <- read_excel_allsheets("young48_dss_ferrozine_tF.xlsx")
+
+df <- as.data.frame(sheets["Ferrozine Liver"])
+df <- df[1:51,c(3,6,8,14:18)]
+colnames(df) <- df[2,]
+colnames(df)[1:4] <- c("id","wet_weight","dry_weight","iron_concentration")
+df <- df[-c(1,2,27),]
+df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
+df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$iron_concentration <- as.numeric(df$iron_concentration)
+df$liver_weight <- as.numeric(df$liver_weight)
+df$wet_weight <- as.numeric(df$wet_weight)
+df$dry_weight <- as.numeric(df$dry_weight)
+df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
+
+
+#To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
+#need to take into account the wet to dry ratio!
+df$total_iron <- df$iron_concentration*df$liver_weight*df$dry_to_wet_ratio
+
+ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Iron concentration in liver at final day of experiment", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+
+#Tf ferrozine assay for spleen
+df <- as.data.frame(sheets["Ferrozine Spleen"])
+df <- df[1:51,c(3,6,8,14:18)]
+colnames(df) <- df[2,]
+colnames(df)[1:4] <- c("id","wet_weight","dry_weight","iron_concentration")
+df <- df[-c(1,2,27),]
+df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
+df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$iron_concentration <- as.numeric(df$iron_concentration)
+df$spleen_weight <- as.numeric(df$spleen_weight)
+df$wet_weight <- as.numeric(df$wet_weight)
+df$dry_weight <- as.numeric(df$dry_weight)
+df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
+
+
+#To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
+#need to take into account the wet to dry ratio!
+df$total_iron <- df$iron_concentration*df$spleen_weight*df$dry_to_wet_ratio
+
+ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Iron concentration in spleen at final day of experiment", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+
+#Tf ferrozine assay for stools
+df <- as.data.frame(sheets["Ferrozine Stool Tfinal"])
+df <- df[4:53,c(3,14:16)]
+colnames(df) <- df[1,]
+colnames(df)[1:2] <- c("id","iron_concentration")
+df <- na.omit(df)
+df <- df[-1,]
+df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
+df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$iron_concentration <- as.numeric(df$iron_concentration)
+
+ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+
 
