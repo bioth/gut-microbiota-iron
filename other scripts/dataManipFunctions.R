@@ -702,28 +702,32 @@ ironBoxplot <- function(df, measure, display_significance_bars = TRUE, title, y_
   plot <- df %>%
     ggplot(aes(x = gg_group,  y = !!sym(measure), color = diet)) +
     geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), size = 1)+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), size = 1)+ 
     stat_summary(fun.data="mean_cl_normal", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
     labs(title = title,
          y = y_axis_title,
          x = "",
          color = "Diet")+ 
     scale_color_manual(values = custom_colors)+
-    ylim(0,NA)
+    ylim(0,max(df[[measure]])+1/4*max(df[[measure]]))+
+    # ylim(0,250)+ #For comparing to Claire Balb/C measurements
     theme_minimal() +  
     theme(
-      plot.title = element_text(size = 16, face = "bold"),
+      plot.title = element_text(size = 14, face = "bold"),
       axis.title.x = element_text(size = 14, face = "bold"),
       axis.title.y = element_text(size = 14, face = "bold"),
-      axis.text.x = element_text(size = 9),
+      axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
       axis.text.y = element_text(size = 12),
       legend.title = element_text(size = 12, face = "bold"),
       legend.text = element_text(size = 12),
-      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
       axis.line = element_line(color = "black", size = 1)
     )
+  
+  #Saving the graph
+  ggsave(plot = plot, filename = paste(path, "/", title, ".png", sep = ""), height = 6, width = 5, dpi = 300, bg = "white")
   
   # #Statistical measurements
   # dss50 <- df[df$gg_group == "50 dss",]

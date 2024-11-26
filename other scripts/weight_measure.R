@@ -8,8 +8,8 @@
   library("car") #for anova too
   library("ggsignif") #adding significance bars to ggplots
   library("Hmisc") #idk lol
-  library("esquisse")
   library("readxl")
+  library("esquisse")
 }
 
 
@@ -430,7 +430,14 @@ df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
 df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
 df$iron_concentration <- as.numeric(df$iron_concentration)
 
-ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+
+#Fit a ANOVA model for the current time point
+anova <- aov(iron_concentration ~ diet * treatment, data = df)
+summary(anova)
+# Perform Tukey's HSD test and store the results in the list
+results <- TukeyHSD(anova)
+print(results)
 
 #Tf ferrozine assay for liver
 #They are multiple sheets so we use a custom function
@@ -443,6 +450,7 @@ colnames(df)[1:4] <- c("id","wet_weight","dry_weight","iron_concentration")
 df <- df[-c(1,2,27),]
 df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
 df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+# df$gg_group <- factor(df$gg_group, levels = c("water+50","water+500","dss+50","dss+500")) #For Claire comparaison with BalbC mice
 df$iron_concentration <- as.numeric(df$iron_concentration)
 df$liver_weight <- as.numeric(df$liver_weight)
 df$wet_weight <- as.numeric(df$wet_weight)
@@ -454,7 +462,17 @@ df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
 #need to take into account the wet to dry ratio!
 df$total_iron <- df$iron_concentration*df$liver_weight*df$dry_to_wet_ratio
 
-ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Iron concentration in liver at final day of experiment", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+
+ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total liver iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+
+#Fit a ANOVA model for the current time point
+anova <- aov(total_iron ~ diet * treatment, data = df)
+summary(anova)
+# Perform Tukey's HSD test and store the results in the list
+results <- TukeyHSD(anova)
+print(results)
+
+
 
 #Tf ferrozine assay for spleen
 df <- as.data.frame(sheets["Ferrozine Spleen"])
@@ -468,14 +486,22 @@ df$iron_concentration <- as.numeric(df$iron_concentration)
 df$spleen_weight <- as.numeric(df$spleen_weight)
 df$wet_weight <- as.numeric(df$wet_weight)
 df$dry_weight <- as.numeric(df$dry_weight)
-df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
+df$dry_to_wet_ratio <- df$wet_weight/df$dry_weight
 
 
 #To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
 #need to take into account the wet to dry ratio!
 df$total_iron <- df$iron_concentration*df$spleen_weight*df$dry_to_wet_ratio
 
-ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Iron concentration in spleen at final day of experiment", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total spleen iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+
+#Fit a ANOVA model for the current time point
+anova <- aov(iron_concentration ~ diet * treatment, data = df)
+summary(anova)
+# Perform Tukey's HSD test and store the results in the list
+results <- TukeyHSD(anova)
+print(results)
+
 
 #Tf ferrozine assay for stools
 df <- as.data.frame(sheets["Ferrozine Stool Tfinal"])
@@ -488,6 +514,12 @@ df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
 df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
 df$iron_concentration <- as.numeric(df$iron_concentration)
 
-ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg/g", custom_colors = c("blue","red"), path = "")
+ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at final day", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
 
+#Fit a ANOVA model for the current time point
+anova <- aov(iron_concentration ~ diet * treatment, data = df)
+summary(anova)
+# Perform Tukey's HSD test and store the results in the list
+results <- TukeyHSD(anova)
+print(results)
 
