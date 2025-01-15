@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Changing directory to access the FASTQ files
-cd ../../Microbiota_17/uncompressed_files
+cd ../../../Microbiota_18/2106590411
 
 # Check if destination directory exists, create it if not
 mkdir -p "../trimmed_fastq"
@@ -18,7 +18,7 @@ for file in *R1.fastq; do
     filename_no_ext="${filename%.*}"
     
     # Trimming non-biological bases on R1 FASTQ files
-    python3 -m cutadapt -u 18 --cores=0 -o "../trimmed_fastq/${filename_no_ext}_trimmed.fastq" "$file" > "../trimmed_fastq/${filename}_cutadapt_log.txt"
+    cutadapt -u 18 --cores=0 -o "../trimmed_fastq/${filename_no_ext}_trimmed.fastq" "$file" > "../trimmed_fastq/${filename}_cutadapt_log.txt"
 
      # Combine cutadapt logs into a single file
     cat "../trimmed_fastq/${filename}_cutadapt_log.txt" >> ../trimmed_fastq/combined_r1_cutadapt_logs.txt
@@ -36,7 +36,7 @@ for file in *R2.fastq; do
     filename_no_ext="${filename%.*}"
 
     # Trimming non-biological bases on R2 FASTQ files
-    python3 -m cutadapt -u 15 --cores=0 -o "../trimmed_fastq/${filename_no_ext}_trimmed.fastq" "$file" > "../trimmed_fastq/${filename}_cutadapt_log.txt"
+    cutadapt -u 15 --cores=0 -o "../trimmed_fastq/${filename_no_ext}_trimmed.fastq" "$file" > "../trimmed_fastq/${filename}_cutadapt_log.txt"
 
     # Combine cutadapt logs into a single file
     cat "../trimmed_fastq/${filename}_cutadapt_log.txt" >> ../trimmed_fastq/combined_r2_cutadapt_logs.txt
