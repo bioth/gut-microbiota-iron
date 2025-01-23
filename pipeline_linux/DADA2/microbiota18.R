@@ -205,8 +205,21 @@ setwd("~/Documents/CHUM_git/Microbiota_18/trimmed_fastq/")
 list.files()
 
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
-r1_fastq <- sort(list.files(pattern="R1_trimmed.fastq", full.names = TRUE))
+r1_fastq <- sort(list.files(pattern="R1_trimmed.fastq", full.names = TRUE)) 
 r2_fastq <- sort(list.files(pattern="R2_trimmed.fastq", full.names = TRUE))
+
+{
+  r1_fastq_dss <- sort(list.files(pattern="T54_R1_trimmed.fastq", full.names = TRUE)) 
+  r2_fastq_dss <- sort(list.files(pattern="T54_R2_trimmed.fastq", full.names = TRUE))
+  plotQualityProfile(r1_fastq_dss, aggregate = TRUE)
+  plotQualityProfile(r2_fastq_dss[28], aggregate = TRUE)
+}
+
+# Subsets to try solving high chimers issue
+{
+  r1_fastq <- r1_fastq[1:2]
+  r2_fastq <- r2_fastq[1:2]
+}
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample_names <- gsub(".*\\.(.*?)_R1_trimmed\\.fastq$", "\\1", basename(r1_fastq))
@@ -268,9 +281,9 @@ names(filtR1) <- sample_names
 names(filtR2) <- sample_names
 
 # Each read is 300 bp. R1 - 18 bases primers, 282
-# R2 - 15 bases primer, 285.
+# R2 - 15 bases primer, 285. truncLen=c(270,250)
 
-out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(272,255),
+out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(270,255),
                      maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
                      compress=TRUE, multithread=TRUE, matchIDs=TRUE) # On Windows set multithread=FALSE
 
@@ -306,19 +319,27 @@ derepR2 <- derepFastq(filtR2)
 names(derepR1) <- sample_names
 names(derepR2) <- sample_names
 
+# Save derep files, useful to skip some steps, specifically when running the scripts on the server
+{
+  # Save the dereplicated objects
+  existingDirCheck("../derep_files")
+  saveRDS(derepR1, file = "../derep_files/derepR1.rds")
+  saveRDS(derepR2, file = "../derep_files/derepR2.rds")
+}
+
 set.seed(100) # set seed to ensure that randomized steps are replicatable
 
 # Error rates estimation
-errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1)
-errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1)
+errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(errR1, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/error_plotR1_m1.png", height = 10, width = 10)
 plotErrors(errR2, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/error_plotR2_m1.png", height = 10, width = 10)
 
 # Running the inference algorithm => based on trimmed/filtered fastq and error rates
-dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = "pseudo", errorEstimationFunction = loessErrfun_mod1)
-dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = "pseudo", errorEstimationFunction = loessErrfun_mod1)
+dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = "pseudo", errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = "pseudo", errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(dadaR1, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/dada_plotR1_m1.png", height = 10, width = 10)
 plotErrors(dadaR2, nominalQ=TRUE)
@@ -337,7 +358,7 @@ print("Distribution of sequence lengths:")
 table(nchar(getSequences(seqtab)))
 
 # Removing chimeras
-seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="pooled", multithread=TRUE, verbose=TRUE)
 print("Dim of the sequence table with chimeras removed:")
 dim(seqtab.nochim)
 

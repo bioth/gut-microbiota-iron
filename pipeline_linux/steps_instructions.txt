@@ -116,4 +116,24 @@ cd figaro
 python3 figaro.py -i ../16s_data/trimmed_fastq -o ../16s_data/figaro_output -a 450 -f 20 -r 20
 
 
+3-Picrust2
+
+conda create -n picrust2 -c bioconda -c conda-forge picrust2
+conda activate picrust2
+
+
+https://github.com/picrust/picrust2/wiki/Full-pipeline-script
+
+
+
+Use a function from the 'phyloseq_complete_run.R' to generate both inputs (fasta file and otu_table file)for picrust2 and then cd into the input folder and use 'biom convert -i otu_table.txt -o otu_table.biom --table-type="OTU table" --to-hdf5' to convert the otu_table.txt file into a biom file.
+
+"Depending on the pipeline you used to process your raw 16S data there may be many extremely rare ASVs found across your samples. Such rare ASVs typically only add noise to analyses (especially singletons - ASVs found only by 1 read in 1 sample) and should be removed. Reducing the number of input ASVs will also make PICRUSt2 faster and less memory intensive." - https://github.com/picrust/picrust2/wiki/PICRUSt2-Tutorial-(v2.5.2)
+
+
+To run complete picrust2 pipeline: picrust2_pipeline.py -s seqs.fna -i otu_table.biom -o picrust2_out_pipeline -p 16
+
+
+
+
 
