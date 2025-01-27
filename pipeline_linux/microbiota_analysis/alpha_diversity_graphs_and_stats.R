@@ -2,30 +2,6 @@ library(ggplot2)
 library(phyloseq)
 library(dplyr)
 
-#function to add SEM (1.96 for 95% confidence interval)
-mean_cl_normal <- function(x, mult = 1.96) { #mult is 1.96 for a 95% confidence interval
-  # Calculate the mean of the input vector x
-  mean_val <- mean(x, na.rm = TRUE)
-  
-  # Calculate the standard error of the mean
-  se_val <- sd(x, na.rm = TRUE) / sqrt(length(na.omit(x)))
-  
-  # Return a data frame with the mean (y), and the lower (ymin) and upper (ymax) bounds
-  data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
-}
-
-#Function checking if a dir exists and creating it otherwise
-existingDirCheck <- function(path){
-  
-  if (!dir.exists(path)) {
-    dir.create(path, recursive = TRUE)
-    message("Directory created: ", path)
-  } else {
-    message("Directory already exists: ", path)
-  }
-  
-}
-
 #requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
 alphaDiversityGgGroup <- function(ps, path, group){
   
