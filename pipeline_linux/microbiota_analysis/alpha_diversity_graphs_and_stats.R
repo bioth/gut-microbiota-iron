@@ -2,30 +2,6 @@ library(ggplot2)
 library(phyloseq)
 library(dplyr)
 
-#function to add SEM (1.96 for 95% confidence interval)
-mean_cl_normal <- function(x, mult = 1.96) { #mult is 1.96 for a 95% confidence interval
-  # Calculate the mean of the input vector x
-  mean_val <- mean(x, na.rm = TRUE)
-  
-  # Calculate the standard error of the mean
-  se_val <- sd(x, na.rm = TRUE) / sqrt(length(na.omit(x)))
-  
-  # Return a data frame with the mean (y), and the lower (ymin) and upper (ymax) bounds
-  data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
-}
-
-#Function checking if a dir exists and creating it otherwise
-existingDirCheck <- function(path){
-  
-  if (!dir.exists(path)) {
-    dir.create(path, recursive = TRUE)
-    message("Directory created: ", path)
-  } else {
-    message("Directory already exists: ", path)
-  }
-  
-}
-
 #requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
 alphaDiversityGgGroup <- function(ps, path, group){
   
@@ -170,4 +146,122 @@ alphaDiversityTimeSeries<- function(ps, path, time, group){
       }
       
     }}
+}
+
+#Plots alpha diversity but for all groups combinaisons
+alphaDiversityGgGroup2 <- function(ps, path, gg_group, statPairs = NA, customColors){ #var1, var2
+  
+  #Save name of path where graphs will be saved
+  dir <- paste(path,"alpha_diversity", sep = "")
+  
+  #Check if directory exists, creates it if not
+  existingDirCheck(dir)
+  
+  #Save alpha diversity measures variable to iterate through it
+  measures <- c("Shannon", "Simpson","InvSimpson","Chao1","Observed")
+  
+  #Estinate richness measures for dataset
+  richness_data <- estimate_richness(ps, measures = c("Shannon", "Simpson","InvSimpson","Chao1","Observed"))
+  
+  #Add sample metadata to richness dataframe
+  richness_data <- cbind(as.data.frame(sample_data(ps)), richness_data)
+  
+  #Save richness data as xlsx
+  write.xlsx(richness_data, paste(dir,"/richness_data.xlsx", sep = ""))
+  
+  # #Save group names to create loop of pairwise comparaisons while keeping order (levels)
+  # groups <- levels(sample_data(ps)[[group]])
+  # 
+  # for (i in 1:(length(groups)-1)) {
+  #   for (j in (i+1):length(groups)) {
+  #     
+  #     #Save pair variable
+  #     pair <- paste(groups[i],"_vs_",groups[j], sep = "")
+  #     
+  #     #Creates path for pairwise comparaisons
+  #     pair_path <- paste(dir_path,"/",pair, sep = "")
+  #     
+  #     #Check if directory exists, creates it if not
+  #     existingDirCheck(pair_path)
+  #     
+  #     #Create subset of richness_data specific to pairwise comparaison
+  #     subset <- richness_data[richness_data[[group]] %in% c(groups[i], groups[j]),]
+  
+  
+  # #Stats
+  # for(i in seq_along(statPairs)){
+  #   pair = unlist(statPairs[i])
+  #   
+  #   #Create subset of richness_data specific to pairwise comparaison
+  #   subset <- richness_data[richness_data[[gg_group]] %in% c(pair[1], groups[2]),]
+  #   
+  #   #anova test specific to subset
+  #   
+  #   
+  #   
+  # }
+  #     
+  
+  # Ensure that 'genotype' and 'treatment' are factors
+  richness_data$genotype <- as.factor(richness_data$genotype)
+  richness_data$treatment <- as.factor(richness_data$treatment)
+
+  
+  
+      #Iterate through each alpha diversity value
+      for(measure in measures){
+        
+        #stats
+        # Fit the ANOVA model
+        aov_model <- aov(richness_data[[measure]] ~ genotype + treatment + genotype:treatment, data = richness_data)
+        
+        # Summarize the results
+        # print(summary(aov_model))
+        
+        # Perform post-hoc test (Tukey's Honest Significant Difference)
+        post_hoc <- TukeyHSD(aov_model, which = "genotype:treatment")
+        
+        # View the results of the post-hoc test
+        print(post_hoc[["genotype:treatment"]][,"p adj"])
+        
+        
+        # plot(post_hoc)
+        # 
+        
+        
+        p <- ggplot(richness_data, aes(x = .data[[gg_group]], y = .data[[measure]], fill = .data[[gg_group]])) +
+          # Error bars
+          stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                       aes(color = .data[[gg_group]]),
+                       width = 0.2, size = 0.7) +
+          
+          geom_boxplot(
+            color = customColors,
+            fill = scales::alpha(customColors, 0.3)
+          )+
+          
+
+          
+          labs(title = paste(measure, "diversity", sep = " "), y = measure, color = "Group", fill = "Group") +
+          scale_color_manual(values = customColors)+
+          scale_fill_manual(values = customColors)+
+          ylim(0,NA)+
+          theme_minimal()+
+          
+          theme(
+            plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+            axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+            axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+            axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+            legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+            legend.text = element_text(size = 12),  # Adjust legend font size
+            panel.grid.major = element_blank(),  # Add major grid lines
+            panel.grid.minor = element_blank(),  # Remove minor grid lines
+            axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+        
+        
+        #Save graph in appropriate folder
+        ggsave(file = paste(dir,"/",measure,".png", sep = ""), plot = p, dpi = 300, bg = "white", height = 6, width =6)
+      }
+      
 }

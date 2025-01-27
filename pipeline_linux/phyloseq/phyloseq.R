@@ -29,6 +29,10 @@ library(phangorn) #for building trees
 library(ape)
 library(tidyverse)
 library(writexl)
+library(openxlsx)
+library(reshape2)
+library(Hmisc)
+library(plotly) #To plot 3D pcoas
 }
 
 #To unload all packages
@@ -70,6 +74,44 @@ existingDirCheck <- function(path){
 clean_string <- function(input_string) {
   result <- tolower(gsub("[/-]", "", input_string))
   return(result)
+}
+
+# Transform otu_table of a phyloseq object based on the chosen transformation
+transformCounts <- function(ps, transformation = "rel_ab", log_base = 10) {
+  if (transformation == "rel_ab") {
+    
+    # Check orientation of OTU table and transpose if necessary
+    if (isFALSE(taxa_are_rows(otu_table(ps)))) {
+      otu_table(ps) <- t(otu_table(ps))
+      message("OTU table was transposed to have ASVs as rows.")
+    } else {
+      message("ASVs already as rows, no need to transpose OTU table.")
+    }
+    
+    # Apply prop.table for relative abundance calculation and multiply by 100 for percentage
+    otu_matrix <- apply(otu_table(ps), 2, prop.table) * 100
+    
+    # Ensure that the result is an otu_table object
+    otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
+    
+  } else if (transformation == "log") {
+    
+    # Check if there are any zero counts to avoid log(0) issues
+    if (any(otu_table(ps) == 0)) {
+      message("Warning: Zero values detected in the OTU table. Adding a small constant to avoid log(0).")
+      otu_table(ps) <- otu_table(ps) + 1e-6
+    }
+    
+    # Apply log transformation (base 10 by default)
+    otu_matrix <- log(otu_table(ps), base = log_base)
+    
+    # Ensure that the result is an otu_table object
+    otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
+  } else {
+    stop("Transformation method not recognized. Use 'rel_ab' for relative abundance or 'log' for log transformation.")
+  }
+  
+  return(ps) # Return the transformed phyloseq object
 }
 
 #for microbiota 17
@@ -1027,8 +1069,8 @@ alphaDiversityGgGroup(ps_samuel, path = "~/Documents/CHUM_git/pipeline_tests/", 
 source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
 
 #For Claire
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), "~/Documents/CHUM_git/figures/claire/test/")
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), "~/Documents/CHUM_git/figures/claire/test/")
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/claire/beta_diversity/")
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/claire/beta_diversity/")
 
 #For Samuel
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
@@ -1097,11 +1139,7 @@ print(res_week14)
 
 
 
-
-
-#Revising technique for Samuel's data
-levels(colData(deseq_samuel)$genotype)
-levels(colData(deseq_samuel)$treatment)
+deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) 
 
 #Setting "Wt" as the baseline for genotype
 colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
@@ -1109,14 +1147,39 @@ colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="W
 #Setting "Vehicle" as the baseline for treatment
 colData(deseq_samuel)$treatment <- relevel(colData(deseq_samuel)$treatment, ref="Vehicle")
 
-deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment + genotype:treatment) 
 deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
+
 resultsNames(deseq_samuel)
 
 source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 customColors = list('black','#A22004',"#AB8F23","#04208D")
+pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
 #At species level
-relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, "~/Documents/CHUM_git/figures/samuel/rel_ab_groups/")
+sigAsvs <- relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", threshold = 0.01, displayPvalue = FALSE, returnSigAsvs = TRUE, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/new/relative_abundance_all_groups/")
+
+#Setting a correlation matrix workflow starting with Samuel's data
+#Load functions
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
+
+#Preparing dataframe for correlation
+variables <- read.xlsx("~/Documents/CHUM_git/figures/samuel/correlation/Samuel's Combine Data_Correlation.xlsx")
+rownames(variables) <- variables$X3
+variables <- variables[,c(8:11)]
+colnames(variables) <- c("lcn-2","il-6","tnf-alpha","colon_length")
+
+
+customColors = list('black','#A22004',"#AB8F23","#04208D")
+pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+#One heatmap per gg_group
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/correlation/", df = variables)
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/correlation/", df = variables)
+
+
+
+
+
+
+
 
 #At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
@@ -1127,6 +1190,174 @@ for(txnLevel in taxonomicLevels){
   ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment + genotype:treatment) 
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
-  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, "~/Documents/CHUM_git/figures/samuel/rel_ab_groups/")
+  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/new/relative_abundance_all_groups/")
 }
 
+
+
+
+
+
+
+#Testing new stuff regarding the pipeline
+#Testing new pipeline for alpha diversity
+source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
+customColors = list('black','#A22004',"#AB8F23","#04208D")
+pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/samuel/new/", gg_group = "gg_group", customColors = customColors)
+
+#Testing new pipeline for beta diversity
+source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
+pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+customColors = list(list('black','#A22004'), list("#AB8F23","#04208D"), list("black","#AB8F23"),list("#A22004","#04208D"))
+#Dim represents respectively height and width 
+betaDiversityPairwise(ps_samuel, "gg_group", pairs, "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", path = "~/Documents/CHUM_git/figures/samuel_publication/beta_diversity_transformed/")
+betaDiversityPairwise(ps_samuel, "gg_group", pairs, "wunifrac", customColors, font = "Times New Roman", displayPValue = FALSE, c(5,5), transform = "log", path = "~/Documents/CHUM_git/figures/samuel_publication/beta_diversity_transformed/")
+
+#For all groups at the same time
+customColors = c('black','#A22004',"#AB8F23","#04208D")
+betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", variancePlot = FALSE, path = "~/Documents/CHUM_git/figures/samuel_publication/beta_diversity_transformed/")
+betaDiversityAll(ps_samuel, "gg_group", "wunifrac", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "log", variancePlot = FALSE, path = "~/Documents/CHUM_git/figures/samuel_publication/beta_diversity_transformed/")
+
+#To look at 3 PCs (3D representation)
+betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", variancePlot = FALSE, display3PCs = TRUE, path = "~/Documents/CHUM_git/figures/samuel_publication/beta_diversity_transformed/")
+
+
+
+#Testing new approach for Claire's timepoints#
+#Load custom function to make the graphs for each species
+source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
+
+#Path where to save graphs
+pathToSave <- "~/Documents/CHUM_git/figures/claire/relative_abundance_by_timepoint/"
+
+#customColors for graph display
+customColors = c("blue","red")
+
+#Iterate through timepoints
+for(timePoint in levels(sample_data(ps_claire)$week)){
+  
+  #New path created for each week
+  newPath <- paste(pathToSave, "week_", timePoint, "/", sep = "")
+  existingDirCheck(newPath)
+  
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- subset_samples(ps_claire, week == timePoint)
+  
+  #Simple deseq object only accounting for the differences in diet
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  
+  #Performing the deseq analysis
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  
+  #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.01, customColors, newPath)  
+  
+}
+
+results(deseq_subset, name = "Intercept")  #Important realization = the intercept is stupid and useless
+results(deseq_subset, name = "diet_500_vs_50")
+results(deseq_subset)
+resultsNames(deseq_subset)
+
+
+#Additionnal approach to account for all timepoints, but same species, because we keep the species for which at least one point had significant differential abundances
+source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
+customColors = c("blue","red")
+
+#At species level
+relabTimelineRevised(ps_claire, measure = "log2fold", "week", "diet", "Species", threshold = 0.01, customColors,  "~/Documents/CHUM_git/figures/claire/test_timeline/")
+
+#At other taxonomic levels
+taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
+for(txnLevel in taxonomicLevels){
+  
+  #Creates ps subset for taxonomical level of interest
+  ps_subset <- tax_glom(ps_claire, taxrank = txnLevel)
+  relabTimelineRevised(ps_subset, measure = "log2fold", "week", "diet", txnLevel, threshold = 0.01, customColors,  "~/Documents/CHUM_git/figures/claire/test_timeline/")
+}
+
+
+
+
+
+
+
+
+#Setting a correlation matrix workflow starting with Samuel's data
+#Load functions
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
+
+#Preparing deseq object needed for the function
+deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) 
+
+#Setting "Wt" as the baseline for genotype
+colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
+
+#Setting "Vehicle" as the baseline for treatment
+colData(deseq_samuel)$treatment <- relevel(colData(deseq_samuel)$treatment, ref="Vehicle")
+
+deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
+
+#Preparing dataframe for correlation
+variables <- read.xlsx("~/Documents/CHUM_git/figures/samuel/correlation/Samuel's Combine Data_Correlation.xlsx")
+rownames(variables) <- variables$X3
+variables <- variables[,c(8:11)]
+colnames(variables) <- c("lcn-2","il-6","tnf-alpha","colon_length")
+
+
+customColors = list('black','#A22004',"#AB8F23","#04208D")
+pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+#One heatmap per gg_group
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/correlation/", df = variables, global = FALSE)
+#One heatmap for all groups
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/correlation/", df = variables, global = TRUE)
+
+
+
+#For other taxonomical levels of interest
+taxonomicLevels <- c("Genus","Family","Class","Order","Phylum")
+for(txnLevel in taxonomicLevels){
+  
+  #Creates ps subset for taxonomical level of interest
+  ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
+  
+  #Preparing deseq object needed for the function
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment+ genotype:treatment) 
+  
+  #Setting "Wt" as the baseline for genotype
+  colData(deseq_subset)$genotype <- relevel(colData(deseq_subset)$genotype, ref="Wt")
+  
+  #Setting "Vehicle" as the baseline for treatment
+  colData(deseq_subset)$treatment <- relevel(colData(deseq_subset)$treatment, ref="Vehicle")
+  
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  
+  #One heatmap per gg_group
+  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/correlation/", df = variables, global = FALSE)
+  #One heatmap for all groups
+  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/correlation/", df = variables, global = TRUE)
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+# otu <- otu_table(ps_samuel)
+# 
+# # Check for NAs
+# any(is.na(otu))
+# 
+# # Check for samples with zero counts
+# any(colSums(otu) == 0)
+# 
+# # Inspect the data type
+# str(otu)
