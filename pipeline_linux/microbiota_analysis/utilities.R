@@ -30,6 +30,13 @@ clean_string <- function(input_string) {
   return(result)
 }
 
+# Function to make strings ready for publication (capitals letter and no underscores)
+pretty_string <- function(input_string) {
+  result <- gsub("[/_]", " ", input_string) # replace underscores by spaces
+  result <- paste0(toupper(substring(result, 1, 1)), substring(result, 2, nchar(result)))
+  return(result)
+}
+
 # Transform otu_table of a phyloseq object based on the chosen transformation
 transformCounts <- function(ps, transformation = "rel_ab", log_base = 10) {
   if (transformation == "rel_ab") {
