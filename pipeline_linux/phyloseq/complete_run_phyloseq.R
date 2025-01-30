@@ -43,6 +43,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
 
 #for microbiota 17
 #set working directory
@@ -531,15 +532,9 @@ for(txnLevel in taxonomicLevels){
 # accross multiple groups
 # adding a table under the thing might be easier for this for sure
 # Samuel's data
-#put cage as factor
-sample_data(ps_samuel)$cage = as.factor(sample_data(ps_samuel)$cage)
 
 #for Samuel's data, put gg_group as factor and define order
 sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
-sample_data(ps_samuel)$genotype <- factor(sample_data(ps_samuel)$genotype, levels = c("Wt", "IL-22ra1-/-"))
-sample_data(ps_samuel)$treatment <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle", "Putrescine"))
-
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
 
 il22_exp_family <- plot_microbiota_ext(
   ps_object = ps_samuel,
@@ -583,82 +578,23 @@ p
 existingDirCheck("../figures/samuel/stackbar")
 ggsave(plot = p, filename = "../figures/samuel/stackbar/family_stackbar.png", width = 8, height = 8, dpi = 300)
 
-# Heatmap for significance values
-
-
-# Function to write and save stackbarExtended sig_table
-writeStackbarExtendedSigTable <- function(main_table, sub_table, filepath){
-  
-  # Initialize empty dataframe to append tables to
-  table_to_write <- data.frame()
-  
-  # Iterate over the list of tables for main table
-  for (i in seq_along(main_table)){
-    
-    # Extract the table
-    table <- main_table[[i]]
-    
-    # Add a column with the name of the current table
-    table$comparaison <- names(main_table)[i]
-    
-    # Add col indication if it is from main or sub table
-    table$level <- "main"
-    
-    # Append to the final table
-    table_to_write <- rbind(table_to_write, table)
-    
-  }
-  
-  # Iterate over the list of tables for sub table
-  for (i in seq_along(sub_table)){
-    
-    # Extract the table
-    table <- sub_table[[i]]
-    
-    # Add a column with the name of the current table
-    table$comparaison <- names(sub_table)[i]
-    
-    # Add col indication if it is from main or sub table
-    table$level <- "sub"
-    
-    # Append to the final table
-    table_to_write <- rbind(table_to_write, table)
-    
-  }
-  
-  write_xlsx(x = table_to_write, path = filepath)
-
-}
+# write a combined sigtable for main and sub levels
 writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_family$significant_table_sub, filepath = "../figures/samuel/stackbar/stackbar_stats.xlsx")
 
-# Modify Thibault's function so that it returns the phyla names displayed on the graph
-plot_microbiota_ext <- getFromNamespace("plot_microbiota", "StackbarExtended")
+
+# pvalues heatmap for the main lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/samuel/stackbar/stackbar_stats.xlsx")),
+            selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
+                                     "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
+            txn_lvl="Family", lvl = "main", taxons = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)], group = "gg_group", path)
+
+# pvalues heatmap for the sub lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/samuel/stackbar/stackbar_stats.xlsx")),
+            selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
+                                     "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
+            txn_lvl="Genus", lvl = "sub", taxons = il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)], group = "gg_group", path)
 
 
-selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine","Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine")
-
-stats <- as.data.frame(readxl::read_excel("../figures/samuel/stackbar/stackbar_stats.xlsx"))
-main_level="Family"
-sub_level="Genus"
-main_stats=stats[stats$level=="main",] # Table with only stats for main taxa
-group="gg_group"
-main_taxa = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)] # Remove "Others" as it is not included in stats
-sub_taxa= il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)] # Remove "Others" as it is not included in stats
-stat_hmap=matrix(nrow = length(selected_comparisons), ncol = length(main_taxa))
-stat_hmap[]=1# Fill matrix with 1 (not significant)
-row.names(stat_hmap) = selected_comparisons
-colnames(stat_hmap) = c(main_taxa)
-
-# Iterate through dataframe and add p_adjusted values in the matrix
-for(i in 1:nrow(stat_hmap)){
-  for(k in 1:ncol(stat_hmap)){
-    g = row.names(stat_hmap)[i]
-    subdf = main_stats[main_stats$comparaison==g,]
-    if(length(subdf$padj[subdf[main_level]==colnames(stat_hmap)[k]])>0){
-      stat_hmap[i,k]=subdf$padj[subdf[main_level]==colnames(stat_hmap)[k]]
-    }
-  }
-}
 
 # Claire's data
 #for Claire's data, put gg_group as factor and define order
@@ -676,17 +612,18 @@ sample_data(ps_claire)$gg_group <- fct_recode(sample_data(ps_claire)$gg_group,
                           "500 ppm / 10w"="10:500",
                           "500 ppm / 14w"="14:500")
 
-iron_exp_family <- plot_microbiota(
+iron_exp_family <- plot_microbiota_ext(
   ps_object = ps_claire,
   exp_group = 'gg_group',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges", "Reds"),
+  hues = c("Purples", "Blues", "Reds", "Greens", "Oranges"),
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
   n_col = 4,
   fdr_threshold = 0.05,
   main_level = "Family",
+  sub_level = "Genus",
   n_phy = 5, # number of taxa to show 
   mult_comp = T, # pairwise comparaisons for diff ab analysis
   selected_comparisons = list(c( "50 ppm / 3w",  "500 ppm / 3w"), c( "50 ppm / 8w",  "500 ppm / 8w"), c( "50 ppm / 10w",  "500 ppm / 10w"), c("50 ppm / 14w", "500 ppm / 14w"))
@@ -706,14 +643,33 @@ p <- plot + theme(
   legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
 ) +
   scale_x_discrete(labels = function(x) substr(x, 1, 5))+
-  guides(fill = "none")+
   labs(x = "Sample ID")
 p
 
 # Saving the plot and the associated stats
 existingDirCheck("../figures/claire/stackbar")
 ggsave(plot = p, filename = "../figures/claire/stackbar/family_stackbar.png", width = 14, height = 8, dpi = 300)
-writeStackbarExtendedSigTable(iron_exp_family, filepath = "../figures/claire/stackbar/family_stackbar.xlsx")
+writeStackbarExtendedSigTable(iron_exp_family$significant_table_main, iron_exp_family$significant_table_sub, filepath = "../figures/claire/stackbar/stackbar_stats.xlsx")
+
+# pvalues heatmap for the main lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/claire/stackbar/stackbar_stats.xlsx")),
+            selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
+                                     "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
+            txn_lvl="Family", lvl = "main", taxons = iron_exp_family$main_names[!grepl("Others", x = iron_exp_family$main_names)], group = "gg_group", path)
+
+# pvalues heatmap for the sub lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/claire/stackbar/stackbar_stats.xlsx")),
+            selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
+                                     "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
+            txn_lvl="Genus", lvl = "sub", taxons = iron_exp_family$sub_names[!grepl("Others", x = iron_exp_family$sub_names)], group = "gg_group", path)
+
+
+
+
+
+
+
+
 
 
 # Saving the phyla data with the stats
@@ -729,18 +685,7 @@ taxGlomResAndStats(ps_samuel, taxrank = "Phylum", exp_group = "gg_group",
 
 #for Claire's data, put gg_group as factor and define order
 sample_data(ps_claire)$gg_group <- factor(sample_data(ps_claire)$gg_group, levels = c("3:50", "8:50", "10:50", "14:50", "3:500", "8:500", "10:500", "14:500"))  
-# Enables to rename factor levels (this is more convenient to change the names for each subgraph
-# in the facet_wrap.)
-# library(forcats)
-# sample_data(ps_claire)$gg_group <- fct_recode(sample_data(ps_claire)$gg_group,
-#                                               "50 ppm / 3w"="3:50",
-#                                               "50 ppm / 8w"="8:50",
-#                                               "50 ppm / 10w"="10:50",
-#                                               "50 ppm / 14w"="14:50",
-#                                               "500 ppm / 3w"="3:500",
-#                                               "500 ppm / 8w"="8:500",
-#                                               "500 ppm / 10w"="10:500",
-#                                               "500 ppm / 14w"="14:500")
+
 # Agglomerates asvs at phylum level and returns stats and results relative_abundance (Claire)
 taxGlomResAndStats(ps_claire, taxrank = "Phylum", exp_group = "gg_group",
                    selected_comparisons = list(c( "3:50",  "3:500"),
