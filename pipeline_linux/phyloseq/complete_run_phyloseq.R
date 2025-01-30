@@ -37,7 +37,7 @@
 }
 
 #Load custom functions for microbiota analysis
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
@@ -539,24 +539,29 @@ sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, level
 sample_data(ps_samuel)$genotype <- factor(sample_data(ps_samuel)$genotype, levels = c("Wt", "IL-22ra1-/-"))
 sample_data(ps_samuel)$treatment <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle", "Putrescine"))
 
-il22_exp_family <- plot_microbiota(
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
+
+il22_exp_family <- plot_microbiota_ext(
   ps_object = ps_samuel,
   exp_group = 'gg_group',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges", "Reds"),
+  hues = c("Purples", "Blues", "Reds", "Oranges", "Greens"),
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
   n_col = 2,
   fdr_threshold = 0.05,
   main_level = "Family",
-  n_phy = 5, # number of taxa to show 
+  sub_level = "Genus",
+  n_phy = 5, # number of taxa to show
   mult_comp = T, # pairwise comparaisons for diff ab analysis
   selected_comparisons = list(c("Wt:Vehicle", "Wt:Putrescine"), c("IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"), c("Wt:Vehicle","IL-22ra1-/-:Vehicle"), c("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
   )
 
 print(il22_exp_family$plot)
 print(il22_exp_family$significant_table_main)
+print(il22_exp_family$main_names)
+print(il22_exp_family$sub_names)
 #Nothing for Wt:Putrescine_vs_IL-22ra1-/-:Putrescine at the Family level.
 # When there was nothing significant, there is not entry for the significance
 # table for the comparaison of interest 
@@ -571,7 +576,6 @@ p <- plot + theme(
   axis.text = element_text(size = 12, face = "bold"),   # Axis text
   legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
 ) +
-  guides(fill = "none")+
   labs(x = "Sample ID")
 p
 
@@ -579,30 +583,82 @@ p
 existingDirCheck("../figures/samuel/stackbar")
 ggsave(plot = p, filename = "../figures/samuel/stackbar/family_stackbar.png", width = 8, height = 8, dpi = 300)
 
+# Heatmap for significance values
+
+
 # Function to write and save stackbarExtended sig_table
-writeStackbarExtendedSigTable <- function(SckbarExtObject,filepath){
+writeStackbarExtendedSigTable <- function(main_table, sub_table, filepath){
   
   # Initialize empty dataframe to append tables to
   table_to_write <- data.frame()
   
-  # Iterate over the list of tables
-  for (i in seq_along(SckbarExtObject$significant_table_main)) {
+  # Iterate over the list of tables for main table
+  for (i in seq_along(main_table)){
     
     # Extract the table
-    table <- SckbarExtObject$significant_table_main[[i]]
+    table <- main_table[[i]]
     
     # Add a column with the name of the current table
-    table$comparaison <- names(SckbarExtObject$significant_table_main)[i]
+    table$comparaison <- names(main_table)[i]
     
-    # Append to the master table
+    # Add col indication if it is from main or sub table
+    table$level <- "main"
+    
+    # Append to the final table
     table_to_write <- rbind(table_to_write, table)
+    
+  }
+  
+  # Iterate over the list of tables for sub table
+  for (i in seq_along(sub_table)){
+    
+    # Extract the table
+    table <- sub_table[[i]]
+    
+    # Add a column with the name of the current table
+    table$comparaison <- names(sub_table)[i]
+    
+    # Add col indication if it is from main or sub table
+    table$level <- "sub"
+    
+    # Append to the final table
+    table_to_write <- rbind(table_to_write, table)
+    
   }
   
   write_xlsx(x = table_to_write, path = filepath)
 
 }
-writeStackbarExtendedSigTable(il22_exp_family, filepath = "../figures/samuel/stackbar/family_stackbar.xlsx")
+writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_family$significant_table_sub, filepath = "../figures/samuel/stackbar/stackbar_stats.xlsx")
 
+# Modify Thibault's function so that it returns the phyla names displayed on the graph
+plot_microbiota_ext <- getFromNamespace("plot_microbiota", "StackbarExtended")
+
+
+selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine","Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine")
+
+stats <- as.data.frame(readxl::read_excel("../figures/samuel/stackbar/stackbar_stats.xlsx"))
+main_level="Family"
+sub_level="Genus"
+main_stats=stats[stats$level=="main",] # Table with only stats for main taxa
+group="gg_group"
+main_taxa = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)] # Remove "Others" as it is not included in stats
+sub_taxa= il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)] # Remove "Others" as it is not included in stats
+stat_hmap=matrix(nrow = length(selected_comparisons), ncol = length(main_taxa))
+stat_hmap[]=1# Fill matrix with 1 (not significant)
+row.names(stat_hmap) = selected_comparisons
+colnames(stat_hmap) = c(main_taxa)
+
+# Iterate through dataframe and add p_adjusted values in the matrix
+for(i in 1:nrow(stat_hmap)){
+  for(k in 1:ncol(stat_hmap)){
+    g = row.names(stat_hmap)[i]
+    subdf = main_stats[main_stats$comparaison==g,]
+    if(length(subdf$padj[subdf[main_level]==colnames(stat_hmap)[k]])>0){
+      stat_hmap[i,k]=subdf$padj[subdf[main_level]==colnames(stat_hmap)[k]]
+    }
+  }
+}
 
 # Claire's data
 #for Claire's data, put gg_group as factor and define order
