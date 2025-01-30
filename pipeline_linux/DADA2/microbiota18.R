@@ -3,6 +3,10 @@ library(ggplot2)
 library(dplyr)
 library(ShortRead)
 library(data.table)
+library(dada2)
+
+# Update dada2 to latest branch
+devtools::install_github("benjjneb/dada2", ref = "master")
 
 # Function checking if a dir exists and creating it otherwise
 existingDirCheck <- function(path){
@@ -208,6 +212,10 @@ list.files()
 r1_fastq <- sort(list.files(pattern="R1_trimmed.fastq", full.names = TRUE)) 
 r2_fastq <- sort(list.files(pattern="R2_trimmed.fastq", full.names = TRUE))
 
+
+r1_fastq <- r1_fastq[-grepl("d53s*", r1_fastq)]
+r2_fastq <- r2_fastq[-grepl("d53s*", r2_fastq)]
+
 {
   r1_fastq_dss <- sort(list.files(pattern="T54_R1_trimmed.fastq", full.names = TRUE)) 
   r2_fastq_dss <- sort(list.files(pattern="T54_R2_trimmed.fastq", full.names = TRUE))
@@ -224,6 +232,7 @@ r2_fastq <- sort(list.files(pattern="R2_trimmed.fastq", full.names = TRUE))
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample_names <- gsub(".*\\.(.*?)_R1_trimmed\\.fastq$", "\\1", basename(r1_fastq))
 
+
 # Creating a dir for r console output and pictures
 existingDirCheck("~/Documents/CHUM_git/Microbiota_18/r_console_output/")
 
@@ -237,7 +246,7 @@ ggsave(dpi = 300, filename = "../r_console_output/quality_profileR2.png", height
 
 # Check in details if quality scores are binned (optional)
 {
-phredScoresHist <- function(fq, fileName){
+phredScoresHist <- function(fq, fileName, savePlot = FALSE){
   
   # Extract quality scores and convert to Phred
   quals <- as(quality(fq), "matrix")
@@ -247,13 +256,18 @@ phredScoresHist <- function(fq, fileName){
   phred_vector <- as.vector(phred)
   
   # Plot histogram
-  ggplot(data.frame(phred=phred_vector), aes(x=phred)) +
+  p <- ggplot(data.frame(phred=phred_vector), aes(x=phred)) +
     geom_histogram(binwidth=1, fill="skyblue", color="black") +
     theme_minimal() +
     labs(title="Phred Quality Score Distribution", x="Phred Score", y="Frequency")
   
+  print(unique(c(phred)))
   # Save histogram
-  ggsave(dpi = 300, filename = paste0("../r_console_output/", fileName, ".png"), height = 6, width = 8, bg = "white")
+  if(savePlot){
+    ggsave(dpi = 300, filename = paste0("../r_console_output/", fileName, ".png"), height = 6, width = 8, bg = "white")
+  }else{
+    p
+  }
   
 }
 
@@ -283,7 +297,7 @@ names(filtR2) <- sample_names
 # Each read is 300 bp. R1 - 18 bases primers, 282
 # R2 - 15 bases primer, 285. truncLen=c(270,250)
 
-out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(270,255),
+out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(FALSE,FALSE),
                      maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
                      compress=TRUE, multithread=TRUE, matchIDs=TRUE) # On Windows set multithread=FALSE
 
@@ -329,17 +343,21 @@ names(derepR2) <- sample_names
 
 set.seed(100) # set seed to ensure that randomized steps are replicatable
 
+
+binnedQs <- c(2,12,24,40)
+binnedQualErrfun <- makeBinnedQualErrfun(binnedQs) # Estimate an error function based on the binned quality scores
+
 # Error rates estimation
-errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
-errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
+errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(errR1, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/error_plotR1_m1.png", height = 10, width = 10)
 plotErrors(errR2, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/error_plotR2_m1.png", height = 10, width = 10)
 
 # Running the inference algorithm => based on trimmed/filtered fastq and error rates
-dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = "pseudo", errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
-dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = "pseudo", errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = "pseudo", errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
+dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = "pseudo", errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(dadaR1, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/dada_plotR1_m1.png", height = 10, width = 10)
 plotErrors(dadaR2, nominalQ=TRUE)
