@@ -397,7 +397,24 @@ pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL
 #One heatmap per gg_group
 correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
 #One heatmap for all groups
-correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = TRUE, showIndivCor = TRUE, normalizedCountsOnly = FALSE)
+p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE, saveFig = FALSE)
+p + 
+  coord_fixed() + # Makes thing squared
+  scale_x_discrete(labels = pretty_string, position = "top")+
+  geom_tile(color = "black", lwd = 0.75, linetype = 1) +
+  geom_text(aes(label = significance), color = "black", size = 8) +
+  theme(
+  text = element_text(family = "Times New Roman"),      # Global text settings
+  axis.title.x = element_text(size = 16, face = "bold"),  # Axis titles
+  axis.title.y = element_text(size = 16, face = "bold"),
+  axis.text = element_text(size = 12, face = "bold"),   # Axis text
+  legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
+  axis.text.x = element_text(angle = -45, hjust = 1))
+
+# Only the individual scatter plots
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/indiv_correlations/", df = variables, global = TRUE, showIndivCor = TRUE, normalizedCountsOnly = FALSE)
+
+
 
 #For other taxonomical levels of interest
 taxonomicLevels <- c("Genus","Family","Class","Order","Phylum")

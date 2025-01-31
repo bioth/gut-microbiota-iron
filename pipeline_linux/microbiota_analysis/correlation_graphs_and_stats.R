@@ -1,6 +1,6 @@
 #For design with 4 groups based on 2 conditions - this the latest version used
 #gg_group must be order with correct order prior to that (as a factor)
-correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, pairs, path, df, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE){
+correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, pairs, path, df, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE, saveFig=TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -164,10 +164,15 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
             axis.title.y = element_text(size = 12, face = "bold")) +
       labs(x = "Variables", y = taxa)
     
-    ggsave(plot = p, filename = paste(dir,"/correlation_all_groups.png", sep = ""), dpi = 300, height = 6, width = 10, bg = 'white')
-    
     # Save correlation dataframe with stats and correlation coefficients 
     write_xlsx(cor_melt, path = paste0(dir,"/all_groups_correlation.xlsx"))
+    
+    if(saveFig){
+      ggsave(plot = p, filename = paste(dir,"/correlation_all_groups.png", sep = ""), dpi = 300, height = 6, width = 10, bg = 'white')
+    }
+    else{
+      return(p)
+    }
     
     if (showIndivCor) {
       # Create directory for individual scatterplots
@@ -177,18 +182,31 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
       # Iterate over each ASV and variable pair
       for (asv in asvList) {
         for (var in setdiff(colnames(df), asvList)) {
-          
+
           # Prepare data for scatterplot
           scatter_data <- data_combined %>%
             dplyr::select(all_of(c(asv, var))) %>%
             dplyr::rename(Relative_Abundance = all_of(asv), Variable = all_of(var))
           
+          # Convert row names to column in scatter_data
+          scatter_data$sample_id <- row.names(scatter_data)
+          
+          # Extract gg_group from sample_data(ps)
+          gg_group_data <- data.frame(sample_id = row.names(sample_data(ps)), 
+                                      group = sample_data(ps)[[gg_group]])
+          
+          # Merge with scatter_data
+          scatter_data <- merge(scatter_data, gg_group_data, by = "sample_id", all.x = TRUE)
+          
+          scatter_data$group <- factor(scatter_data$group, levels = levels(sample_data(ps)[[gg_group]]))
+          
+          
           # Skip if there are no data points
           if (nrow(scatter_data) == 0) next
           
           # Create scatterplot
-          scatter_plot <- ggplot(scatter_data, aes(x = Relative_Abundance, y = Variable)) +
-            geom_point(alpha = 0.7, color = "blue") +
+          scatter_plot <- ggplot(scatter_data, aes(x = Relative_Abundance, y = Variable, color = group)) +
+            geom_point() +
             geom_smooth(method = "lm", color = "red", se = TRUE) +
             theme_minimal() +
             labs(
