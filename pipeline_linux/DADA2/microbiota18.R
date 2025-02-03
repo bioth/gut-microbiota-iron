@@ -205,6 +205,10 @@ existingDirCheck <- function(path){
 # Setting working directory and selecting loading files of interest
 setwd("~/Documents/CHUM_git/Microbiota_18/trimmed_fastq/")
 
+# Loading metdata
+meta <- read.csv("../../gut-microbiota-iron/experiments/finished exp/young-DSS-exp3/young48_dss_dissection.csv", header = TRUE, sep = ";")
+samples <- substring(meta$id[meta$treatment=="water"], 1, 5)
+
 # Listing files in the current working directory
 list.files()
 
@@ -212,6 +216,8 @@ list.files()
 r1_fastq <- sort(list.files(pattern="R1_trimmed.fastq", full.names = TRUE)) 
 r2_fastq <- sort(list.files(pattern="R2_trimmed.fastq", full.names = TRUE))
 
+r1_fastq <- r1_fastq[grepl(paste0(paste0(samples, "s*"), collapse = "|"), r1_fastq)]
+r2_fastq <- r2_fastq[grepl(paste0(paste0(samples, "s*"), collapse = "|"), r2_fastq)]
 
 r1_fastq <- r1_fastq[-grepl("d53s*", r1_fastq)]
 r2_fastq <- r2_fastq[-grepl("d53s*", r2_fastq)]
@@ -225,13 +231,12 @@ r2_fastq <- r2_fastq[-grepl("d53s*", r2_fastq)]
 
 # Subsets to try solving high chimers issue
 {
-  r1_fastq <- r1_fastq[1:2]
-  r2_fastq <- r2_fastq[1:2]
+  r1_fastq <- r1_fastq[1:6]
+  r2_fastq <- r2_fastq[1:6]
 }
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample_names <- gsub(".*\\.(.*?)_R1_trimmed\\.fastq$", "\\1", basename(r1_fastq))
-
 
 # Creating a dir for r console output and pictures
 existingDirCheck("~/Documents/CHUM_git/Microbiota_18/r_console_output/")
@@ -297,8 +302,8 @@ names(filtR2) <- sample_names
 # Each read is 300 bp. R1 - 18 bases primers, 282
 # R2 - 15 bases primer, 285. truncLen=c(270,250)
 
-out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(FALSE,FALSE),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(220,200),
+                     maxN=0, maxEE=c(2,5), truncQ=, rm.phix=TRUE,
                      compress=TRUE, multithread=TRUE, matchIDs=TRUE) # On Windows set multithread=FALSE
 
 #Check how many reads made it out
@@ -356,8 +361,8 @@ plotErrors(errR2, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/error_plotR2_m1.png", height = 10, width = 10)
 
 # Running the inference algorithm => based on trimmed/filtered fastq and error rates
-dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = "pseudo", errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
-dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = "pseudo", errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
+dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
+dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(dadaR1, nominalQ=TRUE)
 ggsave(dpi = 300, filename = "../r_console_output/dada_plotR1_m1.png", height = 10, width = 10)
 plotErrors(dadaR2, nominalQ=TRUE)
@@ -365,6 +370,8 @@ ggsave(dpi = 300, filename = "../r_console_output/dada_plotR2_m1.png", height = 
 
 # Merge paired reads 
 mergers <- mergePairs(dadaR1, derepR1, dadaR2, derepR2, verbose=TRUE)
+
+hist(nchar(mergers$sequence), breaks=100)
 
 # Construct sequence table
 seqtab <- makeSequenceTable(mergers)
@@ -376,14 +383,20 @@ print("Distribution of sequence lengths:")
 table(nchar(getSequences(seqtab)))
 
 # Removing chimeras
-seqtab.nochim <- removeBimeraDenovo(seqtab, method="pooled", multithread=TRUE, verbose=TRUE)
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE,
+                                    allowOneOff=FALSE, minFoldParentOverAbundance=8)
 print("Dim of the sequence table with chimeras removed:")
 dim(seqtab.nochim)
 
 # What percentage of chimeras over the total dataset
 print("Percentage of chimeras over the total dataset:")
-sum(seqtab.nochim)/sum(seqtab)
+1-sum(seqtab.nochim)/sum(seqtab)
 
+colnames(as.data.frame(seqtab))[8]
+colnames(as.data.frame(seqtab.nochim))[6]
+nchar(colnames(seqtab)[6])
+as.data.frame(seqtab)[8]
+as.data.frame(seqtab.nochim)[7]
 
 # Export the data
 asv_table <- seqtab.nochim
@@ -393,9 +406,9 @@ write.table(asv_table, sep = ";", file = "../asv_table/asv_table_m1.csv", col.na
 
 # Tracking what reads made it through the pipeline
 getN <- function(x) sum(getUniques(x))
-track <- cbind(sapply(dadaR1, getN), sapply(dadaR2, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+track <- cbind(sapply(r1_fastq, getN), sapply(r2_fastq, getN), sapply(filtR1, getN), sapply(filtR2, getN), sapply(dadaR1, getN), sapply(dadaR2, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
 # If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
-colnames(track) <- c("denoisedF", "denoisedR", "merged", "nonchim")
+colnames(track) <- c("Input", "InputR", "FilteredF", "FilteredR", "denoisedF", "denoisedR", "merged", "nonchim")
 rownames(track) <- sample_names
 print("Tracking of reads that made it through the pipeline:")
 track
@@ -406,6 +419,7 @@ print("Max %:")
 max(track[,4]/track[,3])*100
 print("Min %:")
 min(track[,4]/track[,3])*100
+
 
 
 # Extracting taxonomical information
