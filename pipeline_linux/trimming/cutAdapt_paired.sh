@@ -20,8 +20,8 @@ for r1_file in *R1.fastq; do
     filename_no_ext="${filename%_R1.fastq}"
     r2_file="${filename_no_ext}_R2.fastq"
 
-    # Run cutadapt in paired-end mode
-    cutadapt --cores=0 --discard-untrimmed --no-indels --pair-adapters -g "${FWD_PRIMER};e=0" -G "${REV_PRIMER};e=0" -o "../trimmed_fastq/${filename_no_ext}_R1_trimmed.fastq" -p "../trimmed_fastq/${filename_no_ext}_R2_trimmed.fastq" $r1_file $r2_file > "../trimmed_fastq/${filename}_cutadapt_log.txt"
+    # Run cutadapt in paired-end mode / --no-indels / ;e=0
+    cutadapt --cores=0 --discard-untrimmed  --pair-adapters -g "${FWD_PRIMER}" -G "${REV_PRIMER}" -o "../trimmed_fastq/${filename_no_ext}_R1_trimmed.fastq" -p "../trimmed_fastq/${filename_no_ext}_R2_trimmed.fastq" $r1_file $r2_file > "../trimmed_fastq/${filename}_cutadapt_log.txt"
     
     # Combine cutadapt logs into a single file
     cat "../trimmed_fastq/${filename}_cutadapt_log.txt" >> ../trimmed_fastq/combined_cutadapt_logs.txt
