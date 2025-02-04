@@ -730,9 +730,14 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
   sigtab_4$comparaison <- 4
   sigtab_4$vs <- vs[4]
+  
+  interaction <- results(deseq, contrast=list(resultsNames(deseq)[4])) # Do genotypes respond differently to treatment, comparisons of comparisons
+  sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+  sigtab_interaction$comparaison <- 5
+  sigtab_interaction$vs <- "interaction" 
 
   #Append the sigtabs together
-  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4)
+  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4, sigtab_interaction)
   
   #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
   sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))

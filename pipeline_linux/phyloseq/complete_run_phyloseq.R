@@ -205,11 +205,10 @@ write.xlsx(richness_data, "~/Documents/CHUM_git/figures/claire/new_alpha_diversi
 #Samuel alpha diversity
 customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
-alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/samuel/new_alpha_diversity/", gg_group = "gg_group", customColors = customColors)
+alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/Samuel_final/", gg_group = "gg_group", customColors = customColors)
 
 ###Beta diversity
 #Beta diversity analysis for different timepoints. You must provide a filtered ps object, the timeVariable and the varToCompare (present in sample_data)
-source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
 
 #For Claire
 betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/claire/beta_diversity/")
@@ -220,13 +219,13 @@ betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", custo
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
 customColors = list(list('black','#A22004'), list("#AB8F23","#04208D"), list("black","#AB8F23"),list("#A22004","#04208D"))
 #Dim represents respectively height and width 
-betaDiversityPairwise(ps_samuel, "gg_group", pairs, "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", path = "~/Documents/CHUM_git/figures/filtering/samuel/beta_diversity/")
-betaDiversityPairwise(ps_samuel, "gg_group", pairs, "wunifrac", customColors, font = "Times New Roman", displayPValue = FALSE, c(5,5), transform = "log", path = "~/Documents/CHUM_git/figures/filtering/samuel/beta_diversity/")
+betaDiversityPairwise(ps_samuel, "gg_group", pairs, "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", path = "~/Documents/CHUM_git/figures/Samuel_final/beta_diversity/")
+betaDiversityPairwise(ps_samuel, "gg_group", pairs, "wunifrac", customColors, font = "Times New Roman", displayPValue = FALSE, c(5,5), transform = "none", path = "~/Documents/CHUM_git/figures/Samuel_final/beta_diversity/")
 
 #For all groups at the same time
 customColors = c('black','#A22004',"#AB8F23","#04208D")
-betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", variancePlot = FALSE, path = "~/Documents/CHUM_git/figures/filtering/samuel/beta_diversity/")
-betaDiversityAll(ps_samuel, "gg_group", "wunifrac", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "log", variancePlot = FALSE, path = "~/Documents/CHUM_git/figures/filtering/samuel/beta_diversity/")
+betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", variancePlot = FALSE, path = "~/Documents/CHUM_git/figures/Samuel_final/beta_diversity/")
+betaDiversityAll(ps_samuel, "gg_group", "wunifrac", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "none", variancePlot = FALSE, path = "~/Documents/CHUM_git/figures/Samuel_final/beta_diversity/")
 
 #To look at 3 PCs (3D representation)
 betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New Roman", displayPValue = FALSE, dim = c(5,5), transform = "rel_ab", variancePlot = FALSE, display3PCs = TRUE, path = "~/Documents/CHUM_git/figures/filtering/samuel/beta_diversity/")
@@ -261,10 +260,9 @@ betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New 
   sum(taxa_sums(ps_claire))
   length(taxa_sums(ps_claire))
 }
-source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
-pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
-customColors = list(list('black','#A22004'), list("#AB8F23","#04208D"), list("black","#AB8F23"),list("#A22004","#04208D"))
-relabSpeciesPairwise(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", pairs, threshold = 0.01, customColors, "~/Documents/CHUM_git/figures/samuel/test_relab/")
+# pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+# customColors = list(list('black','#A22004'), list("#AB8F23","#04208D"), list("black","#AB8F23"),list("#A22004","#04208D"))
+# relabSpeciesPairwise(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", pairs, threshold = 0.01, customColors, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
 
 deseq_claire <- phyloseq_to_deseq2(ps_claire, ~ week + diet:week)
 deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
@@ -290,7 +288,7 @@ for(txnLevel in taxonomicLevels){
 
 
 #Differential abundance Samuel
-deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) 
+deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) # Full formula with interaction term
 
 #Setting "Wt" as the baseline for genotype
 colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
@@ -304,8 +302,7 @@ resultsNames(deseq_samuel)
 
 customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
-
-relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/relative_abundance_all_groups/")
+relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
 
 #At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
@@ -316,13 +313,12 @@ for(txnLevel in taxonomicLevels){
   ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment + genotype:treatment) 
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
-  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/relative_abundance_all_groups/")
+  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
 }
 
 
 #Testing new approach for Claire's timepoints#
 #Load custom function to make the graphs for each species
-source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 
 #Path where to save graphs
 pathToSave <- "~/Documents/CHUM_git/figures/claire/relative_abundance_by_timepoint/"
@@ -395,9 +391,9 @@ customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
 #For species level
 #One heatmap per gg_group
-correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
 #One heatmap for all groups
-p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE, saveFig = FALSE)
+p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE, saveFig = FALSE)
 p + 
   coord_fixed() + # Makes thing squared
   scale_x_discrete(labels = pretty_string, position = "top")+

@@ -21,6 +21,9 @@
   library(reshape2)
   library(Hmisc)
   library(plotly) #To plot 3D pcoas
+  library(StackbarExtended) # Thibault C. package
+  library(ggpattern)
+  
 }
 
 #To unload all packages
@@ -35,119 +38,75 @@
 }
 
 #Load custom functions for microbiota analysis
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
-
-#function to add SEM (1.96 for 95% confidence interval)
-mean_cl_normal <- function(x, mult = 1.96) { #mult is 1.96 for a 95% confidence interval
-  # Calculate the mean of the input vector x
-  mean_val <- mean(x, na.rm = TRUE)
-  
-  # Calculate the standard error of the mean
-  se_val <- sd(x, na.rm = TRUE) / sqrt(length(na.omit(x)))
-  
-  # Return a data frame with the mean (y), and the lower (ymin) and upper (ymax) bounds
-  data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
-}
-
-#Function checking if a dir exists and creating it otherwise
-existingDirCheck <- function(path){
-  
-  if (!dir.exists(path)) {
-    dir.create(path, recursive = TRUE)
-    message("Directory created: ", path)
-  } else {
-    message("Directory already exists: ", path)
-  }
-  
-}
-
-#Function to remove "/" and "-" characters from a string + lowercase
-clean_string <- function(input_string) {
-  result <- tolower(gsub("[/-]", "", input_string))
-  return(result)
-}
-
-# Transform otu_table of a phyloseq object based on the chosen transformation
-transformCounts <- function(ps, transformation = "rel_ab", log_base = 10) {
-  if (transformation == "rel_ab") {
-    
-    # Check orientation of OTU table and transpose if necessary
-    if (isFALSE(taxa_are_rows(otu_table(ps)))) {
-      otu_table(ps) <- t(otu_table(ps))
-      message("OTU table was transposed to have ASVs as rows.")
-    } else {
-      message("ASVs already as rows, no need to transpose OTU table.")
-    }
-    
-    # Apply prop.table for relative abundance calculation and multiply by 100 for percentage
-    otu_matrix <- apply(otu_table(ps), 2, prop.table) * 100
-    
-    # Ensure that the result is an otu_table object
-    otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
-    
-  } else if (transformation == "log") {
-    
-    # Check if there are any zero counts to avoid log(0) issues
-    if (any(otu_table(ps) == 0)) {
-      message("Warning: Zero values detected in the OTU table. Adding a small constant to avoid log(0).")
-      otu_table(ps) <- otu_table(ps) + 1e-6
-    }
-    
-    # Apply log transformation (base 10 by default)
-    otu_matrix <- log(otu_table(ps), base = log_base)
-    
-    # Ensure that the result is an otu_table object
-    otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
-  } else {
-    stop("Transformation method not recognized. Use 'rel_ab' for relative abundance or 'log' for log transformation.")
-  }
-  
-  return(ps) # Return the transformed phyloseq object
-}
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
 
 #for microbiota 18
 #set working directory
 setwd("~/Documents/CHUM_git/Microbiota_18/")
-asv_table <- as.data.frame(fread("asv_table/asv_table_m1.csv", sep = ";"))
+asv_table <- as.data.frame(fread("asv_table/asv_table_server.csv", sep = ";"))
 
 # Set the first column as row names and remove it from the data frame
 rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
 asv_table <- asv_table[,-1]  # Drop the first column
 
+# Metadata handling
 {
 #loading metadata of interest
 metadata <- read.csv("metadata/metadata.csv", sep = ";")
+  
+# Remove the non-metadata stuff (liver measures and stuff)
+metadata <- metadata[,-c(5:8)]
+  
+# Remove the letter at the end of id
+metadata$id <- substring(metadata$id, 1, 5)
 
-#adding first col as rownames too
-rownames(metadata) <- metadata$sample_id
+#adding id col as rownames too
+rownames(metadata) <- metadata$id
 
-#transforming week col from num to character
-metadata$week <- as.factor(metadata$week)
-metadata$diet <- as.factor(metadata$diet)
+# Remove dead mouse
+metadata <- metadata[-46,]
 
-# Replaces Samuel names by shorter versions
-metadata$treatment <- gsub(".*Putrescine.*", "Putrescine", metadata$treatment)
-metadata$treatment <- gsub(".*Vehicle.*", "Vehicle", metadata$treatment)
-metadata$genotype <- gsub(".*IL-22.*", "IL-22ra1-/-", metadata$genotype)
+# Extract 16S reads sample ids
+samples <- read.xlsx("metadata/Microbiota_18_samples_2025-01-13.xlsx")
+samples <- as.data.frame(samples$Nom)
+colnames(samples) <- "full_id"
+samples$id <- substring(samples$full_id, 1, 5)
+samples$timepoint <- substring(samples$full_id, 8, nchar(samples$full_id)) 
 
-# Creates gg_group specific to Claire
-metadata$gg_group[metadata$student == "Claire"] <- 
-  paste(metadata$week[metadata$student == "Claire"], 
-        metadata$diet[metadata$student == "Claire"], 
+# Bind both metadata df to link timepoints with their metadata (diet and treatment)
+metadata <- merge(samples, metadata, by = "id")
+
+# Consider timepoint 53 similar as timepoint 54
+metadata[metadata$timepoint=="53","timepoint"] <- "54"
+
+# Add week column 
+metadata$week <- ifelse(metadata$timepoint == "final", "18", as.character(round(as.numeric(metadata$timepoint)/7, 1)+3))
+
+# Adding gg_group variable (combination of time, diet and treatment)
+metadata$gg_group <- 
+  paste(metadata$timepoint, 
+        metadata$diet,
+        metadata$treatment, 
         sep = ":")
 
-# Creates gg_group specific to Samuel
-metadata$gg_group[metadata$student == "Samuel"] <- 
-  paste(metadata$genotype[metadata$student == "Samuel"], 
-        metadata$treatment[metadata$student == "Samuel"], 
+# Another gg_group variable (diet and treatment only)
+metadata$gg_group2 <- 
+  paste(metadata$diet,
+        metadata$treatment, 
         sep = ":")
+
+# Put full_id as rownames
+rownames(metadata) <- metadata$full_id
 }
 
 #load taxonomical assignments
-taxa <- as.matrix(fread("taxonomy/taxa_annotation_m1.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation_server.csv", sep = ";"))
 
 # Set the first column as row names and remove it from the data frame
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
@@ -155,12 +114,12 @@ taxa <- taxa[,-1]  # Drop the first column
 
 {
 # Load phylogenetic tree if possible
-tree <- read.tree("~/Documents/CHUM_git/figures/samuel/beta_diversity/phylo_tree/phylogenetic_tree.newick")
+tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
 }
   
 #creating phyloseq object
 ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
-               tax_table(taxa)) #sample_data(metadata)
+               tax_table(taxa), sample_data(metadata))
 
 
 #use short names for the asvs (eg ASV21) rather than full dna sequence name
@@ -193,7 +152,7 @@ names(dna) <- taxa_names(ps)
   tree  <- nj(dist_matrix)
   
   # Export the tree as a Newick file
-  write.tree(tree, file = "~/Documents/CHUM_git/figures/samuel/beta_diversity/phylo_tree/phylogenetic_tree.newick")
+  write.tree(tree, file = "~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
   
   #refinement with maximum likelihood
   {
@@ -217,18 +176,42 @@ sum(taxa_sums(ps)) #total number of reads
 length(taxa_sums(ps)) #total number of ASVs
 
 View(tax_table(ps))
-nrow(tax_table(ps))
-sum(is.na(tax_table(ps)[,7]))
-is.na(tax_table(ps)[,7])
+nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,7])) #how many species detected
 
 # Function filtering out ASVs for which they were in total less than a threshold count
-ps <- prune_taxa(taxa_sums(ps) > 10, ps)
-sum(taxa_sums(ps))
-length(taxa_sums(ps))
+ps_flt <- prune_taxa(taxa_sums(ps) > 10, ps)
+sum(taxa_sums(ps_flt))
+length(taxa_sums(ps_flt))
 
 # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-ps <- prune_taxa(colSums(otu_table(ps) > 0) >= (0.05 * nsamples(ps)), ps)
-sum(taxa_sums(ps))
-length(taxa_sums(ps))
+ps_flt <- prune_taxa(colSums(otu_table(ps_flt) > 0) >= (0.05 * nsamples(ps_flt)), ps_flt)
+sum(taxa_sums(ps_flt))
+length(taxa_sums(ps_flt))
 
+existingDirCheck("../figures/thibault")
+sample_data(ps)$gg_group <- factor(sample_data(ps)$gg_group2, levels = c("50:water","500:water","50:dss","500:dss")) # Put gg_group2 as factor
+sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","54","final")) # Put timepoint as factor
+sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","dss")) # Put timepoint as factor
+p = alphaDiversityTimeSeries2(ps, "../figures/thibault/", time = "timepoint", group = "gg_group2")
+p+scale_fill_manual(values = c("blue","red","blue","red"))+
+  scale_color_manual(values = c("blue","red","blue","red"))+
+  scale_pattern_manual(values = c("circle","stripe"))+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    # legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+  
+  
+  
+#Samuel alpha diversity
+customColors = list('blue','red','blue','red')
+pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/samuel/new_alpha_diversity/", gg_group = "gg_group", customColors = customColors)
 
