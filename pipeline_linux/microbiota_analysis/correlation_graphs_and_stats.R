@@ -1,13 +1,13 @@
 #For design with 4 groups based on 2 conditions - this the latest version used
 #gg_group must be order with correct order prior to that (as a factor)
-correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, pairs, path, df, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE, saveFig=TRUE){
+correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, pairs, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, saveFig=TRUE){
+  
+  # Checks if gg_group is a factor
+  checkIfFactor(sample_data(ps)[[gg_group]])
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
   existingDirCheck(path = dir)
-  
-  #Get normalized counts from DESeq2 object
-  normalized_counts <- counts(deseq, normalized = TRUE)
   
   #Define empty list that will contain pairs comparaisons names
   vs <- c()
@@ -72,32 +72,20 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     return(NULL)
   }
   
-  # print(normalized_counts)
-  
-  #Calculate relative abundance as a percentage for each sample
-  # relative_abundance <- normalized_counts * 100 / colSums(normalized_counts)
-  if(normalizedCountsOnly){
-    
-    relative_abundance <- normalized_counts
-    message("Using only normalized counts and not transforming them into relative abundance.")
-  }else{
-    
-    # Apply prop.table for relative abundance calculation and multiply by 100 for percentage
-    relative_abundance <- apply(normalized_counts, 2, prop.table) * 100
-  }
-
+  ps <- transformCounts(ps, transformation = transformation)
+  counts <- otu_table(ps)
   
   # # Ensure that the result is an otu_table object
   # otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
   
   #Keep only ASVs of interest (those that were significantly different)
-  relative_abundance <- relative_abundance[rownames(relative_abundance) %in% asvList, ]
+  counts <- counts[rownames(counts) %in% asvList, ]
   
   #Transpose relab dataframe to get ASVs as columns and sample_id as rows
-  relative_abundance <- t(relative_abundance)
+  counts <- t(counts)
   
   # Bind dataframe with values for correlation and relative abundance
-  data_combined <- merge(relative_abundance, df, by = "row.names", sort = FALSE)
+  data_combined <- merge(counts, df, by = "row.names", sort = FALSE)
   
   if(global){
     
@@ -150,6 +138,12 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
       cor_melt$taxa_name <- taxonomy[cor_melt$ASV, taxa]
     }
     
+    # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
+    if(displayOnlySig){
+      sigAsvs <- unique(cor_melt$ASV[cor_melt$significance != ""])
+      cor_melt <- cor_melt[cor_melt$ASV %in% sigAsvs,]
+    }
+    
     # Create the heatmap
     p <- ggplot(cor_melt, aes(x = Variables, y = taxa_name, fill = value)) +
       geom_tile(color = "white") +
@@ -186,7 +180,7 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
           # Prepare data for scatterplot
           scatter_data <- data_combined %>%
             dplyr::select(all_of(c(asv, var))) %>%
-            dplyr::rename(Relative_Abundance = all_of(asv), Variable = all_of(var))
+            dplyr::rename(counts_var = all_of(asv), variable = all_of(var))
           
           # Convert row names to column in scatter_data
           scatter_data$sample_id <- row.names(scatter_data)
@@ -200,20 +194,20 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
           
           scatter_data$group <- factor(scatter_data$group, levels = levels(sample_data(ps)[[gg_group]]))
           
-          
           # Skip if there are no data points
           if (nrow(scatter_data) == 0) next
           
           # Create scatterplot
-          scatter_plot <- ggplot(scatter_data, aes(x = Relative_Abundance, y = Variable, color = group)) +
+          scatter_plot <- ggplot(scatter_data, aes(x = variable, y = counts_var, color = group)) +
             geom_point() +
             geom_smooth(method = "lm", color = "red", se = TRUE) +
             theme_minimal() +
             labs(
               title = paste("Scatterplot:", asv, "vs", var),
-              x = "Relative Abundance (%)",
-              y = var
-            )
+              x = var,
+              y = paste(transformation, "transformed abundance")
+            )+
+            scale_color_manual(values = customColors)
           
           # Save scatterplot
           ggsave(
@@ -286,8 +280,6 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
         cor_melt$taxa_name <- taxonomy[cor_melt$ASV, taxa]
       }
       
-      print(cor_melt)
-
       # Create the heatmap
       p <- ggplot(cor_melt, aes(x = Variables, y = taxa_name, fill = value)) +
         geom_tile(color = "white") +

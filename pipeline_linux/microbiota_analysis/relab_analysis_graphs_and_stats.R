@@ -690,8 +690,8 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   }else{
     # ps <- transformCounts(ps, transformation = "rel_ab")
     normalized_counts <- t(otu_table(ps))
-    # Ensure consistent structure: convert to a matrix
-    normalized_counts <- as.data.frame(normalized_counts)
+    # # Ensure consistent structure: convert to a matrix
+    # normalized_counts <- as.data.frame(normalized_counts)
     print(normalized_counts)
   }
   

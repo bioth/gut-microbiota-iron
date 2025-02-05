@@ -37,18 +37,18 @@ pretty_string <- function(input_string) {
   return(result)
 }
 
-# Transform otu_table of a phyloseq object based on the chosen transformation
+# Function to apply different type of counts transform for ASVs
 transformCounts <- function(ps, transformation = "rel_ab", log_base = 10) {
+  
+  # Check orientation of OTU table and transpose if necessary
+  if (isFALSE(taxa_are_rows(otu_table(ps)))) {
+    otu_table(ps) <- t(otu_table(ps))
+    message("OTU table was transposed to have ASVs as rows.")
+  } else {
+    message("ASVs already as rows, no need to transpose OTU table.")
+  }
+  
   if (transformation == "rel_ab") {
-    
-    # Check orientation of OTU table and transpose if necessary
-    if (isFALSE(taxa_are_rows(otu_table(ps)))) {
-      otu_table(ps) <- t(otu_table(ps))
-      message("OTU table was transposed to have ASVs as rows.")
-    } else {
-      message("ASVs already as rows, no need to transpose OTU table.")
-    }
-    
     # Apply prop.table for relative abundance calculation and multiply by 100 for percentage
     otu_matrix <- apply(otu_table(ps), 2, prop.table) * 100
     
@@ -68,8 +68,34 @@ transformCounts <- function(ps, transformation = "rel_ab", log_base = 10) {
     
     # Ensure that the result is an otu_table object
     otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
+  } else if (transformation == "CLR") {
+    
+    # Convert OTU table to matrix
+    otu_matrix <- as.matrix(otu_table(ps))
+    
+    # Check if there are any zero counts and replace them to avoid log(0)
+    if (any(otu_matrix == 0)) {
+      message("Zero values detected, replacing with small constant to avoid log(0).")
+      min_non_zero <- min(as.data.frame(otu_table(ps))[as.data.frame(otu_table(ps))>0])
+      pseudocount <- min_non_zero / 2
+      otu_matrix[otu_matrix == 0] <- pseudocount
+    }
+    # Compute geometric mean per sample (column)
+    geometric_mean <- apply(otu_matrix, 2, function(x) exp(mean(log(x))))
+    
+    # Apply CLR transformation
+    clr_matrix <- sapply(seq_len(ncol(otu_matrix)), function(j) {
+      log(otu_matrix[, j] / geometric_mean[j])
+    })
+    
+    row.names(clr_matrix) <- row.names(otu_matrix)
+    colnames(clr_matrix) <- colnames(otu_matrix)
+    
+    # Ensure that the result is an otu_table object
+    otu_table(ps) <- otu_table(clr_matrix, taxa_are_rows = TRUE)
+    
   } else {
-    stop("Transformation method not recognized. Use 'rel_ab' for relative abundance or 'log' for log transformation.")
+    stop("Transformation method not recognized. Use 'rel_ab' for relative abundance, 'log' for log transformation, or 'CLR' for centered log ratio.")
   }
   
   return(ps) # Return the transformed phyloseq object
@@ -141,4 +167,11 @@ writeStackbarExtendedSigTable <- function(sig_table_list,filepath){
   
   write_xlsx(x = table_to_write, path = filepath)
   
+}
+
+# Function to check if a variable is a factor
+checkIfFactor <- function(var){
+  if(isFALSE(is.factor(var))){
+    stop(paste(deparse(substitute(var)), "is not a factor. Please put it as a factor for function to work." ))
+  }
 }

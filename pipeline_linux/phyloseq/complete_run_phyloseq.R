@@ -383,8 +383,8 @@ deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
 #Preparing dataframe for correlation
 variables <- read.xlsx("~/Documents/CHUM_git/figures/samuel/correlation/Samuel's Combine Data_Correlation.xlsx")
 rownames(variables) <- variables$X3
-variables <- variables[,c(8:11)]
-colnames(variables) <- c("lcn-2","il-6","tnf-alpha","colon_length")
+variables <- variables[,c(7:11)]
+colnames(variables) <- c("EcNC101_Colonisation_end_point","lcn-2","il-6","tnf-alpha","colon_length")
 
 
 customColors = list('black','#A22004',"#AB8F23","#04208D")
@@ -393,7 +393,7 @@ pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL
 #One heatmap per gg_group
 correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
 #One heatmap for all groups
-p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE, saveFig = FALSE)
+p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, saveFig = FALSE)
 p + 
   coord_fixed() + # Makes thing squared
   scale_x_discrete(labels = pretty_string, position = "top")+
@@ -408,8 +408,20 @@ p +
   axis.text.x = element_text(angle = -45, hjust = 1))
 
 # Only the individual scatter plots
-correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/samuel/indiv_correlations/", df = variables, global = TRUE, showIndivCor = TRUE, normalizedCountsOnly = FALSE)
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR")
 
+
+
+a = as.matrix(t(otu_table(ps_samuel)))
+if (any(a == 0)) {
+  message("Zero values detected, replacing with small constant to avoid log(0).")
+  a[a == 0] <- 1e-6
+}
+b = apply(a, 2, function(x) exp(mean(log(x))))
+
+sapply(seq_len(ncol(a)), function(j) {
+  log(a[, j] / b[j])
+})
 
 
 #For other taxonomical levels of interest
@@ -428,12 +440,12 @@ for(txnLevel in taxonomicLevels){
   #Setting "Vehicle" as the baseline for treatment
   colData(deseq_subset)$treatment <- relevel(colData(deseq_subset)$treatment, ref="Vehicle")
   
-  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric", quiet = TRUE)
   
   #One heatmap per gg_group
-  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+  # correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
   #One heatmap for all groups
-  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR")
   
 }
 
