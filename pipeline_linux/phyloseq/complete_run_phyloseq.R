@@ -407,22 +407,11 @@ p +
   legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
   axis.text.x = element_text(angle = -45, hjust = 1))
 
+# Save correlation for Species while displaying only taxa for which they were at least one significant correlation
+correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, saveFig = TRUE)
+
 # Only the individual scatter plots
 correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR")
-
-
-
-a = as.matrix(t(otu_table(ps_samuel)))
-if (any(a == 0)) {
-  message("Zero values detected, replacing with small constant to avoid log(0).")
-  a[a == 0] <- 1e-6
-}
-b = apply(a, 2, function(x) exp(mean(log(x))))
-
-sapply(seq_len(ncol(a)), function(j) {
-  log(a[, j] / b[j])
-})
-
 
 #For other taxonomical levels of interest
 taxonomicLevels <- c("Genus","Family","Class","Order","Phylum")
@@ -445,7 +434,7 @@ for(txnLevel in taxonomicLevels){
   #One heatmap per gg_group
   # correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
   #One heatmap for all groups
-  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR")
+  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, displayOnlySig = TRUE, transformation = "CLR")
   
 }
 

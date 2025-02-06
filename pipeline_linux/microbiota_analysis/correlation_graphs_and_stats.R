@@ -140,8 +140,8 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     
     # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
     if(displayOnlySig){
-      sigAsvs <- unique(cor_melt$ASV[cor_melt$significance != ""])
-      cor_melt <- cor_melt[cor_melt$ASV %in% sigAsvs,]
+      asvList <- as.character(unique(cor_melt$ASV[cor_melt$significance != ""]))
+      cor_melt <- cor_melt[cor_melt$ASV %in% asvList,]
     }
     
     # Create the heatmap
@@ -172,9 +172,9 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
       # Create directory for individual scatterplots
       dir_indiv <- paste0(dir, "/scatterplots/")
       existingDirCheck(path = dir_indiv)
-      
-      # Iterate over each ASV and variable pair
-      for (asv in asvList) {
+
+      # Iterate over each ASV and variable pair (or other each sigAsvs if we are only interested in those)
+      for (asv in asvList){
         for (var in setdiff(colnames(df), asvList)) {
 
           # Prepare data for scatterplot
@@ -194,11 +194,16 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
           
           scatter_data$group <- factor(scatter_data$group, levels = levels(sample_data(ps)[[gg_group]]))
           
+          # Get taxa name (if taxonomic level of interest is not species)
+          if(taxa != "Species"){
+            taxon <-  as.data.frame(tax_table(ps))[asv,taxa]
+          }
+          
           # Skip if there are no data points
           if (nrow(scatter_data) == 0) next
           
           # Create scatterplot
-          scatter_plot <- ggplot(scatter_data, aes(x = variable, y = counts_var, color = group)) +
+          scatter_plot <- ggplot(scatter_data, aes(x = variable, y = counts_var, color = group)) + # You can do log(variable) for less noisy look at the relationship between the variables
             geom_point() +
             geom_smooth(method = "lm", color = "red", se = TRUE) +
             theme_minimal() +
@@ -211,7 +216,7 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
           
           # Save scatterplot
           ggsave(
-            filename = paste0(dir_indiv, "scatter_", asv, "_vs_", var, ".png"),
+            filename = paste0(dir_indiv, "scatter_", ifelse(taxa == "Species", asv, taxon), "_vs_", var, ".png"),
             plot = scatter_plot,
             width = 8, height = 6, dpi = 300,
             bg = "white"
