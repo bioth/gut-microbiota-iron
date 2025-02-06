@@ -287,14 +287,56 @@ for(txnLevel in taxonomicLevels){
 
 
 
+# Tests regarding reliability of the approach
+sample_data(ps_samuel)$gg_group
+ps_sub <- tax_glom(ps_samuel, taxrank = "Family")
+deseq_test <- phyloseq_to_deseq2(ps_sub, ~ gg_group) # Full formula with interaction term
+
+deseq_test <- DESeq(deseq_test, test="Wald", fitType = "parametric")
+
+resultsNames(deseq_test)
+
+
+
+
+res <- results(deseq_test, contrast = list("gg_group_Wt.Putrescine_vs_Wt.Vehicle")) #wt vehicle vs wt putrescine
+res
+
+
+
+
+#Creates ps subset for taxonomical level of interest
+ps_subset <- tax_glom(ps_samuel, taxrank = "Family")
+deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment + genotype:treatment) 
+deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = "Family", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/")
+
+res$padj[is.na(res$padj)] <- 1
+res = res[res$padj<0.01,]
+print(rownames(res))
+res["ASV49",]
+
+#Partition results for specific pairwise comparaisons
+res_subset1 <- results(deseq_samuel, contrast = list(resultsNames(deseq_samuel)[3])) #wt putrescine vs vehicle
+res_subset1$padj[is.na(res_subset1$padj)] <- 1
+res_subset1 = res_subset1[res_subset1$padj<0.01,]
+print(rownames(res_subset1))
+res["ASV49",]
+
+
+
+
+
+
+
 #Differential abundance Samuel
 deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) # Full formula with interaction term
 
-#Setting "Wt" as the baseline for genotype
-colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
-
-#Setting "Vehicle" as the baseline for treatment
-colData(deseq_samuel)$treatment <- relevel(colData(deseq_samuel)$treatment, ref="Vehicle")
+# #Setting "Wt" as the baseline for genotype
+# colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
+# 
+# #Setting "Vehicle" as the baseline for treatment
+# colData(deseq_samuel)$treatment <- relevel(colData(deseq_samuel)$treatment, ref="Vehicle")
 
 deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
 
@@ -302,10 +344,11 @@ resultsNames(deseq_samuel)
 
 customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
-relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
+relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/")
 
 #At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
+taxonomicLevels <- c("Family")
 # taxonomicLevels <- c("Phylum")
 for(txnLevel in taxonomicLevels){
   
@@ -313,7 +356,7 @@ for(txnLevel in taxonomicLevels){
   ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment + genotype:treatment) 
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
-  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
+  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/")
 }
 
 
@@ -559,7 +602,7 @@ il22_exp_family <- plot_microbiota_ext(
   sig_lab = T,
   n_row = 2,
   n_col = 2,
-  fdr_threshold = 0.05,
+  fdr_threshold = 0.01,
   main_level = "Family",
   sub_level = "Genus",
   n_phy = 5, # number of taxa to show
