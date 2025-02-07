@@ -43,7 +43,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
 
 #for microbiota 17
 #set working directory
@@ -286,57 +286,14 @@ for(txnLevel in taxonomicLevels){
 }
 
 
-
-# Tests regarding reliability of the approach
-sample_data(ps_samuel)$gg_group
-ps_sub <- tax_glom(ps_samuel, taxrank = "Family")
-deseq_test <- phyloseq_to_deseq2(ps_sub, ~ gg_group) # Full formula with interaction term
-
-deseq_test <- DESeq(deseq_test, test="Wald", fitType = "parametric")
-
-resultsNames(deseq_test)
-
-
-
-
-res <- results(deseq_test, contrast = list("gg_group_Wt.Putrescine_vs_Wt.Vehicle")) #wt vehicle vs wt putrescine
-res
-
-
-
-
-#Creates ps subset for taxonomical level of interest
-ps_subset <- tax_glom(ps_samuel, taxrank = "Family")
-deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment + genotype:treatment) 
-deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
-relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = "Family", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/")
-
-res$padj[is.na(res$padj)] <- 1
-res = res[res$padj<0.01,]
-print(rownames(res))
-res["ASV49",]
-
-#Partition results for specific pairwise comparaisons
-res_subset1 <- results(deseq_samuel, contrast = list(resultsNames(deseq_samuel)[3])) #wt putrescine vs vehicle
-res_subset1$padj[is.na(res_subset1$padj)] <- 1
-res_subset1 = res_subset1[res_subset1$padj<0.01,]
-print(rownames(res_subset1))
-res["ASV49",]
-
-
-
-
-
-
-
 #Differential abundance Samuel
-deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) # Full formula with interaction term
+deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype : treatment) # Full formula with interaction term
 
-# #Setting "Wt" as the baseline for genotype
-# colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
-# 
-# #Setting "Vehicle" as the baseline for treatment
-# colData(deseq_samuel)$treatment <- relevel(colData(deseq_samuel)$treatment, ref="Vehicle")
+#Setting "Wt" as the baseline for genotype
+colData(deseq_samuel)$genotype <- relevel(colData(deseq_samuel)$genotype, ref="Wt")
+
+#Setting "Vehicle" as the baseline for treatment
+colData(deseq_samuel)$treatment <- relevel(colData(deseq_samuel)$treatment, ref="Vehicle")
 
 deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
 
@@ -344,19 +301,32 @@ resultsNames(deseq_samuel)
 
 customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
-relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/")
+relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
 
 #At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
-taxonomicLevels <- c("Family")
 # taxonomicLevels <- c("Phylum")
 for(txnLevel in taxonomicLevels){
   
   #Creates ps subset for taxonomical level of interest
   ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment + genotype:treatment) 
+  #Setting "Wt" as the baseline for genotype
+  colData(deseq_subset)$genotype <- relevel(colData(deseq_subset)$genotype, ref="Wt")
+  #Setting "Vehicle" as the baseline for treatment
+  colData(deseq_subset)$treatment <- relevel(colData(deseq_subset)$treatment, ref="Vehicle")
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
-  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/")
+  relabGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
+}
+
+# To try with single factor formula (~ gg_group)
+for(txnLevel in taxonomicLevels){
+  
+  #Creates ps subset for taxonomical level of interest
+  ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
+  deseq_test <- phyloseq_to_deseq2(ps_subset, ~ gg_group)
+  deseq_test <- DESeq(deseq_test, test="Wald", fitType = "parametric")
+  relabGroups(ps_subset, deseq_test, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/test/", single_factor_design = TRUE)
 }
 
 
@@ -596,6 +566,11 @@ sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, level
 il22_exp_family <- plot_microbiota_ext(
   ps_object = ps_samuel,
   exp_group = 'gg_group',
+  twoFactor = TRUE,
+  fac1 = "genotype",
+  refFac1 = "Wt",
+  fac2 = "treatment",
+  refFac2 = "Vehicle",
   sample_name = 'sample_id',
   hues = c("Purples", "Blues", "Reds", "Oranges", "Greens"),
   differential_analysis = T,
@@ -632,15 +607,15 @@ p <- plot + theme(
 p
 
 # Save plot and associated stats
-existingDirCheck("../figures/samuel/stackbar")
-ggsave(plot = p, filename = "../figures/samuel/stackbar/family_stackbar.png", width = 8, height = 8, dpi = 300)
+existingDirCheck("../figures/Samuel_final/stackbar")
+ggsave(plot = p, filename = "../figures/Samuel_final/stackbar/family_and_genus_stackbar.png", width = 8, height = 8, dpi = 300)
 
 # write a combined sigtable for main and sub levels
-writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_family$significant_table_sub, filepath = "../figures/samuel/stackbar/stackbar_stats.xlsx")
+writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_family$significant_table_sub, filepath = "../figures/Samuel_final/stackbar/stackbar_stats.xlsx")
 
 
 # pvalues heatmap for the main lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/samuel/stackbar/stackbar_stats.xlsx")),
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
                                      "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
             txn_lvl="Family", lvl = "main", taxons = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)], group = "gg_group", path)
