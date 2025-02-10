@@ -200,7 +200,7 @@ richness_data <- estimate_richness(ps_claire, measures = c("Shannon", "Simpson",
 richness_data <- cbind(as.data.frame(sample_data(ps_claire)), richness_data)
 
 #saving data so that others can use it
-write.xlsx(richness_data, "~/Documents/CHUM_git/figures/claire/new_alpha_diversity/alpha_diversity_measures.xlsx")
+write.xlsx(richness_data, "~/Documents/CHUM_git/figures/Claire_final/alpha_diversity/alpha_diversity_measures.xlsx")
 
 #Samuel alpha diversity
 customColors = list('black','#A22004',"#AB8F23","#04208D")
@@ -211,8 +211,8 @@ alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/Samuel_fi
 #Beta diversity analysis for different timepoints. You must provide a filtered ps object, the timeVariable and the varToCompare (present in sample_data)
 
 #For Claire
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/claire/beta_diversity/")
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/claire/beta_diversity/")
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
 
 
 #Samuel beta diversity
@@ -264,9 +264,28 @@ betaDiversityAll(ps_samuel, "gg_group", "bray", customColors, font = "Times New 
 # customColors = list(list('black','#A22004'), list("#AB8F23","#04208D"), list("black","#AB8F23"),list("#A22004","#04208D"))
 # relabSpeciesPairwise(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", pairs, threshold = 0.01, customColors, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
 
-deseq_claire <- phyloseq_to_deseq2(ps_claire, ~ week + diet:week)
+deseq_claire <- phyloseq_to_deseq2(ps_claire, ~ diet + week + diet:week)
 deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
 resultsNames(deseq_claire)
+
+# Full timeline comprising every comparison possible
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #Testing if this can work at any taxonomic level
 customColors = c("blue","red")
@@ -334,7 +353,7 @@ for(txnLevel in taxonomicLevels){
 #Load custom function to make the graphs for each species
 
 #Path where to save graphs
-pathToSave <- "~/Documents/CHUM_git/figures/claire/relative_abundance_by_timepoint/"
+pathToSave <- "~/Documents/CHUM_git/figures/Claire_final/relative_abundance_by_timepoint/"
 
 #customColors for graph display
 customColors = c("blue","red")
@@ -355,17 +374,18 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   #Performing the deseq analysis
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
   
+  print(resultsNames(deseq_subset))
+  
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
   relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.01, customColors, newPath)  
   
 }
 
 #Additionnal approach to account for all timepoints, but same species, because we keep the species for which at least one point had significant differential abundances
-source(file = "~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 customColors = c("blue","red")
 
 #At species level
-relabTimelineRevised(ps_claire, measure = "log2fold", "week", "diet", "Species", threshold = 0.01, customColors,  "~/Documents/CHUM_git/figures/claire/test_timeline/")
+relabTimelineRevised(ps_claire, measure = "log2fold", "week", "diet", "Species", threshold = 0.01, customColors = customColors, path = "~/Documents/CHUM_git/figures/Claire_final/relative_abundance_full_timeline/")
 
 #At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
@@ -373,12 +393,8 @@ for(txnLevel in taxonomicLevels){
   
   #Creates ps subset for taxonomical level of interest
   ps_subset <- tax_glom(ps_claire, taxrank = txnLevel)
-  relabTimelineRevised(ps_subset, measure = "log2fold", "week", "diet", txnLevel, threshold = 0.01, customColors,  "~/Documents/CHUM_git/figures/claire/test_timeline/")
+  relabTimelineRevised(ps_subset, measure = "log2fold", "week", "diet", txnLevel, threshold = 0.01, customColors = customColors, path = "~/Documents/CHUM_git/figures/Claire_final/relative_abundance_full_timeline/")
 }
-
-deseq_claire <- phyloseq_to_deseq2(ps_claire, ~ diet*week) 
-deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
-
 
 ###Correlations between relative abundances and other metrics
 #Setting a correlation matrix workflow starting with Samuel's data

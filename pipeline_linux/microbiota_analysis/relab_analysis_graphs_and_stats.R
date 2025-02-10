@@ -1323,7 +1323,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   }
 }
 
-#Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint
+#Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint, works with design "~ factor", and is done separately for each week
 relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, returnSigAsvs = FALSE, customColors, path){
   
   #Creates directory for taxonomic level
@@ -1349,7 +1349,7 @@ relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCo
     deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
     
     #Get normalized counts from DESeq2 object
-    normalized_counts <- counts(deseq_subset, normalized = TRUE)
+    normalized_counts <- counts(deseq_subset, normalized = FALSE)
     
     #Add the single normalized count to df to df with all
     nrm_counts_all <- append(nrm_counts_all, list(normalized_counts))
