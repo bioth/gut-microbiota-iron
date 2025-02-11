@@ -547,14 +547,15 @@ correlationTimepoints <- function(ps, measure = "log2fold", timeVariable, varToC
 
 
 
-correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, path, df, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE){
+correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = FALSE, displaySpeciesASVNumber = TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
   existingDirCheck(path = dir)
   
-  #Get normalized counts from DESeq2 object
-  normalized_counts <- counts(deseq, normalized = TRUE)
+  # Transform counts (CLR transformation by default because improves correlation results)
+  ps <- transformCounts(ps, transformation = transformation)
+  counts <- otu_table(ps)
   
   # #Define empty list that will contain pairs comparaisons names
   # vs <- c()
@@ -603,30 +604,28 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
   
   #Calculate relative abundance as a percentage for each sample
   # relative_abundance <- normalized_counts * 100 / colSums(normalized_counts)
-  if(normalizedCountsOnly){
-    
-    relative_abundance <- normalized_counts
-    message("Using only normalized counts and not transforming them into relative abundance.")
-  }else{
-    
-    # Apply prop.table for relative abundance calculation and multiply by 100 for percentage
-    relative_abundance <- apply(normalized_counts, 2, prop.table) * 100
-  }
+  # if(normalizedCountsOnly){
+  #   
+  #   relative_abundance <- normalized_counts
+  #   message("Using only normalized counts and not transforming them into relative abundance.")
+  # }else{
+  #   
+  #   # Apply prop.table for relative abundance calculation and multiply by 100 for percentage
+  #   relative_abundance <- apply(normalized_counts, 2, prop.table) * 100
+  # }
   
   
   # # Ensure that the result is an otu_table object
   # otu_table(ps) <- otu_table(otu_matrix, taxa_are_rows = TRUE)
   
   #Keep only ASVs of interest (those that were significantly different)
-  relative_abundance <- relative_abundance[rownames(relative_abundance) %in% asvList, ]
+  counts <- counts[rownames(counts) %in% asvList,]
   
-  #Transpose relab dataframe to get ASVs as columns and sample_id as rows
-  relative_abundance <- t(relative_abundance)
-  
-  print(relative_abundance)
+  # #Transpose relab dataframe to get ASVs as columns and sample_id as rows
+  counts <- t(counts)
   
   # Bind dataframe with values for correlation and relative abundance
-  data_combined <- merge(relative_abundance, df, by = "row.names", sort = FALSE)
+  data_combined <- merge(counts, df, by = "row.names", sort = FALSE)
   
   if(global){
     
@@ -637,8 +636,6 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     # Set row names and drop the "Row.names" column
     rownames(data_combined) <- data_combined$Row.names
     data_combined <- data_combined[,-1]
-    
-    print(data_combined)
     
     # Extract the ASV and variable matrices
     asv_matrix <- as.matrix(data_combined[, asvList, drop = FALSE]) # ASVs
@@ -659,8 +656,18 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     cor_matrix <- cor_matrix[rownames(cor_matrix) %in% asvList, !colnames(cor_matrix) %in% asvList]
     p_values <- p_adjusted[rownames(p_adjusted) %in% asvList, !colnames(p_adjusted) %in% asvList]
     
-    # Melt correlation and adjusted p-value matrices
-    cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
+    # If only one sifgnificant ASV, fix or else the code does not work (doesnt work for now)
+    if (length(asvList) == 1) {
+      cor_matrix <- as.data.frame(cor_matrix)
+      cor_matrix$ASV <- rownames(cor_matrix)
+      cor_melt <- pivot_longer(cor_matrix, cols = -ASV, names_to = "Variables", values_to = "value")
+    } else {
+      cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
+    }
+    
+    
+    # # Melt correlation and adjusted p-value matrices
+    # cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
     p_melt <- melt(p_values, varnames = c("ASV", "Variables"))
     
     # Combine melted data and filter out NA correlations (if any)
@@ -676,9 +683,18 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     
     if(taxa=="Species"){
       cor_melt$taxa_name <- paste(taxonomy[cor_melt$ASV, "Genus"],taxonomy[cor_melt$ASV, "Species"])
-      cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
+      if(displaySpeciesASVNumber){
+        cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
+      }
+      
     }else{
       cor_melt$taxa_name <- taxonomy[cor_melt$ASV, taxa]
+    }
+    
+    # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
+    if(displayOnlySig){
+      asvList <- as.character(unique(cor_melt$ASV[cor_melt$significance != ""]))
+      cor_melt <- cor_melt[cor_melt$ASV %in% asvList,]
     }
     
     # Create the heatmap
@@ -695,10 +711,14 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
             axis.title.y = element_text(size = 12, face = "bold")) +
       labs(x = "Variables", y = taxa)
     
-    ggsave(plot = p, filename = paste(dir,"/correlation_all_groups.png", sep = ""), dpi = 300, height = 6, width = 10, bg = 'white')
+    if(returnMainFig){
+      return(p)
+    }else{
+      ggsave(plot = p, filename = paste(dir,"/correlation_all_groups.png", sep = ""), dpi = 300, height = 6, width = 10, bg = 'white')
+      # Save correlation dataframe with stats and correlation coefficients 
+      write_xlsx(cor_melt, path = paste0(dir,"/all_groups_correlation.xlsx"))
+    }
     
-    # Save correlation dataframe with stats and correlation coefficients 
-    write_xlsx(cor_melt, path = paste0(dir,"/all_groups_correlation.xlsx"))
     
     if (showIndivCor) {
       # Create directory for individual scatterplots
@@ -709,28 +729,46 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       for (asv in asvList) {
         for (var in setdiff(colnames(df), asvList)) {
           
-          # Prepare data for scatterplot
+          #Prepare data for scatterplot
           scatter_data <- data_combined %>%
             dplyr::select(all_of(c(asv, var))) %>%
-            dplyr::rename(Relative_Abundance = all_of(asv), Variable = all_of(var))
+            dplyr::rename(counts_var = all_of(asv), variable = all_of(var))
+          
+          # Convert row names to column in scatter_data
+          scatter_data$sample_id <- row.names(scatter_data)
+          
+          # Extract gg_group from sample_data(ps)
+          gg_group_data <- data.frame(sample_id = row.names(sample_data(ps)), 
+                                      group = sample_data(ps)[[varToCompare]])
+          
+          # Merge with scatter_data
+          scatter_data <- merge(scatter_data, gg_group_data, by = "sample_id", all.x = TRUE)
+          
+          scatter_data$group <- factor(scatter_data$group, levels = levels(sample_data(ps)[[varToCompare]]))
+          
+          # Get taxa name (if taxonomic level of interest is not species)
+          if(taxa != "Species"){
+            taxon <-  as.data.frame(tax_table(ps))[asv,taxa]
+          }
           
           # Skip if there are no data points
           if (nrow(scatter_data) == 0) next
           
           # Create scatterplot
-          scatter_plot <- ggplot(scatter_data, aes(x = Relative_Abundance, y = Variable)) +
-            geom_point(alpha = 0.7, color = "blue") +
+          scatter_plot <- ggplot(scatter_data, aes(x = variable , y = counts_var, color = group)) +
+            geom_point() +
             geom_smooth(method = "lm", color = "red", se = TRUE) +
             theme_minimal() +
             labs(
               title = paste("Scatterplot:", asv, "vs", var),
               x = "Relative Abundance (%)",
-              y = var
+              y = var,
+              color = "Group"
             )
           
           # Save scatterplot
           ggsave(
-            filename = paste0(dir_indiv, "scatter_", asv, "_vs_", var, ".png"),
+            filename = paste0(dir_indiv, "scatter_", ifelse(taxa == "Species", asv, taxon), "_vs_", var, ".png"),
             plot = scatter_plot,
             width = 8, height = 6, dpi = 300,
             bg = "white"

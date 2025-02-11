@@ -168,14 +168,10 @@ names(dna) <- taxa_names(ps)
 }
 
 # Add tree to phyloseq object
-{
 ps <- merge_phyloseq(ps, phy_tree(tree))
-}
 
 sum(taxa_sums(ps)) #total number of reads
 length(taxa_sums(ps)) #total number of ASVs
-
-View(tax_table(ps))
 nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,7])) #how many species detected
 
 # Function filtering out ASVs for which they were in total less than a threshold count

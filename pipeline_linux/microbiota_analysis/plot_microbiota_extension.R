@@ -6,7 +6,7 @@ library(reshape2)
 library(RColorBrewer)
 library(DESeq2)
 
-plot_microbiota_ext <- function(ps_object = ps,
+plot_microbiota_2Fac <- function(ps_object = ps,
                             exp_group = 'group',
                             subset_group = NULL,
                             twoFactor = FALSE,
@@ -288,7 +288,6 @@ plot_microbiota_ext <- function(ps_object = ps,
     }
     
     diagdds = phyloseq_to_deseq2(fam_glom,  formula(paste("~", exp_group)))
-    
     # Run DESeq2 analysis
     if (test == "Wald"){
       
@@ -497,8 +496,6 @@ plot_microbiota_ext <- function(ps_object = ps,
       diagdds = phyloseq_to_deseq2(fam_glom,  formula(paste("~", exp_group)))
     }
     
-    
-    
     # Run DESeq2 analysis
     if (test == "Wald"){
       
@@ -638,7 +635,6 @@ plot_microbiota_ext <- function(ps_object = ps,
       
     }
     
-    
     comparisons <- combn(levels(meta[[exp_group]]), 2, simplify = FALSE)
     
     if (is.null(selected_comparisons) == F)  {
@@ -681,7 +677,6 @@ plot_microbiota_ext <- function(ps_object = ps,
     # Set names based on comparisons
     results_list <- setNames(results_list, comparison_names)
     
-    
     # Initialize an empty list to store significant features for each comparison
     significant_features_main <- list()
     
@@ -697,15 +692,25 @@ plot_microbiota_ext <- function(ps_object = ps,
       if (nrow(significant_features) == 0) {
         message("No significant feature detected for comparison ", comparison_name," at the ", main_level, " level.")
       } else {
+        
+        # print(dim(significant_features))
+        print(significant_features)
+        print(tax_table(main_glom)[rownames(tax_table(main_glom)) %in% rownames(significant_features),, drop = FALSE])
+        # print(dim(tax_table(main_glom)[rownames(tax_table(main_glom)) %in% rownames(significant_features), , drop = FALSE]))
+        
+        
         # Link significant features with their taxonomy information
+        
         significant_features <- cbind(
           significant_features,
           tax_table(main_glom)[rownames(tax_table(main_glom)) %in% rownames(significant_features), , drop = FALSE]
         )
         
+        
         # Convert to data frame and add to the list
         significant_features <- as.data.frame(significant_features)
         significant_features_main[[comparison_name]] <- significant_features
+        
       }
     }
     
@@ -714,6 +719,7 @@ plot_microbiota_ext <- function(ps_object = ps,
     
     
   }
+
   
   
   #Prepare the color vector
@@ -853,8 +859,6 @@ plot_microbiota_ext <- function(ps_object = ps,
     
     
   }
-  
-  
   
   if (differential_analysis == T ) {
     

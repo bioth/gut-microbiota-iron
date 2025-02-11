@@ -469,70 +469,65 @@ for(txnLevel in taxonomicLevels){
 
 
 #Setting a correlation matrix workflow starting with Claire's data
-#Preparing deseq object needed for the function
-#Technically, only last timepoint should be useful
-ps_claire_last_timepoint <- prune_samples(sample_data(ps_claire)$week == 14, ps_claire)
-#replace tax names in the otu_table so that they are corresponding to the excel file
-sample_names(ps_claire_last_timepoint) <- gsub("_.*", "", sample_names(ps_claire_last_timepoint))
-sample_names(ps_claire_last_timepoint)
-
-deseq_claire <- phyloseq_to_deseq2(ps_claire_last_timepoint, ~ diet) 
-deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
-
-
-
+# This code was the latest developed on feb 11 2025 ### To keep
 #Preparing dataframe for correlation
 variables <- read.xlsx("~/Documents/CHUM_git/figures/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
 rownames(variables) <- variables$ID
 variables <- variables[,c(6:10)]
+colnames(variables)[1:5] <- gsub(x = colnames(variables)[1:5], pattern = "\\.", replacement = " ")
 
 
-#For species level
-#One heatmap for all groups
-correlation2Var(ps_claire_last_timepoint, deseq_claire, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, "~/Documents/CHUM_git/figures/claire/correlation/week_14/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+# For species level
+for(timePoint in levels(sample_data(ps_claire)$week)){
+  # Subset for timePoint
+  ps_subset <- prune_samples(sample_data(ps_claire)$week == timePoint, ps_claire)
+  #replace tax names in the otu_table so that they are corresponding to the excel file
+  sample_names(ps_subset) <- gsub("_.*", "", sample_names(ps_subset))
+  # Deseq analysis
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  print(resultsNames(deseq_subset))
+  
+  # Correlation for all groups, species level
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, paste0("~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_", timePoint, "/"), df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE)
+  p <- p+
+    # coord_fixed() + # Makes thing squared
+    theme(
+      text = element_text(family = "Arial"),      # Global text settings
+      axis.title.x = element_text(size = 16, face = "bold"),  # Axis titles
+      axis.title.y = element_text(size = 16, face = "bold"),
+      axis.text = element_text(size = 12, face = "bold"),   # Axis text
+      legend.title = element_text(face = "bold", size = 16),  # Legend title  # Legend text
+      ) #axis.text.x = element_text(angle = -45, hjust = 1)
+}
 
-#Week 8
-ps_claire_last_timepoint <- prune_samples(sample_data(ps_claire)$week == 8, ps_claire)
-#replace tax names in the otu_table so that they are corresponding to the excel file
-sample_names(ps_claire_last_timepoint) <- gsub("_.*", "", sample_names(ps_claire_last_timepoint))
-sample_names(ps_claire_last_timepoint)
-
-deseq_claire <- phyloseq_to_deseq2(ps_claire_last_timepoint, ~ diet) 
-deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
-
-
-
-#Preparing dataframe for correlation
-variables <- read.xlsx("~/Documents/CHUM_git/figures/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
-rownames(variables) <- variables$ID
-variables <- variables[,c(6:10)]
-
-
-#For species level
-#One heatmap for all groups
-correlation2Var(ps_claire_last_timepoint, deseq_claire, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, "~/Documents/CHUM_git/figures/claire/correlation/week_8/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
-
-#Week 10
-ps_claire_last_timepoint <- prune_samples(sample_data(ps_claire)$week == 10, ps_claire)
-#replace tax names in the otu_table so that they are corresponding to the excel file
-sample_names(ps_claire_last_timepoint) <- gsub("_.*", "", sample_names(ps_claire_last_timepoint))
-sample_names(ps_claire_last_timepoint)
-
-deseq_claire <- phyloseq_to_deseq2(ps_claire_last_timepoint, ~ diet) 
-deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
-
-
-
-#Preparing dataframe for correlation
-variables <- read.xlsx("~/Documents/CHUM_git/figures/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
-rownames(variables) <- variables$ID
-variables <- variables[,c(6:10)]
-
-
-#For species level
-#One heatmap for all groups
-correlation2Var(ps_claire_last_timepoint, deseq_claire, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, "~/Documents/CHUM_git/figures/claire/correlation/week_10/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
-
+{
+  # Subset for timePoint
+  ps_subset <- prune_samples(sample_data(ps_claire)$week == "10", ps_claire)
+  #replace tax names in the otu_table so that they are corresponding to the excel file
+  sample_names(ps_subset) <- gsub("_.*", "", sample_names(ps_subset))
+  # Deseq analysis
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  print(resultsNames(deseq_subset))
+  
+  # Correlation for all groups, species level
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, paste0("~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_", timePoint, "/"), df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
+  p$layers <- p$layers[-2] # Remove the second layer (geom_text)
+  p+
+    # coord_fixed() + # Makes thing squared
+    geom_text(aes(label = significance), color = "black", size = 10) +
+    scale_x_discrete(labels = function(x) gsub(" ", "\n", x)) +  # Replace space with newline
+    theme(
+      text = element_text(family = "Arial"),      # Global text settings
+      axis.title.x = element_text(size = 16, face = "bold", vjust = -1),  # Axis titles
+      axis.title.y = element_text(size = 16, face = "bold"),
+      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5),   # Axis text
+      axis.text.y = element_text(size = 12),   # Axis text
+      legend.title = element_text(face = "bold", size = 16, vjust = 3),  # Legend title  # Legend text
+    ) #axis.text.x = element_text(angle = -45, hjust = 1)
+  
+}
 
 
 #For other taxonomical levels of interest
@@ -540,25 +535,109 @@ taxonomicLevels <- c("Genus","Family","Class","Order","Phylum")
 for(txnLevel in taxonomicLevels){
   
   #Creates ps subset for taxonomical level of interest
-  ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
+  ps_txn <- tax_glom(ps_claire, taxrank = txnLevel)
   
-  #Preparing deseq object needed for the function
-  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment+ genotype:treatment) 
+  for(timePoint in levels(sample_data(ps_claire)$week)){
+    # Subset for timePoint
+    ps_subset <- prune_samples(sample_data(ps_claire)$week == timePoint, ps_txn)
+    #replace tax names in the otu_table so that they are corresponding to the excel file
+    sample_names(ps_subset) <- gsub("_.*", "", sample_names(ps_subset))
+    # Deseq analysis
+    deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    print(resultsNames(deseq_subset))
+    
+    # Correlation for all groups, species level
+    correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, paste0("~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_", timePoint, "/"), df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = FALSE)
+    
+  }
   
-  #Setting "Wt" as the baseline for genotype
-  colData(deseq_subset)$genotype <- relevel(colData(deseq_subset)$genotype, ref="Wt")
-  
-  #Setting "Vehicle" as the baseline for treatment
-  colData(deseq_subset)$treatment <- relevel(colData(deseq_subset)$treatment, ref="Vehicle")
-  
-  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
-  
-  #One heatmap per gg_group
-  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
-  #One heatmap for all groups
-  correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
   
 }
+
+
+
+
+
+# #Preparing deseq object needed for the function
+# #Technically, only last timepoint should be useful
+# ps_claire_last_timepoint <- prune_samples(sample_data(ps_claire)$week == 14, ps_claire)
+# #replace tax names in the otu_table so that they are corresponding to the excel file
+# sample_names(ps_claire_last_timepoint) <- gsub("_.*", "", sample_names(ps_claire_last_timepoint))
+# sample_names(ps_claire_last_timepoint)
+# 
+# #For species level
+# #One heatmap for all groups
+# 
+# 
+# #Week 8
+# ps_claire_last_timepoint <- prune_samples(sample_data(ps_claire)$week == 8, ps_claire)
+# #replace tax names in the otu_table so that they are corresponding to the excel file
+# sample_names(ps_claire_last_timepoint) <- gsub("_.*", "", sample_names(ps_claire_last_timepoint))
+# sample_names(ps_claire_last_timepoint)
+# 
+# deseq_claire <- phyloseq_to_deseq2(ps_claire_last_timepoint, ~ diet) 
+# deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
+# 
+# 
+# 
+# #Preparing dataframe for correlation
+# variables <- read.xlsx("~/Documents/CHUM_git/figures/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
+# rownames(variables) <- variables$ID
+# variables <- variables[,c(6:10)]
+# 
+# 
+# #For species level
+# #One heatmap for all groups
+# correlation2Var(ps_claire_last_timepoint, deseq_claire, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, "~/Documents/CHUM_git/figures/claire/correlation/week_8/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+# 
+# #Week 10
+# ps_claire_last_timepoint <- prune_samples(sample_data(ps_claire)$week == 10, ps_claire)
+# #replace tax names in the otu_table so that they are corresponding to the excel file
+# sample_names(ps_claire_last_timepoint) <- gsub("_.*", "", sample_names(ps_claire_last_timepoint))
+# sample_names(ps_claire_last_timepoint)
+# 
+# deseq_claire <- phyloseq_to_deseq2(ps_claire_last_timepoint, ~ diet) 
+# deseq_claire <- DESeq(deseq_claire, test="Wald", fitType = "parametric")
+# 
+# 
+# 
+# #Preparing dataframe for correlation
+# variables <- read.xlsx("~/Documents/CHUM_git/figures/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
+# rownames(variables) <- variables$ID
+# variables <- variables[,c(6:10)]
+# 
+# 
+# #For species level
+# #One heatmap for all groups
+# correlation2Var(ps_claire_last_timepoint, deseq_claire, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, "~/Documents/CHUM_git/figures/claire/correlation/week_10/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+# 
+# 
+# 
+# #For other taxonomical levels of interest
+# taxonomicLevels <- c("Genus","Family","Class","Order","Phylum")
+# for(txnLevel in taxonomicLevels){
+#   
+#   #Creates ps subset for taxonomical level of interest
+#   ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
+#   
+#   #Preparing deseq object needed for the function
+#   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ genotype + treatment+ genotype:treatment) 
+#   
+#   #Setting "Wt" as the baseline for genotype
+#   colData(deseq_subset)$genotype <- relevel(colData(deseq_subset)$genotype, ref="Wt")
+#   
+#   #Setting "Vehicle" as the baseline for treatment
+#   colData(deseq_subset)$treatment <- relevel(colData(deseq_subset)$treatment, ref="Vehicle")
+#   
+#   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+#   
+#   #One heatmap per gg_group
+#   correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+#   #One heatmap for all groups
+#   correlationGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group", taxa = txnLevel, displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/filtering/samuel/correlation/", df = variables, global = TRUE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
+#   
+# }
 
 
 
@@ -660,19 +739,20 @@ sample_data(ps_claire)$gg_group <- fct_recode(sample_data(ps_claire)$gg_group,
                           "500 ppm / 10w"="10:500",
                           "500 ppm / 14w"="14:500")
 
-iron_exp_family <- plot_microbiota_ext(
+iron_exp_family <- plot_microbiota_2Fac(
   ps_object = ps_claire,
   exp_group = 'gg_group',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Reds", "Greens", "Oranges"),
+  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
   n_col = 4,
+  threshold = 1,
   fdr_threshold = 0.05,
-  main_level = "Family",
-  sub_level = "Genus",
-  n_phy = 5, # number of taxa to show 
+  main_level = "Phylum",
+  sub_level = "Family",
+  n_phy = 4, # number of taxa to show 
   mult_comp = T, # pairwise comparaisons for diff ab analysis
   selected_comparisons = list(c( "50 ppm / 3w",  "500 ppm / 3w"), c( "50 ppm / 8w",  "500 ppm / 8w"), c( "50 ppm / 10w",  "500 ppm / 10w"), c("50 ppm / 14w", "500 ppm / 14w"))
 )
