@@ -724,24 +724,52 @@ pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/samuel/stackbar
 
 
 # Claire's data
-#for Claire's data, put gg_group as factor and define order
+# iron_exp_family <- plot_microbiota_2Fac(
+#   ps_object = ps_claire,
+#   exp_group = 'gg_group',
+#   sample_name = 'sample_id',
+#   hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+#   differential_analysis = T,
+#   sig_lab = T,
+#   n_row = 2,
+#   n_col = 4,
+#   threshold = 1,
+#   fdr_threshold = 0.05,
+#   main_level = "Phylum",
+#   sub_level = "Family",
+#   n_phy = 4, # number of taxa to show 
+#   mult_comp = T, # pairwise comparaisons for diff ab analysis
+#   selected_comparisons = list(c( "50 ppm / 3w",  "500 ppm / 3w"), c( "50 ppm / 8w",  "500 ppm / 8w"), c( "50 ppm / 10w",  "500 ppm / 10w"), c("50 ppm / 14w", "500 ppm / 14w"))
+# )
+
+
+
+# New approach with deseq2 analysis taking into account timepoints = THIS IS THE MOST RECENT VERSION USED - 12/02/2025
+# First, timepoints and groups must be ordered properly and as factor
+# Put gg_group as factor and define order
 sample_data(ps_claire)$gg_group <- factor(sample_data(ps_claire)$gg_group, levels = c("3:50", "8:50", "10:50", "14:50", "3:500", "8:500", "10:500", "14:500"))  
 # Enables to rename factor levels (this is more convenient to change the names for each subgraph
 # in the facet_wrap.)
 library(forcats)
 sample_data(ps_claire)$gg_group <- fct_recode(sample_data(ps_claire)$gg_group,
-                          "50 ppm / 3w"="3:50",
-                          "50 ppm / 8w"="8:50",
-                          "50 ppm / 10w"="10:50",
-                          "50 ppm / 14w"="14:50",
-                          "500 ppm / 3w"="3:500",
-                          "500 ppm / 8w"="8:500",
-                          "500 ppm / 10w"="10:500",
-                          "500 ppm / 14w"="14:500")
+                                              "50 ppm / 3w"="3:50",
+                                              "50 ppm / 8w"="8:50",
+                                              "50 ppm / 10w"="10:50",
+                                              "50 ppm / 14w"="14:50",
+                                              "500 ppm / 3w"="3:500",
+                                              "500 ppm / 8w"="8:500",
+                                              "500 ppm / 10w"="10:500",
+                                              "500 ppm / 14w"="14:500")
+sample_data(ps_claire)$diet
+sample_data(ps_claire)$gg_group
+sample_data(ps_claire)$week
 
-iron_exp_family <- plot_microbiota_2Fac(
+iron_exp_family <- plot_microbiota_timepoints(
   ps_object = ps_claire,
-  exp_group = 'gg_group',
+  exp_group = "diet",
+  timePoints = TRUE,
+  time_variable = "week",
+  combined_group = 'gg_group',
   sample_name = 'sample_id',
   hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
@@ -753,23 +781,28 @@ iron_exp_family <- plot_microbiota_2Fac(
   main_level = "Phylum",
   sub_level = "Family",
   n_phy = 4, # number of taxa to show 
-  mult_comp = T, # pairwise comparaisons for diff ab analysis
-  selected_comparisons = list(c( "50 ppm / 3w",  "500 ppm / 3w"), c( "50 ppm / 8w",  "500 ppm / 8w"), c( "50 ppm / 10w",  "500 ppm / 10w"), c("50 ppm / 14w", "500 ppm / 14w"))
+  mult_comp = F, # pairwise comparaisons for diff ab analysis
+  selected_comparisons = list(c( "50 ppm / 3w",  "500 ppm / 3w"), c( "50 ppm / 8w",  "500 ppm / 8w"), c( "50 ppm / 10w",  "500 ppm / 10w"), c("50 ppm / 14w", "500 ppm / 14w")),
+  showOnlySubLegend = TRUE
 )
 
 print(iron_exp_family$plot)
 print(iron_exp_family$significant_table_main)
-plot <- iron_exp_family$plot
+
+library(ggh4x)
 
 # Custom the plot
-p <- plot + theme(
-  text = element_text(family = "Arial"),      # Global text settings
-  strip.text = element_text(size = 14, face = "bold"),  # Facet titles
-  plot.title = element_text(size = 20, face = "bold"),  # Main title
-  axis.title = element_text(size = 15, face = "bold"),  # Axis titles
-  axis.text = element_text(size = 12, face = "bold"),   # Axis text
-  legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
-) +
+p <- iron_exp_family$plot + 
+  facet_wrap2(~ gg_group, 
+              scales  = "free_x", nrow = 2, ncol = 4,
+              strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blue","blue","blue","red", "red", "red", "red"))))+
+  theme(text = element_text(family = "Arial"),      # Global text settings
+        strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+        plot.title = element_text(size = 20, face = "bold"),  # Main title
+        axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+        axis.text = element_text(size = 12, face = "bold"),   # Axis text
+        legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+        ) +
   scale_x_discrete(labels = function(x) substr(x, 1, 5))+
   labs(x = "Sample ID")
 p
@@ -777,20 +810,22 @@ p
 # Saving the plot and the associated stats
 existingDirCheck("../figures/claire/stackbar")
 ggsave(plot = p, filename = "../figures/claire/stackbar/family_stackbar.png", width = 14, height = 8, dpi = 300)
-writeStackbarExtendedSigTable(iron_exp_family$significant_table_main, iron_exp_family$significant_table_sub, filepath = "../figures/claire/stackbar/stackbar_stats.xlsx")
+writeStackbarExtendedSigTable(iron_exp_family$significant_table_main, iron_exp_family$significant_table_sub, filepath = "../figures/Claire_final/stackbar/stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/claire/stackbar/stackbar_stats.xlsx")),
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
                                      "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
-            txn_lvl="Family", lvl = "main", taxons = iron_exp_family$main_names[!grepl("Others", x = iron_exp_family$main_names)], group = "gg_group", path)
+            txn_lvl="Phylum", lvl = "main", taxons = iron_exp_family$main_names[!grepl("Others", x = iron_exp_family$main_names)], group = "gg_group", path)
 
 # pvalues heatmap for the sub lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/claire/stackbar/stackbar_stats.xlsx")),
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
                                      "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
-            txn_lvl="Genus", lvl = "sub", taxons = iron_exp_family$sub_names[!grepl("Others", x = iron_exp_family$sub_names)], group = "gg_group", path)
-
+            txn_lvl="Family", lvl = "sub", taxons = iron_exp_family$sub_names, group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
+  theme(text = element_text(family = "Arial"),
+        axis.text.x = element_text(size = 11))
 
 
 
