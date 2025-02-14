@@ -852,13 +852,13 @@ taxGlomResAndStats(ps_samuel, taxrank = "Phylum", exp_group = "gg_group", twoFac
 
 #for Claire's data, put gg_group as factor and define order
 sample_data(ps_claire)$gg_group <- factor(sample_data(ps_claire)$gg_group, levels = c("3:50", "8:50", "10:50", "14:50", "3:500", "8:500", "10:500", "14:500"))  
+sample_data(ps_claire)$diet <- factor(sample_data(ps_claire)$diet, levels = c("50","500"))
+
 
 # Agglomerates asvs at phylum level and returns stats and results relative_abundance (Claire)
-taxGlomResAndStats(ps_claire, taxrank = "Phylum", exp_group = "gg_group",
-                   selected_comparisons = list(c( "3:50",  "3:500"),
-                                               c( "8:50",  "8:500"),
-                                               c( "10:50",  "10:500"),
-                                               c( "14:50",  "14:500")),
-                   path = "~/Documents/CHUM_git/figures/claire/phyla_rel_ab", include_graph = FALSE)
+taxGlomResAndStatsTimePoints(ps_claire, taxrank = "Phylum", exp_group = "diet", timeVar = "week",
+                             cmp_group = "gg_group",
+                   selected_comparisons = list(c( "50",  "500")),
+                   path = "~/Documents/CHUM_git/figures/Claire_final/phyla_rel_ab", include_graph = FALSE)
 
 
