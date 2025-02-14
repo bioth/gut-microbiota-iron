@@ -837,13 +837,17 @@ p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "
 
 # Saving the phyla data with the stats
 sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
+sample_data(ps_samuel)$genotype <- factor(sample_data(ps_samuel)$genotype, levels = c("Wt", "IL-22ra1-/-"))  # Wt as reference
+sample_data(ps_samuel)$treatment  <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle", "Putrescine"))  # Vehicle as reference
+
 # Agglomerates asvs at phylum level and returns stats and results relative_abundance (Samuel)
-taxGlomResAndStats(ps_samuel, taxrank = "Phylum", exp_group = "gg_group",
+taxGlomResAndStats(ps_samuel, taxrank = "Phylum", exp_group = "gg_group", twoFactors = TRUE,
+                   fac1 = "genotype", fac2 = "treatment",
                    selected_comparisons = list(c("Wt:Vehicle", "Wt:Putrescine"), 
                                                c("IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"),
                                                c("Wt:Vehicle","IL-22ra1-/-:Vehicle"),
                                                c("Wt:Putrescine","IL-22ra1-/-:Putrescine")),
-                   path = "~/Documents/CHUM_git/figures/samuel/phyla_rel_ab", include_graph = FALSE)
+                   path = "~/Documents/CHUM_git/figures/Samuel_final/phyla_relative_abundance/", include_graph = FALSE)
 
 
 #for Claire's data, put gg_group as factor and define order

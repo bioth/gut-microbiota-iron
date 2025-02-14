@@ -3,7 +3,7 @@
 # and the actual percentage of relative abundance for each species
 # You can add to that a visualization with pie charts, but it's optional
 
-taxGlomResAndStats <- function(ps, taxrank, exp_group, selected_comparisons, include_graph, path){
+taxGlomResAndStats <- function(ps, taxrank, exp_group, twoFactors = FALSE, fac1 = NULL, fac2 = NULL, selected_comparisons, include_graph, path){
   
   # Subset for taxon of interest
   ps_taxa <- tax_glom(ps, taxrank = taxrank)
@@ -32,10 +32,16 @@ taxGlomResAndStats <- function(ps, taxrank, exp_group, selected_comparisons, inc
   write_xlsx(relab_table, path = paste0(path, "/", clean_string(taxrank), "_relative_abundance.xlsx"))
   
   # Convert to deseq2 object
-  deseq <- phyloseq_to_deseq2(ps_taxa, formula(paste("~", exp_group)))
+  if(twoFactors){
+    deseq <- phyloseq_to_deseq2(ps_taxa, formula(paste("~", fac1, "+", fac2, "+", fac1, ":", fac2)))
+  }else{
+    deseq <- phyloseq_to_deseq2(ps_taxa, formula(paste("~", exp_group)))
+  }
   
   # Run deseq analysis
   deseq <- DESeq(deseq, test="Wald", fitType = "parametric")
+  
+  print(resultsNames(deseq))
   
   # Save results and add taxonomical information to them
   results <- as.data.frame(cbind(results(deseq),
@@ -51,27 +57,64 @@ taxGlomResAndStats <- function(ps, taxrank, exp_group, selected_comparisons, inc
   
   # Using correctly formatted contrasts based on results names
   results_list <- list()
-  results_list <- lapply(comparisons, function(cmp) {
-    contrast_vec <- c(exp_group, cmp[1], cmp[2])  # cmp[1] is the numerator, cmp[2] is the denominator
-    tryCatch({
-      
-      res <- results(deseq, contrast = contrast_vec)
-      
-      # Link features with their taxonomy information
-      res <- cbind(
-        res,
-        tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(res), drop = FALSE]
-      )
-      
-      # Convert to data frame and add to the list
-      res <- as.data.frame(res)
-      return(res)
-      
-    }, error = function(e) {
-      message("Failed to compute results for comparison: ", paste(cmp, collapse = " vs "), "\nError: ", e$message)
-      return(NULL)  
+  
+  if(twoFactors){
+    
+    #Partition results for specific pairwise comparaisons
+    res_subset1 <- results(deseq, contrast = list(resultsNames(deseq)[3])) #wt putrescine vs vehicle
+    res_subset1 <- cbind( # Link features with their taxonomy information
+      res_subset1,
+      tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(res_subset1), drop = FALSE]
+    )
+    res_subset1 <- as.data.frame(res_subset1) # Convert to data frame and add to the list
+    
+    res_subset2 <- results(deseq, contrast=list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
+    res_subset2 <- cbind( # Link features with their taxonomy information
+      res_subset2,
+      tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(res_subset2), drop = FALSE]
+    )
+    res_subset2 <- as.data.frame(res_subset2) # Convert to data frame and add to the list
+    
+    res_subset3 <- results(deseq, contrast=list(resultsNames(deseq)[2])) #vehicle wt vs il22 ko
+    res_subset3 <- cbind( # Link features with their taxonomy information
+      res_subset3,
+      tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(res_subset3), drop = FALSE]
+    )
+    res_subset3 <- as.data.frame(res_subset3) # Convert to data frame and add to the list
+    
+    res_subset4 <- results(deseq, contrast=list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
+    res_subset4 <- cbind( # Link features with their taxonomy information
+      res_subset4,
+      tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(res_subset4), drop = FALSE]
+    )
+    res_subset4 <- as.data.frame(res_subset4) # Convert to data frame and add to the list
+    
+    results_list <- append(results_list, list(res_subset1, res_subset2, res_subset3, res_subset4))
+  }
+  else{
+    results_list <- lapply(comparisons, function(cmp) {
+      contrast_vec <- c(exp_group, cmp[1], cmp[2])  # cmp[1] is the numerator, cmp[2] is the denominator
+      tryCatch({
+        
+        res <- results(deseq, contrast = contrast_vec)
+        
+        # Link features with their taxonomy information
+        res <- cbind(
+          res,
+          tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(res), drop = FALSE]
+        )
+        
+        # Convert to data frame and add to the list
+        res <- as.data.frame(res)
+        return(res)
+        
+      }, error = function(e) {
+        message("Failed to compute results for comparison: ", paste(cmp, collapse = " vs "), "\nError: ", e$message)
+        return(NULL)  
+      })
     })
-  })
+  }
+  
   
   # Names for each table of the list
   names(results_list) <- sapply(comparisons, function(cmp) paste(cmp, collapse = "_vs_"))

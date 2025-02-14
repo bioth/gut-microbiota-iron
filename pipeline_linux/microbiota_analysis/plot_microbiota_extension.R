@@ -1918,7 +1918,7 @@ plot_microbiota_timepoints <- function(ps_object = ps,
 
 
 # Function to write and save stackbarExtended sig_table
-writeStackbarExtendedSigTable <- function(main_table, sub_table, filepath){
+writeStackbarExtendedSigTable <- function(main_table, includeSubTable = FALSE, sub_table = NULL, filepath){
   
   # Initialize empty dataframe to append tables to
   table_to_write <- data.frame()
@@ -1940,21 +1940,24 @@ writeStackbarExtendedSigTable <- function(main_table, sub_table, filepath){
     
   }
   
-  # Iterate over the list of tables for sub table
-  for (i in seq_along(sub_table)){
+  if(includeSubTable){
     
-    # Extract the table
-    table <- sub_table[[i]]
-    
-    # Add a column with the name of the current table
-    table$comparaison <- names(sub_table)[i]
-    
-    # Add col indication if it is from main or sub table
-    table$level <- "sub"
-    
-    # Append to the final table
-    table_to_write <- rbind(table_to_write, table)
-    
+    # Iterate over the list of tables for sub table
+    for (i in seq_along(sub_table)){
+      
+      # Extract the table
+      table <- sub_table[[i]]
+      
+      # Add a column with the name of the current table
+      table$comparaison <- names(sub_table)[i]
+      
+      # Add col indication if it is from main or sub table
+      table$level <- "sub"
+      
+      # Append to the final table
+      table_to_write <- rbind(table_to_write, table)
+      
+    }
   }
   
   write_xlsx(x = table_to_write, path = filepath)
