@@ -267,7 +267,10 @@ alphaDiversityGgGroup2 <- function(ps, path, gg_group, statPairs = NA, customCol
 }
 
 #requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
-alphaDiversityTimeSeries2<- function(ps, path, time, group){
+alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE){
+  
+  # Empty list for graphs and data
+  graphs <- list()
   
   #Save name of path where graphs will be saved
   dir_path <- paste(path,"alpha_diversity", sep = "")
@@ -277,7 +280,7 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group){
   
   #Save alpha diversity measures variable to iterate through it
   # measures <- c("Shannon", "Simpson","InvSimpson","Chao1","Observed")
-  measures <- c("Chao1")
+  measures <- c("Chao1", "Shannon", "InvSimpson")
   
   #Estinate richness measures for dataset
   richness_data <- estimate_richness(ps, measures = c("Shannon", "Simpson","InvSimpson","Chao1","Observed"))
@@ -285,8 +288,14 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group){
   #Add sample metadata to richness dataframe
   richness_data <- cbind(as.data.frame(sample_data(ps)), richness_data)
   
+  # Write data as excel file
+  if(writeData){
+    write_xlsx(richness_data, path = paste0(dir_path, "/alpha_diversity_data.xlsx"))
+  }
+  
   #Save richness data as csv
   # write.csv(richness_data, paste(dir_path,"/richness_data.csv", sep = ""), col.names = TRUE, row.names = FALSE)
+  richness_data$gg_group
   
   # Loop through alpha diversity measures
   for(measure in measures){
@@ -309,17 +318,16 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group){
                            pattern_fill = "black", pattern_color = "black") +
       
 
-      # Error bars
-      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-                   color = "black",
-                   width = 0.2, size = 0.7,
-                   position = position_dodge(width = 0.8))+
+      # # Error bars
+      # stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+      #              color = "black",
+      #              width = 0.2, size = 0.7,
+      #              position = position_dodge(width = 0.8))+
       labs(title = measure, y = measure, fill = "Group", pattern = NA)
 
     
-    
-    
-    return(p)
+    # Append graph to graph list
+    graphs <- append(graphs, list(p))
     
       # geom_boxplot()+
 
@@ -379,4 +387,6 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group){
   #     }
   #     
   #   }}
+  
+  return(graphs)
 }

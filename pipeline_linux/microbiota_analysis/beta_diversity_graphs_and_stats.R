@@ -433,3 +433,132 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
     write.xlsx(test.adonis, paste(path, distMethod,"_all_groups.xlsx", sep = ""))
   }
 }
+
+#Beta diversity analysis for different timepoints, and for design with multiple groups. 
+#You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", customColors, font, path){
+  
+  #Transform abundance into relative abundances or log_transformed values
+  if(transform == "rel_ab"){
+    ps <- transformCounts(ps, transformation = "rel_ab")
+  } else if(transform == "log"){
+    ps <- transformCounts(ps, transformation = "log", log_base = 10)
+  }
+  
+  #calculating distance matrix
+  dist <- phyloseq::distance(ps, method = distMethod)
+  
+  for(timepoint in levels(sample_data(ps)[[timeVariable]])){
+    
+    #calculating distance matrix
+    dist_subset <- as.dist(as.matrix(dist)[sample_data(ps)[[sample_id]][sample_data(ps)[[timeVariable]] %in% timepoint],sample_data(ps)[[sample_id]][sample_data(ps)[[timeVariable]] %in% timepoint]])
+    
+    #Creates subset for each different timepoint
+    ps_subset <- prune_samples(sample_data(ps)[[timeVariable]] == timepoint, ps)
+    
+    #Define dir path where graphs and stats are gonna be saved
+    dir <- paste(path,"week_",as.character(timepoint), sep = "")
+    
+    #Checking if dir already exists, otherwise creates it
+    existingDirCheck(path = dir)
+    
+    #Save distance method variable as string for titles
+    if(distMethod == "bray"){
+      distCharacter = "Bray-Curtis"
+    }
+    else if(distMethod == "wunifrac"){
+      distCharacter = "Weighted Unifrac"
+    }
+    else if(distMethod == "unifrac"){
+      distCharacter = "Unweighted Unifrac"
+    }
+    
+    #Perform PCoA
+    pcoa_results <- ordinate(ps_subset, method = "PCoA", distance = dist_subset)
+    
+    #Ordination plot
+    p <- plot_ordination(ps_subset, pcoa_results, type = "samples", 
+                         color = varToCompare) + 
+      theme_classic() +
+      theme(strip.background = element_blank())+
+      stat_ellipse(aes(group = !!sym(varToCompare)),      # Add ellipses grouping points by genotype
+                   type = "t",  # t-distribution for better fit
+                   level = 0.95,  # Confidence level for the ellipse                     
+                   geom = "polygon", alpha = 0)+
+      labs(title = paste("PCoA of", distCharacter, "distance matrix at", timepoint, "weeks.", sep = " ")) +
+      scale_color_manual(values = customColors)+
+      labs(color = "Diet")+
+      theme(aspect.ratio = 1) + # Scale the x and y axis the same +
+      theme(
+        plot.title = element_text(size = 16, face = "bold", family = font),  # Adjust title font size and style
+        axis.title.x = element_text(size = 14, face = "bold", family = font), # Adjust x-axis label font size and style   
+        axis.title.y = element_text(size = 14, face = "bold", family = font), # Adjust y-axis label font size and style
+        axis.text.x = element_text(size = 14, face = "bold", family = font),  # Adjust x-axis tick label font size
+        axis.text.y = element_text(size = 14, face = "bold", family = font),  # Adjust y-axis tick label font size
+        legend.title = element_text(size = 14, face = "bold", family = font),  # Remove legend title
+        legend.text = element_text(size = 14, family = font),  # Adjust legend font size
+        panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+        panel.grid.minor = element_blank(),  # Remove minor grid lines
+        axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+    
+    
+    # test.adonis <- adonis(as.formula(paste("dist_subset ~", fac1, "*", fac2)), data = data.frame(sample_data(ps_subset)))
+    # test.adonis <- as.data.frame(test.adonis$aov.tab)
+    # print(test.adonis)
+    
+
+    if(length(levels(sample_data(ps)[[varToCompare]])) > 2){
+      
+      pairwise_results <- pairwise.adonis2(as.formula(paste("dist_subset ~", varToCompare)), 
+                                           data = data.frame(sample_data(ps_subset)), 
+                                           permutations = 999, 
+                                           p.adjust.m = "BH")  # Adjust p-values for multiple testing
+      
+      # Initialize a data frame to store the results
+      stats_res <- data.frame(comparison = character(), pvalue = numeric(), stringsAsFactors = FALSE)
+      
+      # Loop through pairwise results and extract p-values and comparison names
+      for(i in 2:length(pairwise_results)){
+        
+        # Extract the comparison name
+        comparison_name <- names(pairwise_results)[[i]]
+        
+        # Extract p-value for the current comparison
+        p_value <- pairwise_results[[i]]$`Pr(>F)`[1]  # Assuming the p-value is in the first row of the result
+        
+        # Add the result to the data frame
+        stats_res <- rbind(stats_res, data.frame(comparison = comparison_name, pvalue = p_value))
+      }
+    }else{
+      
+      test.adonis <- adonis(as.formula(paste("dist_subset ~", varToCompare)), data = data.frame(sample_data(ps_subset)))
+      stats_res <- as.data.frame(test.adonis$aov.tab)
+      print(stats_res)
+      
+    }
+    
+    #Save stats as an excel file
+    write.xlsx(stats_res, paste(dir,"/",distMethod,"_","week_",timepoint,".xlsx", sep = ""))
+
+    
+    #Save figure
+    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = 6, width = 6, bg = 'white')
+    
+    
+    # cbn <- combn(x=unique(metadata$body.site), m = 2)
+    # p <- c()
+    # 
+    # for(i in 1:ncol(cbn)){
+    #   ps.subs <- subset_samples(ps.rarefied, body.site %in% cbn[,i])
+    #   metadata_sub <- data.frame(sample_data(ps.subs))
+    #   permanova_pairwise <- adonis(phyloseq::distance(ps.subs, method = "bray") ~ body.site, 
+    #                                data = metadata_sub)
+    #   p <- c(p, permanova_pairwise$aov.tab$`Pr(>F)`[1])
+    # }
+    # 
+    # p.adj <- p.adjust(p, method = "BH")
+    # p.table <- cbind.data.frame(t(cbn), p=p, p.adj=p.adj)
+    # p.table
+    
+  }
+}
