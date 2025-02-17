@@ -436,7 +436,7 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", customColors, font, path){
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, font, path){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -501,12 +501,16 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
         panel.grid.minor = element_blank(),  # Remove minor grid lines
         axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
     
+    if(displaySampleIDs){
+      p <- p + geom_text(aes(label = sample_data(ps_subset)[[sample_id]]), # Add sample names next to the points
+                  size = 1, vjust = -1, hjust = 1.2, color = "black")  # Adjust text size and position
+    }
+    
     
     # test.adonis <- adonis(as.formula(paste("dist_subset ~", fac1, "*", fac2)), data = data.frame(sample_data(ps_subset)))
     # test.adonis <- as.data.frame(test.adonis$aov.tab)
     # print(test.adonis)
     
-
     if(length(levels(sample_data(ps)[[varToCompare]])) > 2){
       
       pairwise_results <- pairwise.adonis2(as.formula(paste("dist_subset ~", varToCompare)), 
@@ -530,9 +534,8 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
         stats_res <- rbind(stats_res, data.frame(comparison = comparison_name, pvalue = p_value))
       }
     }else{
-      
-      test.adonis <- adonis(as.formula(paste("dist_subset ~", varToCompare)), data = data.frame(sample_data(ps_subset)))
-      stats_res <- as.data.frame(test.adonis$aov.tab)
+      test.adonis <- adonis2(as.formula(paste("dist_subset ~", varToCompare)), data = data.frame(sample_data(ps_subset)))
+      stats_res <- as.data.frame(test.adonis)
       print(stats_res)
       
     }
@@ -561,4 +564,232 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     # p.table
     
   }
+}
+
+
+#Beta diversity analysis for different timepoints, and for design with multiple groups. 
+#You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
+betaDiversityTimepoint2FactorsRDA <- function(ps, sample_id, timeVariable, varToCompare, formula, transform = "rel_ab", customColors, font, path){
+  
+  #Transform abundance into relative abundances or log_transformed values
+  if(transform == "rel_ab"){
+    ps <- transformCounts(ps, transformation = "rel_ab")
+  } else if(transform == "log"){
+    ps <- transformCounts(ps, transformation = "log", log_base = 10)
+  }
+  
+  for(timepoint in levels(sample_data(ps)[[timeVariable]])){
+    
+    # Creates subset for each different timepoint
+    ps_subset <- prune_samples(sample_data(ps)[[timeVariable]] == timepoint, ps)
+    
+    # Define dir path where graphs and stats are gonna be saved
+    dir <- paste(path,"week_",as.character(timepoint), sep = "")
+    existingDirCheck(path = dir)
+    
+    # Hellinger transform
+    otu_table <- t(decostand(otu_table(ps_subset), method = "hellinger"))
+
+    
+    # Extract metadata
+    metadata <- data.frame(sample_data(ps_subset))
+    model_formula <- as.formula(paste0("otu_table ~", formula)) 
+    
+    # # Run RDA using varToCompare and RdaVar as explanatory variables
+    # formula_rda <- as.formula(paste("otu_table ~", varToCompare, "+", RdaVar))
+    
+    rda_result <- rda(model_formula, data = metadata)
+    # View RDA results
+    summary(rda_result)
+    
+    # Perform ANOVA-like permutation test on RDA axes
+    anova_rda <- anova.cca(rda_result, by = "term", permutations = 999, parallel = 20)
+    print(anova_rda)
+    anova_rda <- anova.cca(rda_result, by = "axis", permutations = 999, parallel = 20)
+    print(anova_rda)
+    
+    # Extract RDA scores for plotting
+    rda_scores <- as.data.frame(scores(rda_result, display = "sites"))
+    rda_scores[[varToCompare]] <- metadata[[varToCompare]]
+    
+    # Plot RDA ordination
+    p <- ggplot(rda_scores, aes(x = RDA1, y = RDA2, color = !!sym(varToCompare))) +
+      geom_point(size = 3) +
+      theme_classic() +
+      stat_ellipse(aes(group = !!sym(varToCompare)), type = "t", level = 0.95, geom = "polygon", alpha = 0) +
+      labs(title = paste("RDA at", timepoint, "weeks")) +
+      scale_color_manual(values = customColors) +
+      labs(color = "Group") +
+      theme(
+        plot.title = element_text(size = 16, face = "bold", family = font),
+        axis.title.x = element_text(size = 14, face = "bold", family = font),
+        axis.title.y = element_text(size = 14, face = "bold", family = font),
+        axis.text.x = element_text(size = 14, face = "bold", family = font),
+        axis.text.y = element_text(size = 14, face = "bold", family = font),
+        legend.title = element_text(size = 14, face = "bold", family = font),
+        legend.text = element_text(size = 14, family = font),
+        panel.grid.major = element_line(color = "gray90", size = 0.5),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", size = 1)
+      )
+    
+    # Save statistical results
+    write.xlsx(as.data.frame(anova_rda), paste0(dir, "/RDA_week_", timepoint, ".xlsx"))
+    
+    # Save plot
+    ggsave(plot = p, filename = paste0(dir, "/RDA_week_", timepoint, ".png"), dpi = 600, height = 6, width = 6, bg = 'white')
+    
+  }
+}
+
+#Beta diversity analysis for different timepoints, and for design with multiple groups. 
+#You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
+betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formula, transform = "rel_ab", customColors, font, path){
+  
+  #Transform abundance into relative abundances or log_transformed values
+  if(transform == "rel_ab"){
+    ps <- transformCounts(ps, transformation = "rel_ab")
+  } else if(transform == "log"){
+    ps <- transformCounts(ps, transformation = "log", log_base = 10)
+  }
+  
+  existingDirCheck(path)
+  
+  # Hellinger transform
+  otu_table <- t(decostand(otu_table(ps), method = "hellinger"))
+  
+  # Extract metadata
+  metadata <- data.frame(sample_data(ps))
+  model_formula <- as.formula(paste0("otu_table ~", formula)) 
+  
+  # # Run RDA using varToCompare and RdaVar as explanatory variables
+  # formula_rda <- as.formula(paste("otu_table ~", varToCompare, "+", RdaVar))
+  
+  rda_result <- rda(model_formula, data = metadata)
+  # View RDA results
+  summary(rda_result)
+  
+  # Perform ANOVA-like permutation test on RDA axes
+  anova_rda <- anova.cca(rda_result, by = "term", permutations = 999, parallel = 20)
+  print(anova_rda)
+  anova_rda <- anova.cca(rda_result, by = "axis", permutations = 999, parallel = 20)
+  print(anova_rda)
+  
+  # Extract RDA scores for plotting
+  rda_scores <- as.data.frame(scores(rda_result, display = "sites"))
+  rda_scores[[varToCompare]] <- metadata[[varToCompare]]
+  
+  # Plot RDA ordination
+  p <- ggplot(rda_scores, aes(x = RDA1, y = RDA2, color = !!sym(varToCompare))) +
+    geom_point(size = 3) +
+    theme_classic() +
+    stat_ellipse(aes(group = !!sym(varToCompare)), type = "t", level = 0.95, geom = "polygon", alpha = 0) +
+    labs(title = paste("RDA")) +
+    scale_color_manual(values = customColors) +
+    labs(color = "Group") +
+    theme(
+      plot.title = element_text(size = 16, face = "bold", family = font),
+      axis.title.x = element_text(size = 14, face = "bold", family = font),
+      axis.title.y = element_text(size = 14, face = "bold", family = font),
+      axis.text.x = element_text(size = 14, face = "bold", family = font),
+      axis.text.y = element_text(size = 14, face = "bold", family = font),
+      legend.title = element_text(size = 14, face = "bold", family = font),
+      legend.text = element_text(size = 14, family = font),
+      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "black", size = 1)
+    )
+  
+  # Save statistical results
+  write.xlsx(as.data.frame(anova_rda), paste0(path, "/RDA.xlsx"))
+  
+  # Save plot
+  ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = 6, width = 6, bg = 'white')
+    
+}
+
+
+
+#You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
+betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, formula, transform = "rel_ab", customColors, font, path){
+  
+  #Transform abundance into relative abundances or log_transformed values
+  if(transform == "rel_ab"){
+    ps <- transformCounts(ps, transformation = "rel_ab")
+  } else if(transform == "log"){
+    ps <- transformCounts(ps, transformation = "log", log_base = 10)
+  }
+  
+  existingDirCheck(path)
+  
+  weighted_unifrac <- phyloseq::distance(ps, method = "wunifrac")
+  
+  # Hellinger transform
+  # otu_table <- t(decostand(otu_table(ps), method = "hellinger"))
+  
+  # Extract metadata
+  metadata <- data.frame(sample_data(ps))
+  # model_formula <- as.formula(paste0("otu_table ~", formula)) 
+  
+  # # Run RDA using varToCompare and RdaVar as explanatory variables
+  # formula_rda <- as.formula(paste("otu_table ~", varToCompare, "+", RdaVar))
+  
+  
+  #    Option A: Use Euclidean distance on the Hellinger-transformed data
+  # cap_result <- capscale(model_formula, data = metadata, distance = "euclidean")
+  
+  
+  
+  #    Option B (alternative): Use Bray-Curtis distance
+  # cap_result <- capscale(vegdist(otu_table, method = "bray") ~ diet * timepoint, data = metadata) # capscale() expects rows = samples, columns = taxa
+  
+  cap_result <- capscale(as.formula(paste0("weighted_unifrac ~", formula)), data = metadata)
+  
+  
+  # rda_result <- rda(model_formula, data = metadata)
+  # View RDA results
+  summary(cap_result)
+  
+  # Perform ANOVA-like permutation test on RDA axes
+  anova_rda <- anova.cca(cap_result, by = "term", permutations = 999, parallel = 20)
+  print(anova_rda)
+  anova_rda <- anova.cca(cap_result, by = "axis", permutations = 999, parallel = 20)
+  print(anova_rda)
+  anova_rda <- anova.cca(cap_result, by = "margin", permutations = 999, parallel = 20)
+  print(anova_rda)
+  
+  
+  
+  # Extract RDA scores for plotting
+  rda_scores <- as.data.frame(scores(cap_result, display = "sites"))
+  colnames(rda_scores)[1:2] <- c("dbRDA1", "dbRDA2")
+  rda_scores[[varToCompare]] <- metadata[[varToCompare]]
+  
+  # Plot RDA ordination
+  p <- ggplot(rda_scores, aes(x = dbRDA1, y = dbRDA2, color = !!sym(varToCompare))) +
+    geom_point(size = 3) +
+    theme_classic() +
+    stat_ellipse(aes(group = !!sym(varToCompare)), type = "t", level = 0.95, geom = "polygon", alpha = 0) +
+    labs(title = paste("RDA")) +
+    scale_color_manual(values = customColors) +
+    labs(color = "Group") +
+    theme(
+      plot.title = element_text(size = 16, face = "bold", family = font),
+      axis.title.x = element_text(size = 14, face = "bold", family = font),
+      axis.title.y = element_text(size = 14, face = "bold", family = font),
+      axis.text.x = element_text(size = 14, face = "bold", family = font),
+      axis.text.y = element_text(size = 14, face = "bold", family = font),
+      legend.title = element_text(size = 14, face = "bold", family = font),
+      legend.text = element_text(size = 14, family = font),
+      panel.grid.major = element_line(color = "gray90", size = 0.5),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(color = "black", size = 1)
+    )
+  
+  # Save statistical results
+  write.xlsx(as.data.frame(anova_rda), paste0(path, "/RDA.xlsx"))
+  
+  # Save plot
+  ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = 6, width = 6, bg = 'white')
+  
 }

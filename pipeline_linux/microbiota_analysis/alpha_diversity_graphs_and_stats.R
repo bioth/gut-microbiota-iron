@@ -311,7 +311,7 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE){
     #   scale_pattern_manual(values = c("stripe", "circle")) +  # Choose patterns ("none", "crosshatch")
     #   theme_minimal()
     
-    p = ggplot(richness_data, aes(x = .data[[time]], y = .data[[measure]], fill = .data[[group]], pattern = .data[["treatment"]])) +
+    p = ggplot(richness_data, aes(x = .data[[time]], y = .data[[measure]], fill = .data[[group]])) + # , pattern = .data[["treatment"]]
       geom_boxplot_pattern(position = position_dodge(width = 0.8), width = 0.6,
                            color = "black",
                            pattern_density = 0.1, pattern_spacing = 0.02,
@@ -323,7 +323,7 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE){
       #              color = "black",
       #              width = 0.2, size = 0.7,
       #              position = position_dodge(width = 0.8))+
-      labs(title = measure, y = measure, fill = "Group", pattern = NA)
+      labs(title = measure, y = measure, fill = "Group") # , pattern = NA
 
     
     # Append graph to graph list

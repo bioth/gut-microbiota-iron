@@ -173,13 +173,18 @@ sum(taxa_sums(ps)) #total number of reads
 length(taxa_sums(ps)) #total number of ASVs
 nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,7])) #how many species detected
 
+# # Removal of some samples at t0, !!!!!
+# {
+#   ps <- 
+# }
+
 # Function filtering out ASVs for which they were in total less than a threshold count
 ps_flt <- prune_taxa(taxa_sums(ps) > 10, ps)
 sum(taxa_sums(ps_flt))
 length(taxa_sums(ps_flt))
 
 # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-ps_flt <- prune_taxa(colSums(otu_table(ps_flt) > 0) >= (0.05 * nsamples(ps_flt)), ps_flt)
+ps_flt <- prune_taxa(colSums(otu_table(ps_flt) > 0) >= (0.10 * nsamples(ps_flt)), ps_flt)
 sum(taxa_sums(ps_flt))
 length(taxa_sums(ps_flt))
 
@@ -195,10 +200,96 @@ sample_data(ps_flt)$timepoint <- factor(sample_data(ps_flt)$timepoint, levels = 
 sample_data(ps_flt)$treatment <- factor(sample_data(ps_flt)$treatment, levels = c("water","dss")) # Put treatment as factor
 sample_data(ps_flt)$diet <- factor(sample_data(ps_flt)$diet, levels = c("50","500")) # Put diet as factor
 
+# Create four ps objects, one for diets (first 3 timepoints), one for dss (last 2 timepoints)
+ps_diet <- prune_samples(sample_data(ps)$timepoint %in% c("0", "35", "49"), ps)
+ps_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps)
+ps_flt_diet <- prune_samples(sample_data(ps)$timepoint %in% c("0", "35", "49"), ps_flt)
+ps_flt_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps_flt)
 
-# Alpha diveristy
-existingDirCheck("../figures/thibault")
-graphs = alphaDiversityTimeSeries2(ps, "../figures/thibault/", time = "timepoint", group = "gg_group2", writeData = TRUE)
+# Alpha diveristy for diet only
+existingDirCheck("../figures/thibault/diet/")
+graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault/diet/", time = "timepoint", group = "diet", writeData = TRUE)
+
+# Chao1
+graphs[[1]]+
+  scale_fill_manual(values = c("blue","red"),
+                    labels = c("50 ppm","500 ppm"))+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    # legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+# Shannon
+graphs[[2]]+
+  scale_fill_manual(values = c("blue","red"),
+                    labels = c("50 ppm","500 ppm"))+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    # legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+# InvSimpson
+graphs[[3]]+
+  scale_fill_manual(values = c("blue","red"),
+                    labels = c("50 ppm","500 ppm"))+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    # legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+
+# Stats
+alpha_d <- read.xlsx("../figures/thibault/diet/alpha_diversity/alpha_diversity_data.xlsx")
+alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
+alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("0", "35", "49"))
+measures <- c("Chao1", "Shannon", "InvSimpson")
+
+sink("../figures/thibault/diet/alpha_diversity/alpha_diversity_stats.txt")
+for(measure in measures){
+  
+  print(paste("Tests for measure", measure))
+  for(timepoint in levels(alpha_d$timepoint)){
+    # hist(alpha_d[alpha_d$timepoint == "final","Chao1"], breaks = 20, main = "Histogram of Diversity Index")
+    print(paste("At", timepoint))
+    print(shapiro.test(alpha_d[alpha_d$timepoint == timepoint,measure])) # Nornality test
+    print(bartlett.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
+    # anova_model <- aov(as.formula(paste(measure, "~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])
+    print(t.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,]))
+    # print(summary(anova_model))
+    # print(TukeyHSD(anova_model))
+    
+  }
+  
+}
+sink()
+
+
+
+# Alpha diveristy for dss_diet only
+existingDirCheck("../figures/thibault/diet_dss/")
+graphs = alphaDiversityTimeSeries2(ps_dss, "../figures/thibault/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
+
 
 # Chao1
 graphs[[1]]+
@@ -255,13 +346,13 @@ graphs[[3]]+
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
 
 # Stats
-alpha_d <- read.xlsx("../figures/thibault/alpha_diversity/alpha_diversity_data.xlsx")
+alpha_d <- read.xlsx("../figures/thibault/diet_dss/alpha_diversity/alpha_diversity_data.xlsx")
 alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
 alpha_d$treatment <- factor(alpha_d$treatment, levels = c("water", "dss"))
-alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("0", "35", "49", "54", "final"))
+alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("54", "final"))
 measures <- c("Chao1", "Shannon", "InvSimpson")
 
-sink("../figures/thibault/alpha_diversity/alpha_diversity_stats.txt")
+sink("../figures/thibault/diet_dss/alpha_diversity/alpha_diversity_stats.txt")
 for(measure in measures){
   
   print(paste("Tests for measure", measure))
@@ -282,65 +373,117 @@ sink()
 
 # Beta diversity (for only diets timepoints)
 # Bray curtis
-betaDiversityTimepoint2Factors(ps, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_diet, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="bray",
-                               transform = "rel_ab", customColors = c("blue","red"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/diet_only/")
+                               transform = "rel_ab", customColors = c("blue","red"), displaySampleIDs = TRUE,
+                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/")
 # Bray curtis filtered
-betaDiversityTimepoint2Factors(ps_flt, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="bray",
                                transform = "rel_ab", customColors = c("blue","red"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/filtered/")
 
 # Weighted Unifrac
-betaDiversityTimepoint2Factors(ps, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_diet, sample_id = "full_id", timeVariable = "timepoint",
+                               varToCompare =  "diet", distMethod ="wunifrac", displaySampleIDs = TRUE,
+                               customColors = c("blue","red"),
+                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/")
+
+# Weighted Unifrac filtered
+betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="wunifrac",
                                customColors = c("blue","red"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/diet_only/")
+                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/filtered/")
 
 # Beta diversity (for diet + treatment)
 # Bray curtis
-betaDiversityTimepoint2Factors(ps, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "gg_group2", distMethod ="bray",
                                customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/dss/")
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/")
+
+# Bray curtis filtered
+betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "full_id", timeVariable = "timepoint",
+                               varToCompare =  "gg_group2", distMethod ="bray",
+                               customColors = c("blue","blue4","red","red4"),
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/filtered/")
 
 # Weighted Unifrac
-betaDiversityTimepoint2Factors(ps, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "gg_group2", distMethod ="wunifrac",
                                customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/dss/")
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/")
 
 
-ps_dss <- prune_samples(sample_data(ps)$treatment == "dss", ps)
+# Only DSS groups
+ps_dss_only <- prune_samples(sample_data(ps_dss)$treatment == "dss", ps_dss)
+
 
 # Beta diversity (for diet + treatment), but only dss ones
 # Bray curtis
-betaDiversityTimepoint2Factors(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_dss_only, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "gg_group2", distMethod ="bray",
-                               customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/dss_only/")
+                               customColors = c("blue4","red4"),
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/dss_only/")
 
 # Weighted Unifrac
-betaDiversityTimepoint2Factors(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
+betaDiversityTimepoint2Factors(ps_dss_only, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "gg_group2", distMethod ="wunifrac",
-                               customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/dss_only/")
+                               customColors = c("blue4","red4"),
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/dss_only/")
+
+
+
+
+# RDA method (constrained analysis), for both diet and treatment explanotory variables
+betaDiversityTimepoint2FactorsRDA(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
+                                  varToCompare = "gg_group2", formula = "diet * treatment",
+                                  transform = "rel_ab", customColors = c("blue","blue4","red","red4"),
+                                  font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/RDA/")
+
+
+ps_dss_only_flt <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
+sample_data(ps_dss_only)$gg_group <- factor(sample_data(ps_dss_only)$gg_group, levels = c("54:50:dss", "54:500:dss", "final:50:dss", "final:500:dss"))
+sample_data(ps_dss_only)$timepoint
+
+sample_data(ps_dss_only_flt)$gg_group <- factor(sample_data(ps_dss_only_flt)$gg_group, levels = c("54:50:dss", "54:500:dss", "final:50:dss", "final:500:dss"))
+sample_data(ps_dss_only_flt)$timepoint
+
+# RDA method (constrained analysis), for both only treatment explanotory variables
+betaDiversityTimepointsGroupedRDA(ps_dss_only, sample_id = "full_id", varToCompare = "gg_group", formula = "diet*timepoint",
+                                  transform = "rel_ab", customColors = c("blue", "red", "blue4","red4"),
+                                  font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/RDA/")
+
+# dbRDA method at last 2 timepoints and for DSS groups
+betaDiversityTimepointsGroupedDbRDA(ps_dss_only_flt, sample_id = "full_id", varToCompare = "gg_group", formula = "diet*timepoint",
+                                  transform = "none", customColors = c("blue", "red", "blue4","red4"),
+                                  font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/test/")
+
+
+
+# Only final timepoint
+ps_final_dss <- prune_samples(sample_data(ps_dss_only_flt)$timepoint == "final", ps_dss_only_flt)
+betaDiversityTimepointsGroupedRDA(ps_final_dss, sample_id = "full_id", varToCompare = "gg_group", formula = "diet",
+                                  transform = "rel_ab", customColors = c("blue", "red", "blue4","red4"),
+                                  font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/RDA_final/")
+
+
+
+
+# dbRDA method at last timepoint and for DSS groups
+ps_sub <- prune_samples(sample_data(ps_dss_only_flt)$timepoint == "final", ps_dss_only_flt)
+betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare = "gg_group", formula = "diet",
+                                    transform = "none", customColors = c("blue4","red4"),
+                                    font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/test2/")
 
 
 
 
 
-# Idk
-# Weighted Unifrac
-betaDiversityTimepoint2Factors(ps_flt, sample_id = "full_id", timeVariable = "timepoint",
-                               varToCompare =  "gg_group2", distMethod ="wunifrac",
-                               customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/beta_diversity/desperate/")
 
 
-
-
-
-
-
+# dbRDA weighted unifrac at last timepoint and for all groups
+ps_sub <- prune_samples(sample_data(ps_dss_flt)$timepoint == "final", ps_dss)
+betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare = "gg_group2", formula = "diet * treatment",
+                                    transform = "none", customColors = c("blue", "red","blue4","red4"),
+                                    font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/test3/")
