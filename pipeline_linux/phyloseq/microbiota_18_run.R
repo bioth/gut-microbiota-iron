@@ -46,6 +46,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
 
 #for microbiota 18
 #set working directory
@@ -169,6 +170,15 @@ names(dna) <- taxa_names(ps)
 # Add tree to phyloseq object
 ps <- merge_phyloseq(ps, phy_tree(tree))
 
+{
+  # Check if there are ASVs that are NAs at the phylum level
+  length(tax_table(ps)[is.na(tax_table(ps)[,"Phylum"])])
+  
+  # Remove them as they probably correspond to chimeric sequences
+  ps <- prune_taxa(!is.na(tax_table(ps)[, "Phylum"]), ps)
+  
+}
+
 sum(taxa_sums(ps)) #total number of reads
 length(taxa_sums(ps)) #total number of ASVs
 nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,7])) #how many species detected
@@ -184,7 +194,7 @@ sum(taxa_sums(ps_flt))
 length(taxa_sums(ps_flt))
 
 # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-ps_flt <- prune_taxa(colSums(otu_table(ps_flt) > 0) >= (0.10 * nsamples(ps_flt)), ps_flt)
+ps_flt <- prune_taxa(colSums(otu_table(ps_flt) > 0) >= (0.05 * nsamples(ps_flt)), ps_flt)
 sum(taxa_sums(ps_flt))
 length(taxa_sums(ps_flt))
 
@@ -202,62 +212,117 @@ sample_data(ps_flt)$diet <- factor(sample_data(ps_flt)$diet, levels = c("50","50
 
 # Create four ps objects, one for diets (first 3 timepoints), one for dss (last 2 timepoints)
 ps_diet <- prune_samples(sample_data(ps)$timepoint %in% c("0", "35", "49"), ps)
+ps_dss_alpha <- prune_samples(sample_data(ps)$timepoint %in% c("49", "54", "final"), ps)
+ps_dss_relab_flt <- prune_samples(sample_data(ps_flt)$timepoint %in% c("49", "54", "final"), ps_flt)
 ps_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps)
 ps_flt_diet <- prune_samples(sample_data(ps)$timepoint %in% c("0", "35", "49"), ps_flt)
 ps_flt_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps_flt)
+
+{
+ps_foo <- ps
+rownames(otu_table(ps_foo))
+sample_data(ps_foo)[sample_data(ps_foo)$timepoint == 0,c("id","diet")]
+sample_data(ps_foo)$diet[sample_data(ps_foo)$timepoint == 0 & sample_data(ps_foo)$id %in% c("33111","33112","33114")] <- c("500","500","500")
+sample_data(ps_foo)$diet[sample_data(ps_foo)$timepoint == 0 & sample_data(ps_foo)$id %in% c("33111","33112","33114")] 
+sample_data(ps_foo)$diet[sample_data(ps_foo)$timepoint == 0 & sample_data(ps_foo)$id %in% c("33105","10946","10966")] <- c("50","50","50")
+sample_data(ps_foo)$diet[sample_data(ps_foo)$timepoint == 0 & sample_data(ps_foo)$id %in% c("33105","10946","10966")] 
+ps_foo <- prune_samples(sample_data(ps_foo)$timepoint == "0", ps_foo)
+}
 
 # Alpha diveristy for diet only
 existingDirCheck("../figures/thibault/diet/")
 graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault/diet/", time = "timepoint", group = "diet", writeData = TRUE)
 
+# Stats
+alpha_d <- read.xlsx("../figures/thibault/diet/alpha_diversity/alpha_diversity_data.xlsx")
+alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
+alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("0", "35", "49"))
+
 # Chao1
 graphs[[1]]+
   scale_fill_manual(values = c("blue","red"),
                     labels = c("50 ppm","500 ppm"))+
+  scale_x_discrete(labels = c("3 weeks\n(Weaning)","5 weeks", "7 weeks"))+
+  labs(y = "Chao1 Index")+
   theme_minimal()+
   theme(
     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
     axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+    axis.title.y = element_text(size = 14, face = "bold"),
     # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
     # legend.text = element_text(size = 12),  # Adjust legend font size
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+print(shapiro.test(alpha_d[alpha_d$timepoint == "0","Chao1"])) # Nornality test
+print(leveneTest(Chao1~diet, data = alpha_d[alpha_d$timepoint == "0",]))
+wilcox.test(alpha_d$Chao1[alpha_d$timepoint == "0" & alpha_d$diet == "50"], alpha_d$Chao1[alpha_d$timepoint == "0" & alpha_d$diet == "500"])
+print(bartlett.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
+# anova_model <- aov(as.formula(paste(measure, "~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])
+print(t.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,]))
 
 # Shannon
 graphs[[2]]+
   scale_fill_manual(values = c("blue","red"),
                     labels = c("50 ppm","500 ppm"))+
+  scale_x_discrete(labels = c("3 weeks\n(Weaning)","5 weeks", "7 weeks"))+
+  labs(y = "Shannon Index")+
   theme_minimal()+
   theme(
     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
     axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+    axis.title.y = element_text(size = 14, face = "bold"),
     # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
     # legend.text = element_text(size = 12),  # Adjust legend font size
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+print(shapiro.test(alpha_d[alpha_d$timepoint == "49","Shannon"])) # Nornality test
+print(leveneTest(Shannon~diet, data = alpha_d[alpha_d$timepoint == "49",]))
+wilcox.test(alpha_d$Shannon[alpha_d$timepoint == "49" & alpha_d$diet == "50"], alpha_d$Shannon[alpha_d$timepoint == "49" & alpha_d$diet == "500"])
+print(bartlett.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
+# anova_model <- aov(as.formula(paste(measure, "~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])
+print(t.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,]))
 
 # InvSimpson
 graphs[[3]]+
   scale_fill_manual(values = c("blue","red"),
                     labels = c("50 ppm","500 ppm"))+
+  scale_x_discrete(labels = c("3 weeks\n(Weaning)","5 weeks", "7 weeks"))+
+  labs(y = "Inverse Simpson")+
   theme_minimal()+
   theme(
     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
     axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+    axis.title.y = element_text(size = 14, face = "bold"),
     # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
     # legend.text = element_text(size = 12),  # Adjust legend font size
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
 
+print(shapiro.test(alpha_d[alpha_d$timepoint == "0","InvSimpson"])) # Nornality test
+print(leveneTest(InvSimpson~diet, data = alpha_d[alpha_d$timepoint == "0",]))
+wilcox.test(alpha_d$InvSimpson[alpha_d$timepoint == "0" & alpha_d$diet == "50"], alpha_d$InvSimpson[alpha_d$timepoint == "0" & alpha_d$diet == "500"])
+# print(bartlett.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
+# anova_model <- aov(as.formula(paste(measure, "~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,])
+# print(t.test(as.formula(paste(measure,"~ diet")), data = alpha_d[alpha_d$timepoint == timepoint,]))
+
+print(shapiro.test(alpha_d[alpha_d$timepoint == "35","InvSimpson"])) # Nornality test
+print(leveneTest(InvSimpson~diet, data = alpha_d[alpha_d$timepoint == "35",]))
+wilcox.test(alpha_d$InvSimpson[alpha_d$timepoint == "35" & alpha_d$diet == "50"], alpha_d$InvSimpson[alpha_d$timepoint == "35" & alpha_d$diet == "500"])
+
+print(shapiro.test(alpha_d[alpha_d$timepoint == "49","InvSimpson"])) # Nornality test
+print(leveneTest(InvSimpson~diet, data = alpha_d[alpha_d$timepoint == "49",]))
+wilcox.test(alpha_d$InvSimpson[alpha_d$timepoint == "49" & alpha_d$diet == "50"], alpha_d$InvSimpson[alpha_d$timepoint == "49" & alpha_d$diet == "500"])
 
 # Stats
 alpha_d <- read.xlsx("../figures/thibault/diet/alpha_diversity/alpha_diversity_data.xlsx")
@@ -288,68 +353,138 @@ sink()
 
 # Alpha diveristy for dss_diet only
 existingDirCheck("../figures/thibault/diet_dss/")
-graphs = alphaDiversityTimeSeries2(ps_dss, "../figures/thibault/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
+graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/thibault/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
 
 
 # Chao1
 graphs[[1]]+
-  scale_fill_manual(values = c("blue","blue4","red","red4"),
+  scale_fill_manual(values = c("blue","blueviolet","red","darkorange"),
                     labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
   scale_pattern_manual(values = c("circle","stripe"))+
+  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "Final timepoint\n(8 weeks recovery)"))+
+  labs(y = "Chao1 Index")+
   guides(pattern = "none")+
   theme_minimal()+
   theme(
     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
     axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+    axis.title.y = element_text(size = 14, face = "bold"),
     # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
     # legend.text = element_text(size = 12),  # Adjust legend font size
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+nrmTest <- function(x,y,log=FALSE){
+  
+  if(log){
+    print(shapiro.test(log(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[1],y]))) 
+    print(shapiro.test(log(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[2],y]))) 
+    print(shapiro.test(log(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[3],y]))) 
+    print(shapiro.test(log(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[4],y]))) 
+  }else{
+    print(shapiro.test(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[1],y])) 
+    print(shapiro.test(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[2],y])) 
+    print(shapiro.test(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[3],y])) 
+    print(shapiro.test(alpha_d[alpha_d$timepoint == x & alpha_d$gg_group2 == levels(alpha_d$gg_group2)[4],y])) 
+  }
+}
+
+nrmTest(49, "Chao1")
+nrmTest(54, "Chao1")
+nrmTest("final", "Chao1")
 
 # Shannon
 graphs[[2]]+
-  scale_fill_manual(values = c("blue","blue4","red","red4"),
+  scale_fill_manual(values = c("blue","blueviolet","red","darkorange"),
                     labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
   scale_pattern_manual(values = c("circle","stripe"))+
+  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "Final timepoint\n(8 weeks recovery)"))+
+  labs(y = "Shannon Index")+
   guides(pattern = "none")+
   theme_minimal()+
   theme(
     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
     axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+    axis.title.y = element_text(size = 14, face = "bold"),
     # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
     # legend.text = element_text(size = 12),  # Adjust legend font size
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
 
+print(shapiro.test(alpha_d[alpha_d$timepoint == 49,"Shannon"])) # Nornality test
+nrmTest(49, "Shannon", log = TRUE)
+print(leveneTest(Shannon~diet*treatment, data = alpha_d[alpha_d$timepoint == "49",]))
+hist(alpha_d[alpha_d$timepoint == "49","Shannon"], breaks = 10, main = "Histogram of Diversity Index")
+model <- glm(Shannon ~ diet * treatment, family = Gamma(link = "log"), data = alpha_d[alpha_d$timepoint == 49,])
+summary(model)
+# print(bartlett.test(as.formula(paste(measure,"~ interaction(diet, treatment)")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
+# anova_model <- aov(as.formula(paste(measure, "~ diet * treatment")), data = alpha_d[alpha_d$timepoint == timepoint,])
+# print(summary(anova_model))
+# print(TukeyHSD(anova_model))
+
+nrmTest(54, "Shannon")
+
+nrmTest("final", "Shannon")
+print(leveneTest(Shannon~diet*treatment, data = alpha_d[alpha_d$timepoint == "final",]))
+hist(alpha_d[alpha_d$timepoint == "final","Shannon"], breaks = 10, main = "Histogram of Diversity Index")
+model <- glm(Shannon ~ diet * treatment, family = Gamma(link = "log"), data = alpha_d[alpha_d$timepoint == "final",])
+summary(model)
+
+
 # InvSimpson
 graphs[[3]]+
-  scale_fill_manual(values = c("blue","blue4","red","red4"),
+  scale_fill_manual(values = c("blue","blueviolet","red","darkorange"),
                     labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
   scale_pattern_manual(values = c("circle","stripe"))+
+  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "Final timepoint\n(8 weeks recovery)"))+
+  labs(y = "Inverse Simpson")+
   guides(pattern = "none")+
   theme_minimal()+
   theme(
     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
     axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+    axis.title.y = element_text(size = 14, face = "bold"),
     # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
     # legend.text = element_text(size = 12),  # Adjust legend font size
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+
+nrmTest("49", "InvSimpson", log = TRUE)
+print(leveneTest(InvSimpson~diet*treatment, data = alpha_d[alpha_d$timepoint == "49",]))
+hist(alpha_d[alpha_d$timepoint == "49","InvSimpson"], breaks = 10, main = "Histogram of Diversity Index")
+model <- glm(InvSimpson ~ diet * treatment, family = Gamma(link = "log"), data = alpha_d[alpha_d$timepoint == "49",])
+summary(model)
+
+nrmTest("54", "InvSimpson", log = TRUE)
+alpha_d$logSimpson <- log(alpha_d$InvSimpson)
+print(bartlett.test(as.formula("logSimpson ~ interaction(diet, treatment)"), data = alpha_d[alpha_d$timepoint == 54,]))
+print(leveneTest(InvSimpson~diet*treatment, data = alpha_d[alpha_d$timepoint == "54",]))
+hist(log(alpha_d[alpha_d$timepoint == "54","InvSimpson"]), breaks = 10, main = "Histogram of Diversity Index")
+anova_model <- aov(as.formula("logSimpson~ diet * treatment"), data = alpha_d[alpha_d$timepoint == 54,])
+print(summary(anova_model))
+print(TukeyHSD(anova_model))
+
+nrmTest("final", "InvSimpson", log = TRUE)
+print(bartlett.test(as.formula("logSimpson ~ interaction(diet, treatment)"), data = alpha_d[alpha_d$timepoint == "final",]))
+anova_model <- aov(as.formula("logSimpson~ diet * treatment"), data = alpha_d[alpha_d$timepoint == "final",])
+print(summary(anova_model))
+print(TukeyHSD(anova_model))
 
 # Stats
 alpha_d <- read.xlsx("../figures/thibault/diet_dss/alpha_diversity/alpha_diversity_data.xlsx")
 alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
 alpha_d$treatment <- factor(alpha_d$treatment, levels = c("water", "dss"))
-alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("54", "final"))
+alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("49", "54", "final"))
+alpha_d$gg_group2 <- factor(alpha_d$gg_group2, levels = c("50:water","50:dss","500:water","500:dss"))
 measures <- c("Chao1", "Shannon", "InvSimpson")
 
 sink("../figures/thibault/diet_dss/alpha_diversity/alpha_diversity_stats.txt")
@@ -369,6 +504,15 @@ for(measure in measures){
   
 }
 sink()
+
+
+
+
+
+
+
+
+
 
 
 # Beta diversity (for only diets timepoints)
@@ -392,15 +536,43 @@ betaDiversityTimepoint2Factors(ps_diet, sample_id = "full_id", timeVariable = "t
 # Weighted Unifrac filtered
 betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="wunifrac",
-                               customColors = c("blue","red"),
-                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/filtered/")
+                               customColors = c("blue","red"), dim = c(5,5),
+                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/filtered/",
+                               additionnalAes = 
+                                 theme(
+                                   plot.title = element_text(),
+                                   panel.grid.major = element_blank(),  # Add major grid lines
+                                   panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                 ))
+
+# Weighted Unifrac (nice graph at t0 for ICM day DO NOT USE AFTER)
+betaDiversityTimepoint2Factors(ps_foo, sample_id = "full_id", timeVariable = "timepoint",
+                               varToCompare =  "diet", distMethod ="wunifrac", displaySampleIDs = FALSE,
+                               customColors = c("blue","red"), dim = c(5,5),
+                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/foo/", 
+                               additionnalAes = 
+                                 theme(
+                                   plot.title = element_text(),
+                                   panel.grid.major = element_blank(),  # Add major grid lines
+                                   panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                   
+                                   aspect.ratio = 1
+                                 ))
+
+
 
 # Beta diversity (for diet + treatment)
 # Bray curtis
 betaDiversityTimepoint2Factors(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "gg_group2", distMethod ="bray",
-                               customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/")
+                               customColors = c("blue","blue4","red","red4"), dim = c(5,5),
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/",
+                               additionnalAes = 
+                                 theme(
+                                   plot.title = element_text(),
+                                   panel.grid.major = element_blank(),  # Add major grid lines
+                                   panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                 ))
 
 # Bray curtis filtered
 betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "full_id", timeVariable = "timepoint",
@@ -408,11 +580,31 @@ betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "full_id", timeVariable =
                                customColors = c("blue","blue4","red","red4"),
                                font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/filtered/")
 
-# Weighted Unifrac
-betaDiversityTimepoint2Factors(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
-                               varToCompare =  "gg_group2", distMethod ="wunifrac",
-                               customColors = c("blue","blue4","red","red4"),
-                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/")
+# Weighted Unifrac filtered, at t54 and tFinal
+betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "full_id", timeVariable = "timepoint",
+                               varToCompare =  "gg_group2", distMethod ="wunifrac", 
+                               customColors = c("blue","blueviolet","red","darkorange"), dim = c(5,5),
+                               font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/filtered/", 
+                               additionnalAes = 
+                               theme(
+                                 plot.title = element_text(),
+                                 panel.grid.major = element_blank(),  # Add major grid lines
+                                 panel.grid.minor = element_blank(),  # Remove minor grid lines
+                               ))
+
+{
+# Only final timepoint, across all groups
+ps_final_dss <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final", ps_flt_dss)
+betaDiversityTimepointsGroupedDbRDA(ps_final_dss, sample_id = "full_id", varToCompare = "gg_group2", distMethod = "wunifrac", formula = "diet*treatment",
+                                  transform = "none", customColors = c("blue","blueviolet","red","darkorange"), 
+                                  font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/filtered/dbRDA_final/")
+
+# Only t54 timepoint, across all groups
+ps_54_dss <- prune_samples(sample_data(ps_flt_dss)$timepoint == "54", ps_flt_dss)
+betaDiversityTimepointsGroupedDbRDA(ps_54_dss, sample_id = "full_id", varToCompare = "gg_group2", distMethod = "wunifrac", formula = "diet*treatment",
+                                    transform = "none", customColors = c("blue","blueviolet","red","darkorange"), 
+                                    font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/filtered/dbRDA_final/")
+
 
 
 # Only DSS groups
@@ -487,3 +679,278 @@ ps_sub <- prune_samples(sample_data(ps_dss_flt)$timepoint == "final", ps_dss)
 betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare = "gg_group2", formula = "diet * treatment",
                                     transform = "none", customColors = c("blue", "red","blue4","red4"),
                                     font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/test3/")
+
+}
+
+
+
+
+
+
+
+# Relative abundance analysis, stackbar extended graphs
+# For diet only timepoints
+# First, timepoints and groups must be ordered properly and as factors
+sample_data(ps_flt_diet)$diet 
+sample_data(ps_flt_diet)$timepoint
+
+# Define factor that is combination of diet and timepoint for graph visualization
+sample_data(ps_flt_diet)$gg_group <- factor(paste(sample_data(ps_flt_diet)$diet, sample_data(ps_flt_diet)$timepoint, sep = ":"))
+sample_data(ps_flt_diet)$gg_group
+
+diet_phyla_fam <- plot_microbiota_timepoints(
+  ps_object = ps_flt_diet,
+  exp_group = "diet",
+  timePoints = TRUE,
+  time_variable = "timepoint",
+  combined_group = 'gg_group',
+  sample_name = 'full_id',
+  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  differential_analysis = T,
+  sig_lab = T,
+  n_row = 2,
+  n_col = 3,
+  threshold = 1,
+  fdr_threshold = 0.05,
+  main_level = "Phylum",
+  sub_level = "Family",
+  n_phy = 4, # number of taxa to show 
+  mult_comp = F, # pairwise comparaisons for diff ab analysis
+  selected_comparisons = list(c( "50:0",  "500:0"), c( "50:35",  "500:35"), c( "50:49",  "500:49")),
+  showOnlySubLegend = TRUE
+)
+
+print(diet_phyla_fam$plot)
+print(diet_phyla_fam$significant_table_main)
+print(diet_phyla_fam$significant_table_sub)
+
+library(ggh4x)
+
+# Custom the plot
+p <- diet_phyla_fam$plot + 
+  facet_wrap2(~ gg_group, 
+              scales  = "free_x", nrow = 2, ncol = 3,
+              strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blue","blue","red", "red", "red"))),
+              labeller = as_labeller(c("50:0" = "50 ppm / 3w",
+                                       "50:35" = "50 ppm / 8w",
+                                       "50:49" = "50 ppm / 10w",
+                                       "500:0" = "500 ppm / 3w",
+                                       "500:35" = "500 ppm / 8w",
+                                       "500:49"="500 ppm / 10w")))+
+  theme(text = element_text(family = "Arial"),      # Global text settings
+        strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+        plot.title = element_text(size = 20, face = "bold"),  # Main title
+        axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+        axis.text = element_text(size = 12, face = "bold"),   # Axis text
+        legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+  ) +
+  scale_x_discrete(labels = function(x) substr(x, 1, 5))+
+  labs(x = "Sample ID")
+p
+
+# Saving the plot and the associated stats
+existingDirCheck("../figures/thibault/stackbar")
+ggsave(plot = p, filename = "../figures/thibault/stackbar/diet_stackbar.png", width = 10, height = 8, dpi = 300)
+writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/thibault/stackbar/diet_stackbar_stats.xlsx")
+
+# pvalues heatmap for the main lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_stackbar_stats.xlsx")),
+            selected_comparisons = c("50:0_vs_500:0", "50:35_vs_500:35","50:49_vs_500:49"), displayChangeArrows = FALSE, displayPValues = TRUE,
+            txn_lvl="Phylum", lvl = "main", taxons = diet_phyla_fam$main_names[!grepl("Others", x = diet_phyla_fam$main_names)], group = "gg_group", path)
+
+# pvalues heatmap for the sub lvl stats
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_stackbar_stats.xlsx")),
+                selected_comparisons = c("50:0_vs_500:0", "50:35_vs_500:35","50:49_vs_500:49"),
+                txn_lvl="Family", lvl = "sub", taxons =  diet_phyla_fam$sub_names, group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
+  theme(text = element_text(family = "Arial"),
+        axis.text.x = element_text(size = 11))
+
+
+
+
+# For diet_dss timepoints
+# First, timepoints and groups must be ordered properly and as factors
+sample_data(ps_dss_relab_flt)$diet 
+sample_data(ps_dss_relab_flt)$treatment 
+sample_data(ps_dss_relab_flt)$gg_group2
+sample_data(ps_dss_relab_flt)$timepoint
+ps_sub <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "54", ps_dss_relab_flt)
+
+# Selected comparisons should be a number of four and follow design as: "
+diet_dss_phyla_fam <- plot_microbiota_2Fac(
+  ps_object = ps_sub,
+  exp_group = "gg_group2",
+  twoFactor = TRUE,
+  fac1 = "diet",
+  refFac1 = "50",
+  fac2 = "treatment",
+  refFac2 = "water",
+  sample_name = 'full_id',
+  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  differential_analysis = T,
+  sig_lab = T,
+  n_row = 2,
+  n_col = 2,
+  threshold = 1,
+  fdr_threshold = 0.05,
+  main_level = "Phylum",
+  sub_level = "Family",
+  n_phy = 4, # number of taxa to show 
+  mult_comp = F, # pairwise comparaisons for diff ab analysis
+  selected_comparisons = list(c("50:water", "50:dss"),
+                              c("500:water", "500:dss"),
+                              c("50:water", "500:water"),
+                              c("50:dss", "500:dss")),
+  showOnlySubLegend = TRUE
+)
+
+print(diet_dss_phyla_fam$plot)
+print(diet_dss_phyla_fam$significant_table_main)
+print(diet_dss_phyla_fam$significant_table_sub)
+
+library(ggh4x)
+
+# Custom the plot
+p <- diet_dss_phyla_fam$plot + 
+  facet_wrap2(~ gg_group2, 
+              scales  = "free_x", nrow = 2, ncol = 2,
+              strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blueviolet","red","darkorange"))),
+              labeller = as_labeller(c("50:water" = "50 ppm Ctrl",
+                                       "50:dss" = "50 ppm DSS",
+                                       "500:water" = "500 ppm Ctrl",
+                                       "500:dss" = "500 ppm DSS")))+
+  theme(text = element_text(family = "Arial"),      # Global text settings
+        strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+        plot.title = element_text(size = 20, face = "bold"),  # Main title
+        axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+        axis.text = element_text(size = 12, face = "bold"),   # Axis text
+        legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+  ) +
+  scale_x_discrete(labels = function(x) substr(x, 1, 5))+
+  labs(x = "Sample ID")
+p
+
+# Saving the plot and the associated stats
+existingDirCheck("../figures/thibault/stackbar")
+ggsave(plot = p, filename = "../figures/thibault/stackbar/diet_dss_stackbar.png", width = 6, height = 6, dpi = 300)
+writeStackbarExtendedSigTable(main_table = diet_dss_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_dss_phyla_fam$significant_table_sub, filepath = "../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")
+
+# pvalues heatmap for the main lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")),
+            selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"), displayChangeArrows = FALSE, displayPValues = TRUE,
+            txn_lvl="Phylum", lvl = "main", taxons = diet_dss_phyla_fam$main_names[!grepl("Others", x = diet_dss_phyla_fam$main_names)], group = "gg_group2", path)
+
+# pvalues heatmap for the sub lvl stats
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")),
+                selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"),
+                txn_lvl="Family", lvl = "sub", taxons =  diet_dss_phyla_fam$sub_names, group = "gg_group2", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+p+scale_x_discrete(labels = c("50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS", "50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS"))+
+  theme(text = element_text(family = "Arial"),
+        axis.text.x = element_text(size = 11))
+
+
+
+
+
+
+sample_data(ps_dss_relab_flt)$diet 
+sample_data(ps_dss_relab_flt)$treatment 
+sample_data(ps_dss_relab_flt)$gg_group2
+sample_data(ps_dss_relab_flt)$timepoint
+ps_sub <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)
+sample_data(ps_sub)$diet 
+sample_data(ps_sub)$treatment 
+sample_data(ps_sub)$gg_group2
+sample_data(ps_sub)$timepoint
+
+# Selected comparisons should be a number of four and follow design as: "
+diet_dss_phyla_fam <- plot_microbiota_2Fac(
+  ps_object = ps_sub,
+  exp_group = "gg_group2",
+  twoFactor = TRUE,
+  fac1 = "diet",
+  refFac1 = "50",
+  fac2 = "treatment",
+  refFac2 = "water",
+  sample_name = 'full_id',
+  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  differential_analysis = T,
+  sig_lab = T,
+  n_row = 2,
+  n_col = 2,
+  threshold = 1,
+  fdr_threshold = 0.05,
+  main_level = "Phylum",
+  sub_level = "Family",
+  n_phy = 4, # number of taxa to show 
+  mult_comp = F, # pairwise comparaisons for diff ab analysis
+  selected_comparisons = list(c("50:water", "50:dss"),
+                              c("500:water", "500:dss"),
+                              c("50:water", "500:water"),
+                              c("50:dss", "500:dss")),
+  showOnlySubLegend = TRUE
+)
+
+print(diet_dss_phyla_fam$plot)
+print(diet_dss_phyla_fam$significant_table_main)
+print(diet_dss_phyla_fam$significant_table_sub)
+
+library(ggh4x)
+
+# Custom the plot
+p <- diet_dss_phyla_fam$plot + 
+  facet_wrap2(~ gg_group2, 
+              scales  = "free_x", nrow = 2, ncol = 2,
+              strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blueviolet","red","darkorange"))),
+              labeller = as_labeller(c("50:water" = "50 ppm Ctrl",
+                                       "50:dss" = "50 ppm DSS",
+                                       "500:water" = "500 ppm Ctrl",
+                                       "500:dss" = "500 ppm DSS")))+
+  theme(text = element_text(family = "Arial"),      # Global text settings
+        strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+        plot.title = element_text(size = 20, face = "bold"),  # Main title
+        axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+        axis.text = element_text(size = 12, face = "bold"),   # Axis text
+        legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+  ) +
+  scale_x_discrete(labels = function(x) substr(x, 1, 5))+
+  labs(x = "Sample ID")
+p
+
+# Saving the plot and the associated stats
+existingDirCheck("../figures/thibault/stackbar")
+ggsave(plot = p, filename = "../figures/thibault/stackbar/diet_dss_stackbar.png", width = 6, height = 6, dpi = 300)
+writeStackbarExtendedSigTable(main_table = diet_dss_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_dss_phyla_fam$significant_table_sub, filepath = "../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")
+
+# pvalues heatmap for the main lvl stats
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")),
+            selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"), displayChangeArrows = FALSE, displayPValues = TRUE,
+            txn_lvl="Phylum", lvl = "main", taxons = diet_dss_phyla_fam$main_names[!grepl("Others", x = diet_dss_phyla_fam$main_names)], group = "gg_group2", path)
+
+# pvalues heatmap for the sub lvl stats
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")),
+                selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"),
+                txn_lvl="Family", lvl = "sub", taxons =  diet_dss_phyla_fam$sub_names, group = "gg_group2", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+p+scale_x_discrete(labels = c("50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS", "50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS"))+
+  theme(text = element_text(family = "Arial"),
+        axis.text.x = element_text(size = 11))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

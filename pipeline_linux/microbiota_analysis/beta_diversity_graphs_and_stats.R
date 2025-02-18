@@ -436,7 +436,7 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, font, path){
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, dim = c(6,6), font, path, additionnalAes = NULL){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -475,6 +475,7 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     
     #Perform PCoA
     pcoa_results <- ordinate(ps_subset, method = "PCoA", distance = dist_subset)
+    colnames(pcoa_results$vectors) <- gsub("Axis.", "PC", colnames(pcoa_results$vectors)) #Replace colnames "Axis.n" by "PCn"
     
     #Ordination plot
     p <- plot_ordination(ps_subset, pcoa_results, type = "samples", 
@@ -506,6 +507,9 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
                   size = 1, vjust = -1, hjust = 1.2, color = "black")  # Adjust text size and position
     }
     
+    if(isFALSE(is.null(additionnalAes))){
+      p <- p + additionnalAes
+    }
     
     # test.adonis <- adonis(as.formula(paste("dist_subset ~", fac1, "*", fac2)), data = data.frame(sample_data(ps_subset)))
     # test.adonis <- as.data.frame(test.adonis$aov.tab)
@@ -545,7 +549,7 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
 
     
     #Save figure
-    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = 6, width = 6, bg = 'white')
+    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
     
     
     # cbn <- combn(x=unique(metadata$body.site), m = 2)
@@ -569,7 +573,7 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2FactorsRDA <- function(ps, sample_id, timeVariable, varToCompare, formula, transform = "rel_ab", customColors, font, path){
+betaDiversityTimepoint2FactorsRDA <- function(ps, sample_id, timeVariable, varToCompare, formula, transform = "none", customColors, font, path){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -644,7 +648,7 @@ betaDiversityTimepoint2FactorsRDA <- function(ps, sample_id, timeVariable, varTo
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formula, transform = "rel_ab", customColors, font, path){
+betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formula, transform = "none", customColors, font, path){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -711,7 +715,8 @@ betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formu
 
 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, formula, transform = "rel_ab", customColors, font, path){
+# distMethod can be either hellinger, wunifrac or bray curtis
+betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, font, path){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -722,29 +727,30 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, for
   
   existingDirCheck(path)
   
-  weighted_unifrac <- phyloseq::distance(ps, method = "wunifrac")
-  
-  # Hellinger transform
-  # otu_table <- t(decostand(otu_table(ps), method = "hellinger"))
+  if(distMethod == "wunifrac"){
+    dist <- phyloseq::distance(ps, method = "wunifrac")
+  }else if(distMethod == "bray"){
+    dist <- vegdist(t(otu_table(ps)), method = "bray")
+  } else if(distMethod == "hellinger"){
+    dist <- t(decostand(otu_table(ps), method = "hellinger")) # Hellinger must receive relative abundance as values from the otu_table
+  }
   
   # Extract metadata
   metadata <- data.frame(sample_data(ps))
-  # model_formula <- as.formula(paste0("otu_table ~", formula)) 
   
   # # Run RDA using varToCompare and RdaVar as explanatory variables
   # formula_rda <- as.formula(paste("otu_table ~", varToCompare, "+", RdaVar))
   
-  
   #    Option A: Use Euclidean distance on the Hellinger-transformed data
   # cap_result <- capscale(model_formula, data = metadata, distance = "euclidean")
   
-  
-  
   #    Option B (alternative): Use Bray-Curtis distance
   # cap_result <- capscale(vegdist(otu_table, method = "bray") ~ diet * timepoint, data = metadata) # capscale() expects rows = samples, columns = taxa
-  
-  cap_result <- capscale(as.formula(paste0("weighted_unifrac ~", formula)), data = metadata)
-  
+  if(distMethod == "hellinger"){
+    cap_result <- capscale(as.formula(paste0("dist ~", formula)), data = metadata, distance = "euclidean")
+  }else{
+    cap_result <- capscale(as.formula(paste0("dist ~", formula)), data = metadata)
+  }
   
   # rda_result <- rda(model_formula, data = metadata)
   # View RDA results
@@ -757,8 +763,6 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, for
   print(anova_rda)
   anova_rda <- anova.cca(cap_result, by = "margin", permutations = 999, parallel = 20)
   print(anova_rda)
-  
-  
   
   # Extract RDA scores for plotting
   rda_scores <- as.data.frame(scores(cap_result, display = "sites"))
