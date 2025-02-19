@@ -100,9 +100,6 @@ plot_microbiota_2Fac <- function(ps_object = ps,
   
   otu_tax_f <- cbind(tax_f, otu_f)
   
-  print(otu_tax_f[is.na(otu_tax_f$Phylum),])
-  
-  
   #create a vector, if True, the ASV mean among the samples is higher than the threshold
   
   #keep the position of the column storing the abundance of the taxa in the otu_tax_f object
@@ -119,8 +116,6 @@ plot_microbiota_2Fac <- function(ps_object = ps,
     mutate(Mean = mean(c_across(all_of(position)))) %>%
     mutate(high_abundance = case_when(Mean > threshold  ~ TRUE,
                                       TRUE  ~ FALSE))
-  
-  print(otu_tax_f$Phylum)
   
   #Store top x of the main_level phylogeny
   
@@ -166,10 +161,6 @@ plot_microbiota_2Fac <- function(ps_object = ps,
       ')'
     )
   }
-  
-  print(topx)
-  return(NULL)
-  
   
   #initialize 
   df <-

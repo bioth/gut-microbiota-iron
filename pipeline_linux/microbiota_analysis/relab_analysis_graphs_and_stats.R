@@ -835,18 +835,18 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
       #Save group names for using them in the ggsignif
       groups <- levels(sample_data(ps)[[gg_group]])
       
-      p <- ggplot(data = relative_abundance, aes(x = gg_group, y = rel_ab, color = gg_group)) +
+      p <- ggplot(data = relative_abundance, aes(x = .data[[gg_group]], y = rel_ab, color = .data[[gg_group]])) +
         geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
         
         #Error bars
         stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-                     aes(color = gg_group),
+                     aes(color = .data[[gg_group]]),
                      width = 0.2, size = 0.7,
                      position = position_dodge(-0.75)) +
         
         #Mean lines
         stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-                     aes(ymin = ..y.., ymax = ..y.., group = gg_group),
+                     aes(ymin = ..y.., ymax = ..y.., group = .data[[gg_group]]),
                      color = "black", linewidth = 0.5, width = 0.5,
                      position = position_dodge(-0.75))+
         
@@ -1151,6 +1151,8 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   
   #Save results at single timepoint
   res <- results(deseq, name = resultsNames(deseq)[2])
+  
+  print(min(res$padj))
   
   #Save significance table
   sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res),], "matrix"))
