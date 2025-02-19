@@ -312,10 +312,13 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE){
     #   theme_minimal()
     
     p = ggplot(richness_data, aes(x = .data[[time]], y = .data[[measure]], fill = .data[[group]])) + # , pattern = .data[["treatment"]]
-      geom_boxplot_pattern(position = position_dodge(width = 0.8), width = 0.6,
-                           color = "black",
-                           pattern_density = 0.1, pattern_spacing = 0.02,
-                           pattern_fill = "black", pattern_color = "black") +
+      
+      geom_boxplot(position = position_dodge(width = 0.8), width = 0.6,
+                           color = "black") +
+      # geom_boxplot_pattern(position = position_dodge(width = 0.8), width = 0.6,
+      #                      color = "black",
+      #                      pattern_density = 0.1, pattern_spacing = 0.02,
+      #                      pattern_fill = "black", pattern_color = "black") +
       
 
       # # Error bars

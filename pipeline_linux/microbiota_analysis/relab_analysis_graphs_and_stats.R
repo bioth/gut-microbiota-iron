@@ -1137,7 +1137,7 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
 }
 
 #Revised function that does deseq analysis but only for 
-relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, customColors, path){
+relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, LDA = FALSE, customColors, path){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -1182,126 +1182,126 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   
   #Loop along ASVs (single taxons analyzed)
   for(i in seq_along(asvList)){
-    
-    #Save asv value
+
+    # Save asv value
     asv = asvList[i]
-    
-    #Save speciesName for dir creation and for graph title
+
+    # Save speciesName for dir creation and for graph title
     if(taxa == "Species"){
       taxonName <- paste(unique(sigtab[sigtab$asv == asv, "Genus"]),unique(sigtab[sigtab$asv == asv, "Species"]), paste("(", asv, ")", sep =""), sep = " ")
     }else{
       taxonName <- unique(sigtab[sigtab$asv == asv, taxa])
     }
-    
-    #Sigtab specific to the taxon analyzed
+
+    # Sigtab specific to the taxon analyzed
     sigtab_taxon <- sigtab[sigtab$asv == asv,]
-    
-    #Add the 16s sequence to the sigtab specific to ASV of interest (only for species, higher taxonomical levels have multiple ASVs associated with them)
+
+    # Add the 16s sequence to the sigtab specific to ASV of interest (only for species, higher taxonomical levels have multiple ASVs associated with them)
     if(taxa == "Species"){
       sigtab_taxon$dna_sequence <- as.character(refseq(ps)[asv])
     }
-    
+
     #Save p-value
     p_value <- sigtab_taxon["padj"]
-    
+
     #Creates directory with taxon name
     dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
     existingDirCheck(path = dir_taxon)
-    
+
     #Select counts for ASV of interest
     asv_counts <- normalized_counts[asv, ]
-    
+
     #Calculate relative abundance as a percentage for each sample
     relative_abundance <- asv_counts * 100 / colSums(normalized_counts)
-    
+
     #Convert relative abundance to a data frame
     relative_abundance <- data.frame(
       sample_id = names(relative_abundance),
       rel_ab = as.numeric(relative_abundance)
     )
-    
+
     #Merge relative abundance with sample metadata
     relative_abundance <- merge(relative_abundance, as(sample_data(ps), "data.frame"), by = "sample_id")
-    
+
     # relative_abundance[[timeVariable]] <- as.numeric(as.character(relative_abundance[[timeVariable]])) * 7
     relative_abundance[[varToCompare]] <- as.character(relative_abundance[[varToCompare]])
     relative_abundance$week <- timePoint
-    
-    
 
-    
-    
-    
+
+
+
+
+
     # # Compute mean relative abundance by week and diet
     # means_df <- relative_abundance %>%
     #   group_by(week, diet) %>%
     #   summarise(mean_abundance = mean(rel_ab)) %>%
     #   group_by(week) %>%
     #   summarise(upper_limit = max(mean_abundance), lower_limit = min(mean_abundance))
-    
-    
+
+
     #Before merging sigtab, ensure timeVariable is numeric and *7
     # sigtab_taxon[[timeVariable]] <- as.numeric(as.character(sigtab_taxon[[timeVariable]])) * 7
-    
+
     # #Merge sigtab_taxon with means_df
     # means_df <- merge(sigtab_taxon, means_df, by = timeVariable)
-    
+
     # print(means_df)
-    
+
     #Saving groups variables as list of levels for varToCompare
     groups <- levels(sample_data(ps)[[varToCompare]])
-    
-    
+
+
     p <- ggplot(data = relative_abundance, aes(x = !!sym(varToCompare), y = rel_ab, color = !!sym(varToCompare)), group = !!sym(varToCompare)) +
-      
-      geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
-      
+
+      geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) +
+
       # Error bars
       stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
                    aes(color = !!sym(varToCompare)),
                    width = 0.5, size = 1,
                    alpha = 0.5,
                    position = "identity")+
-      
+
       #Mean lines
       stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
                    aes(ymin = ..y.., ymax = ..y.., group = !!sym(varToCompare)),
                    color = "black", linewidth = 0.5, width = 1,
                    position = "identity")+
-      
-      
+
+
       labs(title = paste(taxonName, " at week ", timePoint, sep = ""), y = "Relative abundance (%)", color = "Diet", x = "Time (days)") +
       scale_color_manual(values = customColors)+
-      
-      #Add stat bar 
+
+      #Add stat bar
       geom_signif(comparisons = list(c(groups[1],groups[2])),
                   annotations = paste("p = ", format(p_value, digits = 2, scientific = TRUE)),
                   tip_length = 0.02,
                   y_position =  max(relative_abundance$rel_ab),
                   size = 1.2,  # Make the bar wider
                   color = "black") +
-      
+
       # #Add vertical line segments for significance at each timepoint
       # geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable)+1.6,
       #                                   y = lower_limit, yend = upper_limit),
       #              color = "black", linetype = "dashed", ) +
-      # 
+      #
       # #Complete with short horizontal segments to make the bar look nicer
       # geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
       #                                   y = upper_limit, yend = upper_limit),
       #              color = "black", linetype = "dashed", ) +
-      # 
+      #
       # geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
       #                                   y = lower_limit, yend = lower_limit),
       #              color = "black", linetype = "dashed", ) +
-      # 
+      #
       # # Add significance text at each timepoint
-      # geom_text(data = means_df, aes(x = !!sym(timeVariable)+1.6, 
-      #                                y = (upper_limit + lower_limit) / 2, 
+      # geom_text(data = means_df, aes(x = !!sym(timeVariable)+1.6,
+      #                                y = (upper_limit + lower_limit) / 2,
       #                                label = significance),
       #           color = "black", size = 5, vjust = 0.5) +
-      
-      
+
+
       theme(
         plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
         axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
@@ -1318,10 +1318,93 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
     #Write as excel file the significance table specific to an ASV
     write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
-    
+
     #Write as excel file the relative abundance data specific  to an ASV
     write.xlsx(relative_abundance, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.xlsx", sep = ""))
+
+  }
+  
+  if(LDA){
     
+    # Apply rlog transformation to the count data
+    rlog_data <- rlog(deseq, blind = TRUE)
+    
+    # Extract the log-transformed counts for the significant features
+    lda_data <- assay(rlog_data)[asvList, ]
+    
+    # Combine the data with the group labels (e.g., condition)
+    lda_input <- merge(t(lda_data), sample_data(ps)[,varToCompare], by = "row.names")
+    row.names(lda_input) <- lda_input$Row.names
+    lda_input <- lda_input[-1]
+  
+    
+    train_control <- trainControl(method = "cv", number = 10)
+    # Train the LDA model using caret (this returns a train object)
+    lda_model <- train(as.formula(paste(varToCompare, "~ .")),
+                       data = lda_input,
+                       method = "lda",
+                       trControl = train_control)  # ensure you have defined train_control
+    
+    # Extract ASV-level LDA coefficients (effect sizes)
+    lda_effects <- data.frame(
+      ASV = rownames(lda_model$finalModel$scaling),
+      LDA_Score = lda_model$finalModel$scaling[,1],  # Use first discriminant
+      taxa = paste0(substring(tax_table(ps)[rownames(lda_model$finalModel$scaling),"Genus"], 1, 1), ". ",
+                                    tax_table(ps)[rownames(lda_model$finalModel$scaling),"Species"])
+    )
+    
+    # Convert tax_table to a data frame with ASV as a column
+    # taxonomy <- as.data.frame(as(tax_table(ps), "matrix")) %>%
+    #   rownames_to_column(var = "ASV")  # Ensure ASV is explicitly a column
+    # 
+    # lda_effects <- lda_effects %>%
+    #   inner_join(taxonomy, by = "ASV")  # Ensures we only keep matched ASVs
+    
+    
+    
+    # Create a formatted species label (e.g., "G. species_name")
+    # lda_effects$Taxon <- paste0(substr(lda_effects$Genus, 1, 1), ". ", lda_effects$Species)
+    
+    lda_summary <- lda_effects %>%
+      group_by(taxa) %>%
+      summarise(mean_LDA = mean(LDA_Score)) %>%
+      mutate(Group = ifelse(mean_LDA > 0, "500 ppm", "50 ppm"))  # Separate step for clarity
+    
+    print(lda_summary)
+    
+    # # Aggregate by species: compute mean LDA score per species
+    # lda_species <- lda_effects %>%
+    #   group_by(Taxon) %>%
+    #   summarize(Mean_LDA_Score = mean(LDA_Score), Group = ifelse(mean(LDA_Score) > 0, "500 ppm", "50 ppm")) %>%
+    #   ungroup()
+    # 
+    # # Order taxa by effect size
+    # lda_species <- lda_species %>% mutate(Taxon = reorder(Taxon, Mean_LDA_Score))
+    
+    # # Extract ASV-level coefficients (LDA effect sizes)
+    # lda_effects <- data.frame(
+    #   Taxon = paste0(substring(tax_table(ps)[rownames(lda_model$finalModel$scaling),"Genus"], 1, 1), ". ",
+    #                 tax_table(ps)[rownames(lda_model$finalModel$scaling),"Species"]),
+    #   LDA_Score = lda_model$finalModel$scaling[,1]  # Use the first discriminant
+    # )
+    # 
+    # # Assign groups based on direction of effect
+    # lda_effects$Group <- ifelse(lda_effects$LDA_Score > 0, "500 ppm", "50 ppm")
+    # 
+    # # Order taxa by effect size
+    # lda_effects <- lda_effects %>% mutate(Taxon = reorder(Taxon, LDA_Score))
+    
+    # Plot species-level mean LDA scores
+    p <- ggplot(lda_summary, aes(x = reorder(taxa, mean_LDA), y = mean_LDA, fill = Group)) +
+      geom_col() +
+      coord_flip() +
+      geom_hline(yintercept = 0, color = "black") +
+      scale_fill_manual(values = c("50 ppm" = "blue", "500 ppm" = "red")) +
+      labs(x = "", y = "LDA Score") +
+      theme_minimal() +
+      theme(legend.position = "top")
+    
+    ggsave(plot = p, filename = paste0(dir, "/lda.png"), dpi = 300, bg = "white", width = 4, height = 6)
   }
 }
 

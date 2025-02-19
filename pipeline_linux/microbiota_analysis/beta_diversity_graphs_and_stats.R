@@ -648,7 +648,7 @@ betaDiversityTimepoint2FactorsRDA <- function(ps, sample_id, timeVariable, varTo
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formula, transform = "none", customColors, font, path){
+betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formula, transform = "none", customColors, font, path, additionnalAes = NULL){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -716,7 +716,7 @@ betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formu
 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
 # distMethod can be either hellinger, wunifrac or bray curtis
-betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, font, path){
+betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, font, path, additionnalAes){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -763,20 +763,42 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
   print(anova_rda)
   anova_rda <- anova.cca(cap_result, by = "margin", permutations = 999, parallel = 20)
   print(anova_rda)
+  p_value <- anova_rda$`Pr(>F)`
   
   # Extract RDA scores for plotting
   rda_scores <- as.data.frame(scores(cap_result, display = "sites"))
+  
+  # Get the summary of the ordination object
+  summary_obj <- summary(cap_result)
+  
+  # Extract the importance matrix; note that for dbRDA objects it is in the 'cont' component.
+  importance_mat <- summary_obj$cont$importance
+  
+  # Extract the 'Proportion Explained' row and multiply by 100 for percentages.
+  var_exp <- round(importance_mat["Proportion Explained", ] * 100, digits = 1)
+  
+  # Format column names with percentages
+  # colnames(rda_scores)[1:2] <- sprintf("dbRDA1 (%.2f%%)", var_exp[1])
+  # colnames(rda_scores)[2] <- sprintf("dbRDA2 (%.2f%%)", var_exp[2])
   colnames(rda_scores)[1:2] <- c("dbRDA1", "dbRDA2")
   rda_scores[[varToCompare]] <- metadata[[varToCompare]]
+
   
   # Plot RDA ordination
   p <- ggplot(rda_scores, aes(x = dbRDA1, y = dbRDA2, color = !!sym(varToCompare))) +
     geom_point(size = 3) +
     theme_classic() +
     stat_ellipse(aes(group = !!sym(varToCompare)), type = "t", level = 0.95, geom = "polygon", alpha = 0) +
-    labs(title = paste("RDA")) +
+    labs(title = "", x = paste0("RDA1 (", var_exp[1], "%)"), y = paste0("PC1 (", var_exp[2], "%)")) +
     scale_color_manual(values = customColors) +
     labs(color = "Group") +
+    # annotate("text", 
+    #          x = Inf, y = -Inf,  # Position at bottom left, under the legend
+    #          label = paste("p =", round(p_value, 3)), 
+    #          hjust = 1, vjust = -0.5, 
+    #          size = 4, color = "black", 
+    #          fontface = "bold",
+    #          family = "Arial")+
     theme(
       plot.title = element_text(size = 16, face = "bold", family = font),
       axis.title.x = element_text(size = 14, face = "bold", family = font),
@@ -790,10 +812,14 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
       axis.line = element_line(color = "black", size = 1)
     )
   
+  if(isFALSE(is.null(additionnalAes))){
+    p <- p + additionnalAes
+  }
+  
   # Save statistical results
   write.xlsx(as.data.frame(anova_rda), paste0(path, "/RDA.xlsx"))
   
   # Save plot
-  ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = 6, width = 6, bg = 'white')
+  ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = 4.5, width = 4.5, bg = 'white')
   
 }

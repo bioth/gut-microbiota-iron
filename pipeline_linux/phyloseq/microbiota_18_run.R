@@ -24,6 +24,7 @@
   library(StackbarExtended) # Thibault C. package
   library(ggpattern)
   library(pairwiseAdonis)
+  library(caret)
   
 }
 
@@ -230,6 +231,87 @@ ps_foo <- prune_samples(sample_data(ps_foo)$timepoint == "0", ps_foo)
 existingDirCheck("../figures/thibault/diet/")
 graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault/diet/", time = "timepoint", group = "diet", writeData = TRUE)
 
+{
+  ps_sub <- prune_samples(sample_data(ps_dss_alpha)$timepoint %in% c("49","54"), ps_dss_alpha)
+  graphs = alphaDiversityTimeSeries2(ps_sub, "../figures/thibault/icm/", time = "timepoint", group = "gg_group2", writeData = FALSE)
+  
+  # Chao1
+  p = graphs[[1]]+
+    scale_fill_manual(values = c("blue","darkblue","red","darkred"),
+                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+    scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
+    scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
+                     expand = c(0, 0.5))+
+    labs(y = "Species Richness")+
+    guides(pattern = "none")+
+    theme_minimal()+
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+      axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+      axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+      axis.title.y = element_text(size = 14, face = "bold"),
+      # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+      # legend.text = element_text(size = 12),  # Adjust legend font size
+      panel.grid.major = element_blank(),  # Remove major grid lines
+      panel.grid.minor = element_blank(),  # Remove minor grid lines
+      axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+  ggsave(plot = p, filename = "../figures/thibault/icm/chao1.png", width = 5, height = 4, dpi = 300, bg = "white")
+  
+  
+  ps_sub <- prune_samples(sample_data(ps_dss_alpha)$timepoint %in% c("final"), ps_dss_alpha)
+  graphs = alphaDiversityTimeSeries2(ps_sub, "../figures/thibault/icm/", time = "timepoint", group = "gg_group2", writeData = FALSE)
+  
+  # Chao1
+  p = graphs[[1]]+
+    scale_fill_manual(values = c("blue","darkblue","red","darkred"),
+                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+    scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
+    scale_x_discrete(labels = c("End of\nrecovery"),
+                     expand = c(0, 0.5))+
+    labs(y = "Species Richness")+
+    guides(pattern = "none")+
+    theme_minimal()+
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+      axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+      axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+      axis.title.y = element_text(size = 14, face = "bold"),
+      # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+      # legend.text = element_text(size = 12),  # Adjust legend font size
+      panel.grid.major = element_blank(),  # Remove major grid lines
+      panel.grid.minor = element_blank(),  # Remove minor grid lines
+      axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+  ggsave(plot = p, filename = "../figures/thibault/icm/chao1_2.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
+  
+  # Inverse simpson
+  p = graphs[[3]]+
+    scale_fill_manual(values = c("blue","darkblue","red","darkred"),
+                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+    scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
+    scale_x_discrete(labels = c("End of\nrecovery"),
+                     expand = c(0, 0.5))+
+    labs(y = "Inverse Simpson")+
+    guides(pattern = "none")+
+    theme_minimal()+
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+      axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
+      axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
+      axis.title.y = element_text(size = 14, face = "bold"),
+      # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+      # legend.text = element_text(size = 12),  # Adjust legend font size
+      panel.grid.major = element_blank(),  # Remove major grid lines
+      panel.grid.minor = element_blank(),  # Remove minor grid lines
+      axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+  ggsave(plot = p, filename = "../figures/thibault/icm/invsim.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
+  
+  
+}
+
+
 # Stats
 alpha_d <- read.xlsx("../figures/thibault/diet/alpha_diversity/alpha_diversity_data.xlsx")
 alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
@@ -354,12 +436,13 @@ graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/thibault/diet_dss/"
 
 
 # Chao1
-graphs[[1]]+
-  scale_fill_manual(values = c("blue","blueviolet","red","darkorange"),
+p = graphs[[1]]+
+  scale_fill_manual(values = c("blue","darkblue","red","darkred"),
                     labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
-  scale_pattern_manual(values = c("circle","stripe"))+
-  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "Final timepoint\n(8 weeks recovery)"))+
-  labs(y = "Chao1 Index")+
+  scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
+  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
+                   expand = c(0, 0.5))+
+  labs(y = "Species Richness")+
   guides(pattern = "none")+
   theme_minimal()+
   theme(
@@ -373,7 +456,7 @@ graphs[[1]]+
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-
+ggsave(plot = p, filename = "../figures/thibault/icm/chao1.png", width = 6, height = 4, dpi = 300, bg = "white")
 nrmTest <- function(x,y,log=FALSE){
   
   if(log){
@@ -435,11 +518,12 @@ summary(model)
 
 
 # InvSimpson
-graphs[[3]]+
-  scale_fill_manual(values = c("blue","blueviolet","red","darkorange"),
+p = graphs[[3]]+
+  scale_fill_manual(values = c("blue","darkblue","red","darkred"),
                     labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
   scale_pattern_manual(values = c("circle","stripe"))+
-  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "Final timepoint\n(8 weeks recovery)"))+
+  scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
+                   expand = c(0, 0.5))+
   labs(y = "Inverse Simpson")+
   guides(pattern = "none")+
   theme_minimal()+
@@ -454,6 +538,8 @@ graphs[[3]]+
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
+ggsave(plot = p, filename = "../figures/thibault/icm/invSim.png", width = 6, height = 4, dpi = 300, bg = "white")
+
 
 nrmTest("49", "InvSimpson", log = TRUE)
 print(leveneTest(InvSimpson~diet*treatment, data = alpha_d[alpha_d$timepoint == "49",]))
@@ -533,26 +619,26 @@ betaDiversityTimepoint2Factors(ps_diet, sample_id = "full_id", timeVariable = "t
 # Weighted Unifrac filtered
 betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="wunifrac",
-                               customColors = c("blue","red"), dim = c(5,5),
-                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/filtered/",
+                               customColors = c("blue","red"), dim = c(4.5,4.5),
+                               font = "Arial", path = "../figures/thibault/icm/",
                                additionnalAes = 
                                  theme(
                                    plot.title = element_text(),
                                    panel.grid.major = element_blank(),  # Add major grid lines
                                    panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                   aspect.ratio = 1
                                  ))
 
 # Weighted Unifrac (nice graph at t0 for ICM day DO NOT USE AFTER)
 betaDiversityTimepoint2Factors(ps_foo, sample_id = "full_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="wunifrac", displaySampleIDs = FALSE,
-                               customColors = c("blue","red"), dim = c(5,5),
-                               font = "Arial", path = "../figures/thibault/diet/beta_diversity/foo/", 
+                               customColors = c("blue","red"), dim = c(4.5,4.5),
+                               font = "Arial", path = "../figures/thibault/icm/", 
                                additionnalAes = 
                                  theme(
                                    plot.title = element_text(),
                                    panel.grid.major = element_blank(),  # Add major grid lines
                                    panel.grid.minor = element_blank(),  # Remove minor grid lines
-                                   
                                    aspect.ratio = 1
                                  ))
 
@@ -599,9 +685,20 @@ betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare 
 # dbRDA method at last timepoint and for DSS groups
 ps_sub <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final" & sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
 sample_data(ps_sub)$diet
+print(length(taxa_sums(ps_sub)))
+ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
+ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
+print(length(taxa_sums(ps_sub)))
 betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare = "diet", formula = "diet",
-                                    transform = "rel_ab", distMethod = "hellinger", customColors = c("blue4","red4"),
-                                    font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/dbRDA/")
+                                    transform = "none", distMethod = "wunifrac", customColors = c("darkblue","darkred"),
+                                    font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/dbRDA/",
+                                    additionnalAes = 
+                                      theme(
+                                        plot.title = element_text(),
+                                        panel.grid.major = element_blank(),  # Add major grid lines
+                                        panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                        aspect.ratio = 1
+                                      ))
 
 # dbRDA method at t54 and last timepoint and for DSS groups
 ps_sub <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
@@ -745,7 +842,7 @@ betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare 
 
 
 
-# Relative abundance analysis: finding differential abundant bugs at the species level
+# Relative abundance analysis: finding differential abundant bugs at the species level, for DSS groups ONLY
 #Path where to save graphs
 pathToSave <- "~/Documents/CHUM_git/figures/thibault/relative_abundance_by_timepoint/"
 existingDirCheck(pathToSave)
@@ -762,8 +859,10 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   
   #Creating phyloseq objects for each timepoint
   ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint & sample_data(ps_dss_relab_flt)$treatment == "dss", ps_dss_relab_flt)
+  # ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
   
-  print(sample_data(ps_subset)$gg_group2)
+  # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  # ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
   # print(length(taxa_sums(ps_subset)))
   # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
   # print(length(taxa_sums(ps_subset)))
@@ -781,44 +880,169 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   print(resultsNames(deseq_subset))
   
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.15, customColors, newPath)  
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors, newPath)  
   
 }
 
-#Creating phyloseq objects for each timepoint
-ps_sub <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)
+#At other taxonomic levels
+taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
 
-sample_data(ps_sub)$gg_group2
-colnames(sample_data(ps_sub))[2] <- "sample_id"
-sample_data(ps_sub)
-sample_data(ps_sub)$gg_group <- factor(sample_data(ps_sub)$gg_group, levels = c("49:50:water","49:50:dss","49:500:water","49:500:dss"))
+#Iterate through timepoints
+for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
+  
+  #New path created for each week
+  newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
+  existingDirCheck(newPath)
+  
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint & sample_data(ps_dss_relab_flt)$treatment == "dss", ps_dss_relab_flt)
+  ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+  ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+  # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
 
-print(length(taxa_sums(ps_sub)))
-ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
-print(length(taxa_sums(ps_sub)))
+  # print(length(taxa_sums(ps_subset)))
+  # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+  # print(length(taxa_sums(ps_subset)))
+  # 
+  # # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  # ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+  # print(length(taxa_sums(ps_subset)))
+  
+  for(txnLevel in taxonomicLevels){
+    
+    #Creates ps subset for taxonomical level of interest
+    ps_taxa <- tax_glom(ps_subset, taxrank = txnLevel)
+    colnames(sample_data(ps_taxa))[2] <- "sample_id"
+    deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet)
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    
+    #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+    relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, customColors, newPath) 
+  }
+  
+  
+  
+}
 
-# Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
-print(length(taxa_sums(ps_sub)))
 
-ps_sub <- prune_taxa(!is.na(as.vector(tax_table(ps_sub)[,7])), ps_sub) # Remove ASVs for which no species were found
+# Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
+#Path where to save graphs
+pathToSave <- "~/Documents/CHUM_git/figures/thibault/relative_abundance_diet/"
+existingDirCheck(pathToSave)
 
-#Differential abundance Samuel
-deseq_tfinal <- phyloseq_to_deseq2(ps_sub, ~ diet*treatment) # Full formula with interaction term
+#customColors for graph display
+customColors = c("blue","red")
 
-#Setting "Wt" as the baseline for genotype
-colData(deseq_tfinal)$diet <- relevel(colData(deseq_tfinal)$diet, ref="50")
+#Iterate through timepoints
+for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)[2]){
+  
+  #New path created for each week
+  newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
+  existingDirCheck(newPath)
+  
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == timePoint, ps_flt_diet)
+  # ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
+  colnames(sample_data(ps_subset))[2] <- "sample_id"
+  # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  # ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
+  # print(length(taxa_sums(ps_subset)))
+  # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+  # print(length(taxa_sums(ps_subset)))
+  # 
+  # # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  # ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+  # print(length(taxa_sums(ps_subset)))
+  
+  #Simple deseq object only accounting for the differences in diet
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  
+  #Performing the deseq analysis
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  
+  print(resultsNames(deseq_subset))
+  
+  #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = TRUE, customColors, newPath)  
+  
+}
 
-#Setting "Vehicle" as the baseline for treatment
-colData(deseq_tfinal)$treatment <- relevel(colData(deseq_tfinal)$treatment, ref="water")
+#At other taxonomic levels
+taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
 
-deseq_tfinal <- DESeq(deseq_tfinal, test="Wald", fitType = "parametric")
+#Iterate through timepoints
+for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
+  
+  #New path created for each week
+  newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
+  existingDirCheck(newPath)
+  
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == timePoint & sample_data(ps_flt_diet)$treatment == "dss", ps_flt_diet)
+  ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+  ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+  # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  
+  # print(length(taxa_sums(ps_subset)))
+  # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+  # print(length(taxa_sums(ps_subset)))
+  # 
+  # # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  # ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+  # print(length(taxa_sums(ps_subset)))
+  
+  for(txnLevel in taxonomicLevels){
+    
+    #Creates ps subset for taxonomical level of interest
+    ps_taxa <- tax_glom(ps_subset, taxrank = txnLevel)
+    colnames(sample_data(ps_taxa))[2] <- "sample_id"
+    deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet)
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    
+    #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+    relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, customColors, newPath) 
+  }
+  
+  
+  
+}
 
-resultsNames(deseq_tfinal)
 
-customColors = list('black','#A22004',"#AB8F23","#04208D")
-pairs <- list(list("50:water","50:dss"), list("500:water","500:dss"), list("50:water","500:water"), list("50:dss","500:dss"))
-relabGroups(ps_sub, deseq_tfinal, measure = "log2fold", gg_group = "gg_group2", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.05, customColors, pairs, "~/Documents/CHUM_git/figures/thibault/differential_abundance/")
+
+# #Creating phyloseq objects for each timepoint
+# ps_sub <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)
+# 
+# sample_data(ps_sub)$gg_group2
+# colnames(sample_data(ps_sub))[2] <- "sample_id"
+# sample_data(ps_sub)
+# sample_data(ps_sub)$gg_group <- factor(sample_data(ps_sub)$gg_group, levels = c("49:50:water","49:50:dss","49:500:water","49:500:dss"))
+# 
+# print(length(taxa_sums(ps_sub)))
+# ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
+# print(length(taxa_sums(ps_sub)))
+# 
+# # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+# ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.10 * nsamples(ps_sub)), ps_sub)
+# print(length(taxa_sums(ps_sub)))
+# 
+# ps_sub <- prune_taxa(!is.na(as.vector(tax_table(ps_sub)[,7])), ps_sub) # Remove ASVs for which no species were found
+# 
+# #Differential abundance Samuel
+# deseq_tfinal <- phyloseq_to_deseq2(ps_sub, ~ diet*treatment) # Full formula with interaction term
+# 
+# #Setting "Wt" as the baseline for genotype
+# colData(deseq_tfinal)$diet <- relevel(colData(deseq_tfinal)$diet, ref="50")
+# 
+# #Setting "Vehicle" as the baseline for treatment
+# colData(deseq_tfinal)$treatment <- relevel(colData(deseq_tfinal)$treatment, ref="water")
+# 
+# deseq_tfinal <- DESeq(deseq_tfinal, test="Wald", fitType = "parametric", )
+# 
+# resultsNames(deseq_tfinal)
+# 
+# customColors = list('black','#A22004',"#AB8F23","#04208D")
+# pairs <- list(list("50:water","50:dss"), list("500:water","500:dss"), list("50:water","500:water"), list("50:dss","500:dss"))
+# relabGroups(ps_sub, deseq_tfinal, measure = "log2fold", gg_group = "gg_group2", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.05, customColors, pairs, "~/Documents/CHUM_git/figures/thibault/differential_abundance/")
 
 
 
@@ -932,6 +1156,12 @@ sample_data(ps_dss_relab_flt)$treatment
 sample_data(ps_dss_relab_flt)$gg_group2
 sample_data(ps_dss_relab_flt)$timepoint
 ps_sub <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "54", ps_dss_relab_flt)
+print(length(taxa_sums(ps_sub)))
+ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
+ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
+print(length(taxa_sums(ps_sub)))
+
+
 
 # Selected comparisons should be a number of four and follow design as: "
 diet_dss_phyla_fam <- plot_microbiota_2Fac(
@@ -958,7 +1188,7 @@ diet_dss_phyla_fam <- plot_microbiota_2Fac(
                               c("500:water", "500:dss"),
                               c("50:water", "500:water"),
                               c("50:dss", "500:dss")),
-  showOnlySubLegend = TRUE
+  showOnlySubLegend = FALSE
 )
 
 print(diet_dss_phyla_fam$plot)
@@ -971,13 +1201,13 @@ library(ggh4x)
 p <- diet_dss_phyla_fam$plot + 
   facet_wrap2(~ gg_group2, 
               scales  = "free_x", nrow = 2, ncol = 2,
-              strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blueviolet","red","darkorange"))),
+              strip = strip_themed(background_x = elem_list_rect(fill = c("blue","darkblue","red","darkred"))),
               labeller = as_labeller(c("50:water" = "50 ppm Ctrl",
                                        "50:dss" = "50 ppm DSS",
                                        "500:water" = "500 ppm Ctrl",
                                        "500:dss" = "500 ppm DSS")))+
   theme(text = element_text(family = "Arial"),      # Global text settings
-        strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+        strip.text = element_text(size = 14, face = "bold", color = "white"),  # Facet titles
         plot.title = element_text(size = 20, face = "bold"),  # Main title
         axis.title = element_text(size = 15, face = "bold"),  # Axis titles
         axis.text = element_text(size = 12, face = "bold"),   # Axis text
@@ -989,7 +1219,7 @@ p
 
 # Saving the plot and the associated stats
 existingDirCheck("../figures/thibault/stackbar")
-ggsave(plot = p, filename = "../figures/thibault/stackbar/diet_dss_stackbar.png", width = 6, height = 6, dpi = 300)
+ggsave(plot = p, filename = "../figures/thibault/icm/diet_dss_stackbar.png", width = 7, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = diet_dss_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_dss_phyla_fam$significant_table_sub, filepath = "../figures/thibault/stackbar/diet_dss_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1003,7 +1233,7 @@ p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/st
                 txn_lvl="Family", lvl = "sub", taxons =  diet_dss_phyla_fam$sub_names, group = "gg_group2", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
 p+scale_x_discrete(labels = c("50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS", "50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS"))+
   theme(text = element_text(family = "Arial"),
-        axis.text.x = element_text(size = 11))
+        axis.text.x = element_text(size = 11, face = "bold"))
 
 
 
