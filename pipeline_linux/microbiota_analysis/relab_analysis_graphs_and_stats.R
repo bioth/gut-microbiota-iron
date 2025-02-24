@@ -1137,7 +1137,7 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
 }
 
 #Revised function that does deseq analysis but only for 
-relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, LDA = FALSE, customColors, path){
+relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -1203,6 +1203,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
     #Save p-value
     p_value <- sigtab_taxon["padj"]
+    significance <- sigtab_taxon["significance"]
 
     #Creates directory with taxon name
     dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
@@ -1270,12 +1271,13 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
                    position = "identity")+
 
 
-      labs(title = paste(taxonName, " at week ", timePoint, sep = ""), y = "Relative abundance (%)", color = "Diet", x = "Time (days)") +
+      labs(title = paste(taxa ,taxonName, "\nat last timepoint", sep = " "), y = "Relative abundance (%)", color = "Diet", x = "") +
       scale_color_manual(values = customColors)+
+      scale_x_discrete(labels = c("50 ppm\nDSS","500 ppm\nDSS"))+
 
       #Add stat bar
       geom_signif(comparisons = list(c(groups[1],groups[2])),
-                  annotations = paste("p = ", format(p_value, digits = 2, scientific = TRUE)),
+                  annotations = ifelse(displayPvalue, paste("p = ", format(p_value, digits = 2, scientific = TRUE)), significance),
                   tip_length = 0.02,
                   y_position =  max(relative_abundance$rel_ab),
                   size = 1.2,  # Make the bar wider
@@ -1314,7 +1316,13 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
         panel.grid.minor = element_blank(),  # Remove minor grid lines
         axis.line = element_line(color = "black", size = 1),
         panel.background = element_blank()) # Include axis lines  # Include axis bar
-    ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = 5, width = 5, bg = 'white')
+    
+    if(isFALSE(is.null(additionnalAes))){
+      p <- p + additionnalAes
+    }
+    
+    
+    ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
 
     #Write as excel file the significance table specific to an ASV
     write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
@@ -1402,7 +1410,13 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
       scale_fill_manual(values = c("50 ppm" = "blue", "500 ppm" = "red")) +
       labs(x = "", y = "LDA Score") +
       theme_minimal() +
-      theme(legend.position = "top")
+      theme(legend.position = "top",
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            axis.title.x = element_text(face = "bold"),
+            axis.text.x = element_text(face = "bold"),
+            axis.text.y = element_text(face = "bold.italic")
+            )
     
     ggsave(plot = p, filename = paste0(dir, "/lda.png"), dpi = 300, bg = "white", width = 4, height = 6)
   }

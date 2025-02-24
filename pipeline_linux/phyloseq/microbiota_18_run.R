@@ -848,7 +848,7 @@ pathToSave <- "~/Documents/CHUM_git/figures/thibault/relative_abundance_by_timep
 existingDirCheck(pathToSave)
 
 #customColors for graph display
-customColors = c("blue","red")
+customColors = c("darkblue","darkred")
 
 #Iterate through timepoints
 for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
@@ -917,7 +917,11 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
     deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
     
     #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-    relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, customColors, newPath) 
+    relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, LDA = FALSE, customColors, newPath,
+                         additionnalAes = theme(
+                           axis.text.x = element_text(angle = 0, hjust = 0.5),
+                           title = element_text(size = 12)),
+                         dim = c(3.5,3.5), displayPvalue = TRUE) 
   }
   
   
