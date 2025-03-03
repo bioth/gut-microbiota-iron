@@ -1152,8 +1152,6 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   #Save results at single timepoint
   res <- results(deseq, name = resultsNames(deseq)[2])
   
-  print(min(res$padj))
-  
   #Save significance table
   sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res),], "matrix"))
   
@@ -1168,6 +1166,9 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   
   #Replacing NA padj by 1 (they correspond to this anyways)
   sigtab$padj[is.na(sigtab$padj)] <- 1
+  
+  print(min(sigtab$padj))
+  View(sigtab)
   
   #Add column that adds symbols for the significance 
   # Define significance levels

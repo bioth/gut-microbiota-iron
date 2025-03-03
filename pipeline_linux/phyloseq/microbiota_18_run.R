@@ -859,6 +859,19 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   
   #Creating phyloseq objects for each timepoint
   ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint & sample_data(ps_dss_relab_flt)$treatment == "dss", ps_dss_relab_flt)
+  print(sum(taxa_sums(ps_subset)))
+  print(length(taxa_sums(ps_subset)))
+  
+  # Filtering
+  # Function filtering out ASVs for which they were in total less than a threshold count
+  ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+
+  # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+  ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+  
+  print(sum(taxa_sums(ps_subset)))
+  print(length(taxa_sums(ps_subset)))
+  
   # ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
   
   # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
@@ -880,7 +893,7 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   print(resultsNames(deseq_subset))
   
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors, newPath)  
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, path = newPath, displayPvalue = TRUE)  
   
 }
 

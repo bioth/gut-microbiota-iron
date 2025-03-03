@@ -157,7 +157,7 @@ taxGlomResAndStats <- function(ps, taxrank, exp_group, twoFactors = FALSE, fac1 
 
 # cmp_group is the group for comparisons (for instance gg_group, or a combination of timeVar and exp_group)
 # this function works only with two groups per timepoint for now
-taxGlomResAndStatsTimePoints <- function(ps, taxrank, exp_group, timeVar, cmp_group, twoFactors = FALSE, fac1 = NULL, fac2 = NULL, selected_comparisons, include_graph, path){
+taxGlomResAndStatsTimePoints <- function(ps, taxrank, exp_group, timeVar, cmp_group, twoFactors = FALSE, fac1 = NULL, fac2 = NULL, selected_comparisons, include_graph, write_full_data = FALSE, path){
   
   # Subset for taxon of interest
   ps_taxa <- tax_glom(ps, taxrank = taxrank)
@@ -167,6 +167,22 @@ taxGlomResAndStatsTimePoints <- function(ps, taxrank, exp_group, timeVar, cmp_gr
   
   # Extract otu_table (rows as ASVs)
   relab_table <- as.data.frame(otu_table(ps_relab))
+  
+  if(write_full_data){
+    
+    # Add taxonomic information
+    full_data_table <- cbind(
+      relab_table,
+      tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(relab_table), drop = FALSE]
+    )
+    
+    full_data_table <- as.data.frame(t(full_data_table))
+    colnames(full_data_table) <- full_data_table[taxrank,]
+    full_data_table$id <- rownames(full_data_table)
+    
+    write_xlsx(x = full_data_table, path = paste0(path, taxrank, "_rel_ab_data.xlsx"))
+    
+  }
   
   # Create sub_tables for each exp group, extract means and combine everything into a new dataframe = to save taxa distribution data in an excel file
   full_table <- data.frame(row.names = rownames(relab_table))

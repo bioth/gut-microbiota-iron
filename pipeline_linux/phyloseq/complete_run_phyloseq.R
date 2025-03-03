@@ -44,6 +44,8 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
+
 
 #for microbiota 17
 #set working directory
@@ -658,7 +660,7 @@ for(txnLevel in taxonomicLevels){
 #for Samuel's data, put gg_group as factor and define order
 sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
 
-il22_exp_family <- plot_microbiota_ext(
+il22_exp_family <- plot_microbiota_2Fac(
   ps_object = ps_samuel,
   exp_group = 'gg_group',
   twoFactor = TRUE,
@@ -667,23 +669,26 @@ il22_exp_family <- plot_microbiota_ext(
   fac2 = "treatment",
   refFac2 = "Vehicle",
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Reds", "Oranges", "Greens"),
+  hues = c("Purples", "Blues", "Oranges", "Greens"),
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
   n_col = 2,
   fdr_threshold = 0.01,
-  main_level = "Family",
-  sub_level = "Genus",
-  n_phy = 5, # number of taxa to show
+  main_level = "Phylum",
+  sub_level = "Family",
+  n_phy = 4, # number of taxa to show
   mult_comp = T, # pairwise comparaisons for diff ab analysis
-  selected_comparisons = list(c("Wt:Vehicle", "Wt:Putrescine"), c("IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"), c("Wt:Vehicle","IL-22ra1-/-:Vehicle"), c("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
+  selected_comparisons = list(c("Wt:Vehicle", "Wt:Putrescine"), c("IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"), c("Wt:Vehicle","IL-22ra1-/-:Vehicle"), c("Wt:Putrescine","IL-22ra1-/-:Putrescine")),
+  fullMainAndSubTables = TRUE
   )
 
 print(il22_exp_family$plot)
 print(il22_exp_family$significant_table_main)
 print(il22_exp_family$main_names)
 print(il22_exp_family$sub_names)
+print(il22_exp_family$full_table_main)
+print(il22_exp_family$full_table_sub)
 #Nothing for Wt:Putrescine_vs_IL-22ra1-/-:Putrescine at the Family level.
 # When there was nothing significant, there is not entry for the significance
 # table for the comparaison of interest 
@@ -713,13 +718,36 @@ writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_f
 pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
                                      "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
-            txn_lvl="Family", lvl = "main", taxons = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)], group = "gg_group", path)
+            txn_lvl="Phylum", lvl = "main", taxons = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)], group = "gg_group", path)
 
 # pvalues heatmap for the sub lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/samuel/stackbar/stackbar_stats.xlsx")),
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
                                      "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
-            txn_lvl="Genus", lvl = "sub", taxons = il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)], group = "gg_group", path)
+            txn_lvl="Family", lvl = "sub", taxons = il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)], group = "gg_group", path)
+
+
+
+# # pvalues heatmap for the sub lvl stats
+# p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
+#                 selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
+#                                          "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
+#                 txn_lvl="Family", lvl = "sub", taxons = il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)], group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+# p+scale_x_discrete(labels = c("Wt:Vehicle VS Wt:Putrescine","IL-22ra1-/-:Vehicle VS IL-22ra1-/-:Putrescine",
+#                               "Wt:Vehicle VS IL-22ra1-/-:Vehicle", "Wt:Putrescine VS IL-22ra1-/-:Putrescine"))+
+#   theme(text = element_text(family = "Times New Roman"),
+#         axis.text.x = element_text(size = 11))
+
+
+# write a combined sigtable for main and sub levels but for all features
+writeStackbarExtendedSigTable(main_table = il22_exp_family$full_table_main, sub_table = il22_exp_family$full_table_sub, filepath = "../figures/Samuel_final/stackbar/stackbar_full_stats.xlsx", includeSubTable = TRUE)
+
+p = logFoldSignificanceHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_full_stats.xlsx")),
+                selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
+                                         "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
+                main_txn_lvl = "Phylum", sub_txn_lvl="Family", lvl = "sub", main_taxons = il22_exp_family$main_names,
+                sub_taxons = il22_exp_family$sub_names, group = "gg_group", displaySignificance = TRUE, path = "../figures/Samuel_final/stackbar/") # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+
 
 
 
@@ -859,6 +887,6 @@ sample_data(ps_claire)$diet <- factor(sample_data(ps_claire)$diet, levels = c("5
 taxGlomResAndStatsTimePoints(ps_claire, taxrank = "Phylum", exp_group = "diet", timeVar = "week",
                              cmp_group = "gg_group",
                    selected_comparisons = list(c( "50",  "500")),
-                   path = "~/Documents/CHUM_git/figures/Claire_final/phyla_rel_ab", include_graph = FALSE)
+                   path = "~/Documents/CHUM_git/figures/Claire_final/phyla_rel_ab/", include_graph = FALSE, write_full_data = TRUE)
 
 

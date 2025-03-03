@@ -116,7 +116,8 @@ data("metadata")
 data("ko_abundance")
 } # This is pretty much awful and does not make any sense at all, I guess we are doing it on our own
 
-daa_pathways_heatmap_pairwise <- function(pathways, map_df, custom_colors, metadata, group, threshold = 0.05){
+# methods <- c("ALDEx2", "DESeq2", "edgeR")
+daa_pathways_heatmap_pairwise <- function(pathways, map_df, custom_colors, metadata, group, threshold = 0.05, daa_method = "DESeq2"){
   
   # Map pathway names
   pathways <- merge(pathways, map_df, by = "pathway")
@@ -129,7 +130,7 @@ daa_pathways_heatmap_pairwise <- function(pathways, map_df, custom_colors, metad
   path_ab <- path_ab[,-1]
   
   # First, identify differentially abundant pathways
-  daa_results <- pathway_daa(abundance = path_ab, metadata = metadata, group = group, daa_method = "DESeq2", select = NULL, p.adjust = "BH", reference = "NULL")
+  daa_results <- pathway_daa(abundance = path_ab, metadata = metadata, group = group, daa_method = daa_method, select = NULL, p.adjust = "BH", reference = "NULL")
   daa_results$p_adjust[is.na(daa_results$p_adjust)] <- 1 # Replace NAs values by 1
   daa_res_sub <- daa_results[daa_results$p_adjust < threshold,] # Keep only p-values < 0.05
   path_sig <- pathways[pathways$pathway %in% daa_res_sub$feature,] # Keep only features that are differentially abundant
@@ -195,15 +196,16 @@ customColors = c('black','#A22004',"#AB8F23","#04208D")
 
 dfs <- df_preparation(groups = c("Wt:Vehicle", "Wt:Putrescine"))
 customColors = c('black','#A22004')
-plots <- daa_pathways_heatmap_pairwise(pathways = dfs[[1]], map_df = map_df, custom_colors = customColors, metadata = dfs[[2]], group = "gg_group", threshold = 0.01)
+plots <- daa_pathways_heatmap_pairwise(pathways = dfs[[1]], map_df = map_df, custom_colors = customColors, metadata = dfs[[2]], group = "gg_group", threshold = 0.05)
 plots[[1]]
 plots[[2]]
 
 
 dfs <- df_preparation(groups = c("IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))
 customColors = c("#AB8F23","#04208D")
-daa_pathways_heatmap_pairwise(pathways =  dfs[[1]], map_df = map_df, custom_colors = customColors, metadata =  dfs[[2]], group = "gg_group", threshold = 0.05)
-
+plots <- daa_pathways_heatmap_pairwise(pathways =  dfs[[1]], map_df = map_df, custom_colors = customColors, metadata =  dfs[[2]], group = "gg_group", threshold = 0.05)
+plots[[1]]
+plots[[2]]
 
 # # Load file with KOs annotations for compound/pathways of interest
 # ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos.xlsx")
