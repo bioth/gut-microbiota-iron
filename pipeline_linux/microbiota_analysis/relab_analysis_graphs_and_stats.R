@@ -676,8 +676,10 @@ relabTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCo
 }
 
 #For design with 4 groups based on 2 conditions - this the latest version used
-#gg_group must be order with correct order prior to that (as a factor)
-relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path, single_factor_design = FALSE){
+# gg_group must be order with correct order prior to that (as a factor)
+relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, FDR = TRUE,
+                        returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path, single_factor_design = FALSE,
+                        additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -708,7 +710,7 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   }
   
 
-  
+  # If you performed deseq with a single variable containing the four groups
   if(single_factor_design){
     
     #Partition results for specific pairwise comparaisons
@@ -737,7 +739,8 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
     sigtab_interaction$comparaison <- 5
     sigtab_interaction$vs <- "interaction" 
     
-  }else{
+    
+  }else{ # If you performed deseq with 2 variables, each with 2 groups
     
     #Partition results for specific pairwise comparaisons
     res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #wt putrescine vs vehicle
@@ -767,8 +770,6 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
     
   }
     
-  
-
   #Append the sigtabs together
   sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4, sigtab_interaction)
   
@@ -778,17 +779,23 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
   sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
   
+  if(FDR){
+    pvalue <- as.character("padj")
+  }else{
+    pvalue <- as.character("pvalue")
+  }
+  
   #Replacing NA padj by 1 (they correspond to this anyways)
-  sigtab$padj[is.na(sigtab$padj)] <- 1
+  sigtab$padj[is.na(sigtab[pvalue])] <- 1
   
   #Add column that adds symbols for the significance 
   # Define significance levels
-  sigtab$significance <- as.character(cut(sigtab$padj,
+  sigtab$significance <- as.character(cut(sigtab[,pvalue],
                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
                              labels = c("***", "**", "*", "NS")))
   
   #Find asvs that have at least one significant value at some timepoint
-  asvList <- unique(sigtab[(sigtab$padj)<threshold,"asv"])
+  asvList <- unique(sigtab[(sigtab[pvalue])<threshold,"asv"])
 
     #Loop along ASVs (single taxons analyzed)
     for(i in seq_along(asvList)){
@@ -858,7 +865,7 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
         #Add significance bars
         geom_signif(comparisons = list(c(groups[1],groups[2])),
                     annotations = ifelse(displayPvalue, paste("p = ", 
-                                  format(sigtab_taxon[sigtab_taxon$comparaison == 1, "padj"], digits = 2, scientific = TRUE)),
+                                  format(sigtab_taxon[sigtab_taxon$comparaison == 1, pvalue], digits = 2, scientific = TRUE)),
                                   sigtab_taxon[sigtab_taxon$comparaison == 1, "significance"]),
                     tip_length = 0.02,
                     y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
@@ -867,7 +874,7 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
 
         geom_signif(comparisons = list(c(groups[3],groups[4])),
                     annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 2, "padj"], digits = 2, scientific = TRUE)),
+                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 2, pvalue], digits = 2, scientific = TRUE)),
                                          sigtab_taxon[sigtab_taxon$comparaison == 2, "significance"]),
                     tip_length = 0.02,
                     y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
@@ -876,7 +883,7 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
 
         geom_signif(comparisons = list(c(groups[1],groups[3])),
                     annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 3, "padj"], digits = 2, scientific = TRUE)),
+                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 3, pvalue], digits = 2, scientific = TRUE)),
                                          sigtab_taxon[sigtab_taxon$comparaison == 3, "significance"]),
                     tip_length = 0.02,
                     y_position =  max(relative_abundance$rel_ab)+2/12*max(relative_abundance$rel_ab),
@@ -885,7 +892,7 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
 
         geom_signif(comparisons = list(c(groups[2],groups[4])),
                     annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 4, "padj"], digits = 2, scientific = TRUE)),
+                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 4, pvalue], digits = 2, scientific = TRUE)),
                                          sigtab_taxon[sigtab_taxon$comparaison == 4, "significance"]),
                     tip_length = 0.02,
                     y_position =  max(relative_abundance$rel_ab)+3/12*max(relative_abundance$rel_ab),
@@ -1136,15 +1143,16 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
   
 }
 
-#Revised function that does deseq analysis but only for 
-relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE){
+#Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
+relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE,
+                                 LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
   existingDirCheck(path = dir)
   
-  #Get normalized counts from DESeq2 object
-  normalized_counts <- counts(deseq, normalized = TRUE)
+  # Get counts from DESeq2 object
+  normalized_counts <- counts(deseq, normalized = FALSE)
   
   # #Variable similar to timeVariable but without the first term (because first time point is reference time point)
   # resTimeVariable <- levels(sample_data(ps)[[timeVariable]])[-1]
@@ -1159,25 +1167,28 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   # sigtab[[timeVariable]] <- levels(sample_data(ps)[[timeVariable]])[1]
 
   #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
-  sigtab["asv"] <-rownames(sigtab)
+  sigtab["asv"] <- rownames(sigtab)
   
   #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
   sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
   
-  #Replacing NA padj by 1 (they correspond to this anyways)
-  sigtab$padj[is.na(sigtab$padj)] <- 1
+  if(FDR){
+    pvalue <- as.character("padj")
+  }else{
+    pvalue <- as.character("pvalue")
+  }
   
-  print(min(sigtab$padj))
-  View(sigtab)
+  #Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab[pvalue][is.na(sigtab[pvalue])] <- 1
   
   #Add column that adds symbols for the significance 
   # Define significance levels
-  sigtab$significance <- cut(sigtab$padj,
+  sigtab$significance <- cut(sigtab[,pvalue],
                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
                              labels = c("***", "**", "*", "NS"))
   
   #Find asvs that have at least one significant value at some timepoint
-  asvList <- unique(sigtab[(sigtab$padj)<threshold,"asv"])
+  asvList <- unique(sigtab[(sigtab[pvalue])<threshold,"asv"])
   
   # results()$log2FoldChange
   
@@ -1203,7 +1214,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
     }
 
     #Save p-value
-    p_value <- sigtab_taxon["padj"]
+    p_value <- sigtab_taxon[,pvalue]
     significance <- sigtab_taxon["significance"]
 
     #Creates directory with taxon name
@@ -1212,7 +1223,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
     #Select counts for ASV of interest
     asv_counts <- normalized_counts[asv, ]
-
+    
     #Calculate relative abundance as a percentage for each sample
     relative_abundance <- asv_counts * 100 / colSums(normalized_counts)
 
@@ -1228,11 +1239,6 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
     # relative_abundance[[timeVariable]] <- as.numeric(as.character(relative_abundance[[timeVariable]])) * 7
     relative_abundance[[varToCompare]] <- as.character(relative_abundance[[varToCompare]])
     relative_abundance$week <- timePoint
-
-
-
-
-
 
     # # Compute mean relative abundance by week and diet
     # means_df <- relative_abundance %>%
@@ -1252,7 +1258,6 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
     #Saving groups variables as list of levels for varToCompare
     groups <- levels(sample_data(ps)[[varToCompare]])
-
 
     p <- ggplot(data = relative_abundance, aes(x = !!sym(varToCompare), y = rel_ab, color = !!sym(varToCompare)), group = !!sym(varToCompare)) +
 
@@ -1322,7 +1327,6 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
       p <- p + additionnalAes
     }
     
-    
     ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
 
     #Write as excel file the significance table specific to an ASV
@@ -1362,53 +1366,19 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
                                     tax_table(ps)[rownames(lda_model$finalModel$scaling),"Species"])
     )
     
-    # Convert tax_table to a data frame with ASV as a column
-    # taxonomy <- as.data.frame(as(tax_table(ps), "matrix")) %>%
-    #   rownames_to_column(var = "ASV")  # Ensure ASV is explicitly a column
-    # 
-    # lda_effects <- lda_effects %>%
-    #   inner_join(taxonomy, by = "ASV")  # Ensures we only keep matched ASVs
-    
-    
-    
-    # Create a formatted species label (e.g., "G. species_name")
-    # lda_effects$Taxon <- paste0(substr(lda_effects$Genus, 1, 1), ". ", lda_effects$Species)
-    
     lda_summary <- lda_effects %>%
       group_by(taxa) %>%
       summarise(mean_LDA = mean(LDA_Score)) %>%
-      mutate(Group = ifelse(mean_LDA > 0, "500 ppm", "50 ppm"))  # Separate step for clarity
+      mutate(Group = ifelse(mean_LDA > 0, levels(sample_data(ps)[[varToCompare]])[2], levels(sample_data(ps)[[varToCompare]])[1]))  # Separate step for clarity
     
     print(lda_summary)
-    
-    # # Aggregate by species: compute mean LDA score per species
-    # lda_species <- lda_effects %>%
-    #   group_by(Taxon) %>%
-    #   summarize(Mean_LDA_Score = mean(LDA_Score), Group = ifelse(mean(LDA_Score) > 0, "500 ppm", "50 ppm")) %>%
-    #   ungroup()
-    # 
-    # # Order taxa by effect size
-    # lda_species <- lda_species %>% mutate(Taxon = reorder(Taxon, Mean_LDA_Score))
-    
-    # # Extract ASV-level coefficients (LDA effect sizes)
-    # lda_effects <- data.frame(
-    #   Taxon = paste0(substring(tax_table(ps)[rownames(lda_model$finalModel$scaling),"Genus"], 1, 1), ". ",
-    #                 tax_table(ps)[rownames(lda_model$finalModel$scaling),"Species"]),
-    #   LDA_Score = lda_model$finalModel$scaling[,1]  # Use the first discriminant
-    # )
-    # 
-    # # Assign groups based on direction of effect
-    # lda_effects$Group <- ifelse(lda_effects$LDA_Score > 0, "500 ppm", "50 ppm")
-    # 
-    # # Order taxa by effect size
-    # lda_effects <- lda_effects %>% mutate(Taxon = reorder(Taxon, LDA_Score))
     
     # Plot species-level mean LDA scores
     p <- ggplot(lda_summary, aes(x = reorder(taxa, mean_LDA), y = mean_LDA, fill = Group)) +
       geom_col() +
       coord_flip() +
       geom_hline(yintercept = 0, color = "black") +
-      scale_fill_manual(values = c("50 ppm" = "blue", "500 ppm" = "red")) +
+      scale_fill_manual(values = customColors) +
       labs(x = "", y = "LDA Score") +
       theme_minimal() +
       theme(legend.position = "top",

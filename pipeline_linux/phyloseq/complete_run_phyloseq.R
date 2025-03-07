@@ -491,7 +491,7 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   print(resultsNames(deseq_subset))
   
   # Correlation for all groups, species level
-  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, paste0("~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_", timePoint, "/"), df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE)
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, paste0("~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_", timePoint, "/"), df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
   p <- p+
     # coord_fixed() + # Makes thing squared
     theme(
@@ -514,12 +514,14 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   print(resultsNames(deseq_subset))
   
   # Correlation for all groups, species level
-  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, paste0("~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_", timePoint, "/"), df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_10", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = FALSE, displaySpeciesASVNumber = FALSE)
   p$layers <- p$layers[-2] # Remove the second layer (geom_text)
   p+
     # coord_fixed() + # Makes thing squared
     geom_text(aes(label = significance), color = "black", size = 10) +
     scale_x_discrete(labels = function(x) gsub(" ", "\n", x)) +  # Replace space with newline
+    scale_y_discrete(limits = c("Romboutsia ilealis", "Romboutsia hominis", "Adlercreutzia equolifaciens",
+                                "Faecalibaculum rodentium", "Blautia coccoides"))+
     theme(
       text = element_text(family = "Arial"),      # Global text settings
       axis.title.x = element_text(size = 16, face = "bold", vjust = -1),  # Axis titles
@@ -708,7 +710,7 @@ p
 
 # Save plot and associated stats
 existingDirCheck("../figures/Samuel_final/stackbar")
-ggsave(plot = p, filename = "../figures/Samuel_final/stackbar/family_and_genus_stackbar.png", width = 8, height = 8, dpi = 300)
+ggsave(plot = p, filename = "../figures/Samuel_final/stackbar/phylum_family_stackbar.png", width = 8, height = 8, dpi = 300)
 
 # write a combined sigtable for main and sub levels
 writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_family$significant_table_sub, filepath = "../figures/Samuel_final/stackbar/stackbar_stats.xlsx")
@@ -747,8 +749,15 @@ p = logFoldSignificanceHmap(stats = as.data.frame(readxl::read_excel("../figures
                                          "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
                 main_txn_lvl = "Phylum", sub_txn_lvl="Family", lvl = "sub", main_taxons = il22_exp_family$main_names,
                 sub_taxons = il22_exp_family$sub_names, group = "gg_group", displaySignificance = TRUE, path = "../figures/Samuel_final/stackbar/") # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
-
-
+p <- p + theme(
+  text = element_text(family = "Times New Roman"),      # Global text settings
+  strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+  plot.title = element_text(size = 20, face = "bold"),  # Main title
+  axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+  axis.text = element_text(size = 12, face = "bold"),   # Axis text
+  legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+)
+p
 
 
 # Claire's data

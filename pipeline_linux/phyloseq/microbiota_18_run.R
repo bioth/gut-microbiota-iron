@@ -53,6 +53,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 #set working directory
 setwd("~/Documents/CHUM_git/Microbiota_18/")
 asv_table <- as.data.frame(fread("asv_table/asv_table_server.csv", sep = ";"))
+asv_table <- as.data.frame(fread("from_server/to_transfer/asv_table/asv_table_m1.csv", sep = ";"))
 
 # Set the first column as row names and remove it from the data frame
 rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
@@ -78,9 +79,9 @@ metadata <- metadata[-46,]
 # Extract 16S reads sample ids
 samples <- read.xlsx("metadata/Microbiota_18_samples_2025-01-13.xlsx")
 samples <- as.data.frame(samples$Nom)
-colnames(samples) <- "full_id"
-samples$id <- substring(samples$full_id, 1, 5)
-samples$timepoint <- substring(samples$full_id, 8, nchar(samples$full_id)) 
+colnames(samples) <- "sample_id"
+samples$id <- substring(samples$sample_id, 1, 5)
+samples$timepoint <- substring(samples$sample_id, 8, nchar(samples$sample_id)) 
 
 # Bind both metadata df to link timepoints with their metadata (diet and treatment)
 metadata <- merge(samples, metadata, by = "id")
@@ -105,11 +106,12 @@ metadata$gg_group2 <-
         sep = ":")
 
 # Put full_id as rownames
-rownames(metadata) <- metadata$full_id
+rownames(metadata) <- metadata$sample_id
 }
 
 #load taxonomical assignments
 taxa <- as.matrix(fread("taxonomy/taxa_annotation_server.csv", sep = ";"))
+taxa <- as.matrix(fread("from_server/to_transfer/taxonomy/taxa_annotation_m1.csv", sep = ";"))
 
 # Set the first column as row names and remove it from the data frame
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
@@ -844,7 +846,9 @@ betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare 
 
 # Relative abundance analysis: finding differential abundant bugs at the species level, for DSS groups ONLY
 #Path where to save graphs
-pathToSave <- "~/Documents/CHUM_git/figures/thibault/relative_abundance_by_timepoint/"
+existingDirCheck("~/Documents/CHUM_git/figures/thibault_new")
+{
+pathToSave <- "~/Documents/CHUM_git/figures/thibault_new/relative_abundance_by_timepoint/"
 existingDirCheck(pathToSave)
 
 #customColors for graph display
@@ -859,30 +863,15 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   
   #Creating phyloseq objects for each timepoint
   ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint & sample_data(ps_dss_relab_flt)$treatment == "dss", ps_dss_relab_flt)
-  print(sum(taxa_sums(ps_subset)))
   print(length(taxa_sums(ps_subset)))
   
   # Filtering
   # Function filtering out ASVs for which they were in total less than a threshold count
   ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
-
   # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
   ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
-  
-  print(sum(taxa_sums(ps_subset)))
+  # print(sum(taxa_sums(ps_subset)))
   print(length(taxa_sums(ps_subset)))
-  
-  # ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
-  
-  # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-  # ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
-  # print(length(taxa_sums(ps_subset)))
-  # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
-  # print(length(taxa_sums(ps_subset)))
-  # 
-  # # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-  # ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
-  # print(length(taxa_sums(ps_subset)))
   
   #Simple deseq object only accounting for the differences in diet
   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
@@ -893,21 +882,22 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   print(resultsNames(deseq_subset))
   
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, path = newPath, displayPvalue = TRUE)  
-  
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", varToCompare = "diet",
+                       timePoint = timePoint, taxa = "Species", threshold = 0.05, FDR = FALSE,
+                       LDA = TRUE, customColors = customColors, path = newPath, displayPvalue = TRUE, additionnalAes = NULL)  
 }
 
-#At other taxonomic levels
+# At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
 
-#Iterate through timepoints
+# Iterate through timepoints
 for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   
-  #New path created for each week
+  # New path created for each week
   newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
   existingDirCheck(newPath)
   
-  #Creating phyloseq objects for each timepoint
+  # Creating phyloseq objects for each timepoint
   ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint & sample_data(ps_dss_relab_flt)$treatment == "dss", ps_dss_relab_flt)
   ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
   ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
@@ -940,18 +930,120 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   
   
 }
+}
 
+# Relative abundance analysis: finding differential abundant bugs at the species level, all groups
+#Path where to save graphs
+{
+  pathToSave <- "~/Documents/CHUM_git/figures/thibault_new/relative_abundance_by_timepoint_all_groups/"
+  existingDirCheck(pathToSave)
+  
+  #customColors for graph display
+  customColors = c("blue", "red", "darkblue","darkred")
+  
+  sample_data(ps_dss_relab_flt)$gg_group2 <- factor(sample_data(ps_dss_relab_flt)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+  
+  #Iterate through timepoints
+  for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
+    
+    #New path created for each week
+    newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
+    existingDirCheck(newPath)
+    
+    #Creating phyloseq objects for each timepoint
+    ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint, ps_dss_relab_flt)
+    print(length(taxa_sums(ps_subset)))
+    
+    # Filtering
+    # Function filtering out ASVs for which they were in total less than a threshold count
+    ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+    # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+    ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+    # print(sum(taxa_sums(ps_subset)))
+    print(length(taxa_sums(ps_subset)))
+    
+    #Simple deseq object only accounting for the differences in diet
+    deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ treatment*diet) 
+    
+    #Performing the deseq analysis
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    
+    print(resultsNames(deseq_subset))
+    
+    #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+    relabGroups(ps_subset, deseq_subset, measure = "log2fold", gg_group = "gg_group2", taxa = "Species", threshold = 0.01, FDR = FALSE,
+                returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors = customColors, 
+                pairs = list(
+                  list("50:water","500:water"), list("50:dss","500:dss"),
+                  list("50:water","50:dss"), list("500:water","500:dss")),
+                path = newPath, single_factor_design = FALSE,
+                additionnalAes = NULL, dim = c(6,6), displayPvalue = FALSE)  
+  }
+  
+  #customColors for graph display
+  customColors = c("blue", "red", "darkblue","darkred")
+  
+  sample_data(ps_dss_relab_flt)$gg_group2 <- factor(sample_data(ps_dss_relab_flt)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+  
+  #At other taxonomic levels
+  taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
+  taxonomicLevels <- c("Phylum")
+  
+  #Iterate through timepoints
+  for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
+    
+    #New path created for each week
+    newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
+    existingDirCheck(newPath)
+    
+    #Creating phyloseq objects for each timepoint
+    ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == timePoint, ps_dss_relab_flt)
+    print(length(taxa_sums(ps_subset)))
+    
+    # # Filtering
+    # # Function filtering out ASVs for which they were in total less than a threshold count
+    # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+    # # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+    # ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+    # # print(sum(taxa_sums(ps_subset)))
+    # print(length(taxa_sums(ps_subset)))
+    
+    for(txnLevel in taxonomicLevels){
+      
+      #Creates ps subset for taxonomical level of interest
+      ps_taxa <- tax_glom(ps_subset, taxrank = txnLevel)
+      colnames(sample_data(ps_taxa))[2] <- "sample_id"
+      deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ treatment*diet)
+      deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+      
+      print(resultsNames(deseq_subset))
+      
+      #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+      relabGroups(ps_taxa, deseq_subset, measure = "log2fold", gg_group = "gg_group2", taxa = txnLevel, threshold = 0.05, FDR = FALSE,
+                  returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors = customColors, 
+                  pairs = list(
+                    list("50:water","500:water"), list("50:dss","500:dss"),
+                    list("50:water","50:dss"), list("500:water","500:dss")),
+                  path = newPath, single_factor_design = FALSE,
+                  additionnalAes = NULL, dim = c(6,6), displayPvalue = FALSE)  
+    }
+    
+    
+    
+  }
+}
 
 # Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
-#Path where to save graphs
-pathToSave <- "~/Documents/CHUM_git/figures/thibault/relative_abundance_diet/"
+{
+# Path where to save graphs
+pathToSave <- "~/Documents/CHUM_git/figures/thibault_new/relative_abundance_diet/"
 existingDirCheck(pathToSave)
 
 #customColors for graph display
 customColors = c("blue","red")
 
 #Iterate through timepoints
-for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)[2]){
+for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
   
   #New path created for each week
   newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
@@ -980,7 +1072,7 @@ for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)[2]){
   print(resultsNames(deseq_subset))
   
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = TRUE, customColors, newPath)  
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = TRUE, FDR = TRUE, customColors = customColors, path = newPath)  
   
 }
 
@@ -1023,43 +1115,9 @@ for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
   
   
 }
+}
 
 
-
-# #Creating phyloseq objects for each timepoint
-# ps_sub <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)
-# 
-# sample_data(ps_sub)$gg_group2
-# colnames(sample_data(ps_sub))[2] <- "sample_id"
-# sample_data(ps_sub)
-# sample_data(ps_sub)$gg_group <- factor(sample_data(ps_sub)$gg_group, levels = c("49:50:water","49:50:dss","49:500:water","49:500:dss"))
-# 
-# print(length(taxa_sums(ps_sub)))
-# ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
-# print(length(taxa_sums(ps_sub)))
-# 
-# # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-# ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.10 * nsamples(ps_sub)), ps_sub)
-# print(length(taxa_sums(ps_sub)))
-# 
-# ps_sub <- prune_taxa(!is.na(as.vector(tax_table(ps_sub)[,7])), ps_sub) # Remove ASVs for which no species were found
-# 
-# #Differential abundance Samuel
-# deseq_tfinal <- phyloseq_to_deseq2(ps_sub, ~ diet*treatment) # Full formula with interaction term
-# 
-# #Setting "Wt" as the baseline for genotype
-# colData(deseq_tfinal)$diet <- relevel(colData(deseq_tfinal)$diet, ref="50")
-# 
-# #Setting "Vehicle" as the baseline for treatment
-# colData(deseq_tfinal)$treatment <- relevel(colData(deseq_tfinal)$treatment, ref="water")
-# 
-# deseq_tfinal <- DESeq(deseq_tfinal, test="Wald", fitType = "parametric", )
-# 
-# resultsNames(deseq_tfinal)
-# 
-# customColors = list('black','#A22004',"#AB8F23","#04208D")
-# pairs <- list(list("50:water","50:dss"), list("500:water","500:dss"), list("50:water","500:water"), list("50:dss","500:dss"))
-# relabGroups(ps_sub, deseq_tfinal, measure = "log2fold", gg_group = "gg_group2", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.05, customColors, pairs, "~/Documents/CHUM_git/figures/thibault/differential_abundance/")
 
 
 

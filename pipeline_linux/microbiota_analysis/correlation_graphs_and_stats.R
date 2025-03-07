@@ -721,6 +721,7 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     
     
     if (showIndivCor) {
+      
       # Create directory for individual scatterplots
       dir_indiv <- paste0(dir, "/scatterplots/")
       existingDirCheck(path = dir_indiv)
@@ -747,9 +748,7 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
           scatter_data$group <- factor(scatter_data$group, levels = levels(sample_data(ps)[[varToCompare]]))
           
           # Get taxa name (if taxonomic level of interest is not species)
-          if(taxa != "Species"){
-            taxon <-  as.data.frame(tax_table(ps))[asv,taxa]
-          }
+          taxon <-  as.data.frame(tax_table(ps))[asv,taxa]
           
           # Skip if there are no data points
           if (nrow(scatter_data) == 0) next
@@ -768,11 +767,14 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
           
           # Save scatterplot
           ggsave(
-            filename = paste0(dir_indiv, "scatter_", ifelse(taxa == "Species", asv, taxon), "_vs_", var, ".png"),
+            filename = paste0(dir_indiv, "scatter_", ifelse(taxa == "Species", paste0(taxon, asv), taxon), "_vs_", var, ".png"),
             plot = scatter_plot,
             width = 8, height = 6, dpi = 300,
             bg = "white"
           )
+          
+          # Save scatter data
+          write_xlsx(x = scatter_data, path = paste0(dir_indiv, "scatter_data_",ifelse(taxa == "Species", paste0(taxon, "_", asv), taxon), "_", var, ".xlsx"))
         }
       }
       message("Scatterplots saved to: ", dir_indiv)
