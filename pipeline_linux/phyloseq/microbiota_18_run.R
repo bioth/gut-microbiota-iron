@@ -1415,10 +1415,15 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS", "50 Ct
 
 
 
+# Prepare picrust2 input for last timepoint
+ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)
 
-
-
-
+# Filtering
+# Function filtering out ASVs for which they were in total less than a threshold count
+ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+# Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+producePicrust2Inputs(ps_subset, "~/Documents/CHUM_git/Microbiota_18/")
 
 
 
