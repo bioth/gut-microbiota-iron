@@ -90,6 +90,14 @@ taxa <- as.matrix(fread("taxonomy/taxa_annotation_m1.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
 
+# If you want to have full species name for further analysis 
+{
+  na_indices <- which(is.na(taxa[,"Species"]))
+  taxa <- cbind(taxa, ifelse(is.na(taxa[,"Species"]), paste0("Unclassified", seq_along(na_indices)),paste(taxa[,"Genus"], taxa[,"Species"])))
+  colnames(taxa)[8] <- "Genus_species"
+  
+}
+
 # Load phylogenetic tree if possible
 tree <- read.tree("~/Documents/CHUM_git/figures/samuel/beta_diversity/phylo_tree/phylogenetic_tree.newick")
 
@@ -400,6 +408,7 @@ for(txnLevel in taxonomicLevels){
 
 ###Correlations between relative abundances and other metrics
 #Setting a correlation matrix workflow starting with Samuel's data
+ps_samuel <- groupSameSpecies(ps_samuel) # Group same species within the phyloseq object
 #Preparing deseq object needed for the function
 deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ genotype + treatment+ genotype:treatment) 
 
@@ -414,22 +423,30 @@ deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
 #Preparing dataframe for correlation
 variables <- read.xlsx("~/Documents/CHUM_git/figures/samuel/correlation/Samuel's Combine Data_Correlation.xlsx")
 rownames(variables) <- variables$X3
-variables <- variables[,c(7:11)]
-colnames(variables) <- c("EcNC101_Colonisation_end_point","lcn-2","il-6","tnf-alpha","colon_length")
+variables <- variables[,c(6:11)]
+colnames(variables) <- c("DAI_end_point","EcNC101_Colonisation_end_point","lcn-2","il-6","tnf-alpha","colon_length")
 
-
+# Put gg_group as factor
+sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
 customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
 #For species level
 #One heatmap per gg_group
 correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = FALSE, showIndivCor = FALSE, normalizedCountsOnly = FALSE)
 #One heatmap for all groups
-p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, saveFig = FALSE)
-p + 
+p = correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, saveFig = FALSE, displaySpeciesASVNumber = FALSE)
+p <- p + 
   coord_fixed() + # Makes thing squared
-  scale_x_discrete(labels = pretty_string, position = "top")+
+  scale_x_discrete(labels = pretty_string, position = "top") +  # Replace space with newline
+  # scale_x_discrete(labels = pretty_string, position = "top")+
+  scale_y_discrete(limits = c("Lachnospiraceae NK4A136 group bacterium","Lachnospiraceae FCS020 group bacterium",
+                              "Romboutsia ilealis","Romboutsia hominis","Gordonibacter urolithinfaciens",
+                              "Escherichia-Shigella albertii","Bifidobacterium pseudolongum","Bacteroides acidifaciens"),
+                   labels = c("Lachnospiraceae NK4A136\ngroup bacterium","Lachnospiraceae FCS020\ngroup bacterium",
+                                        "Romboutsia ilealis","Romboutsia hominis","Gordonibacter urolithinfaciens",
+                                        "Escherichia-Shigella albertii","Bifidobacterium pseudolongum","Bacteroides acidifaciens"))+
   geom_tile(color = "black", lwd = 0.75, linetype = 1) +
-  geom_text(aes(label = significance), color = "black", size = 8) +
+  geom_text(aes(label = significance), color = "black", size = 6) +
   theme(
   text = element_text(family = "Times New Roman"),      # Global text settings
   axis.title.x = element_text(size = 16, face = "bold"),  # Axis titles
@@ -437,6 +454,24 @@ p +
   axis.text = element_text(size = 12, face = "bold"),   # Axis text
   legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
   axis.text.x = element_text(angle = -45, hjust = 1))
+
+ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/species_hmap.png",
+       plot = p, bg = "white", height = 9, width = 8, dpi = 300)
+# p$layers <- p$layers[-2] # Remove the second layer (geom_text)
+# p+
+#   # coord_fixed() + # Makes thing squared
+#   geom_text(aes(label = significance), color = "black", size = 10) +
+#   scale_x_discrete(labels = function(x) gsub(" ", "\n", x)) +  # Replace space with newline
+#   scale_y_discrete(limits = c("Romboutsia ilealis", "Romboutsia hominis", "Adlercreutzia equolifaciens",
+#                               "Faecalibaculum rodentium", "Blautia coccoides"))+
+#   theme(
+#     text = element_text(family = "Arial"),      # Global text settings
+#     axis.title.x = element_text(size = 16, face = "bold", vjust = -1),  # Axis titles
+#     axis.title.y = element_text(size = 16, face = "bold"),
+#     axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5),   # Axis text
+#     axis.text.y = element_text(size = 12),   # Axis text
+#     legend.title = element_text(face = "bold", size = 16, vjust = 3),  # Legend title  # Legend text
+#   ) #axis.text.x = element_text(angle = -45, hjust = 1)
 
 # Save correlation for Species while displaying only taxa for which they were at least one significant correlation
 correlationGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, saveFig = TRUE)
@@ -872,7 +907,7 @@ p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "
 
 
 
-# Saving the phyla data with the stats
+# Saving the phyla data with the stats for Samuel
 sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
 sample_data(ps_samuel)$genotype <- factor(sample_data(ps_samuel)$genotype, levels = c("Wt", "IL-22ra1-/-"))  # Wt as reference
 sample_data(ps_samuel)$treatment  <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle", "Putrescine"))  # Vehicle as reference
@@ -884,7 +919,7 @@ taxGlomResAndStats(ps_samuel, taxrank = "Phylum", exp_group = "gg_group", twoFac
                                                c("IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"),
                                                c("Wt:Vehicle","IL-22ra1-/-:Vehicle"),
                                                c("Wt:Putrescine","IL-22ra1-/-:Putrescine")),
-                   path = "~/Documents/CHUM_git/figures/Samuel_final/phyla_relative_abundance/", include_graph = FALSE)
+                   path = "~/Documents/CHUM_git/figures/Samuel_final/phyla_relative_abundance/", include_graph = FALSE, write_full_data = TRUE)
 
 
 #for Claire's data, put gg_group as factor and define order
@@ -897,5 +932,7 @@ taxGlomResAndStatsTimePoints(ps_claire, taxrank = "Phylum", exp_group = "diet", 
                              cmp_group = "gg_group",
                    selected_comparisons = list(c( "50",  "500")),
                    path = "~/Documents/CHUM_git/figures/Claire_final/phyla_rel_ab/", include_graph = FALSE, write_full_data = TRUE)
+
+
 
 

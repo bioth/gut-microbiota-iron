@@ -175,3 +175,8 @@ checkIfFactor <- function(var){
     stop(paste(deparse(substitute(var)), "is not a factor. Please put it as a factor for function to work." ))
   }
 }
+
+# Input a phyloseq object with species level taxa information, group species together as a singular ASV (careful, this function can produce deep changes regarding the analysis performed)
+groupSameSpecies <- function(ps){
+  ps <- tax_glom(ps, taxrank = "Genus_species")
+}

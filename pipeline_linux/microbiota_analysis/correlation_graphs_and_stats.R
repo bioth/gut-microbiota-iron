@@ -1,6 +1,6 @@
 #For design with 4 groups based on 2 conditions - this the latest version used
 #gg_group must be order with correct order prior to that (as a factor)
-correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, pairs, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, saveFig=TRUE){
+correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, pairs, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, saveFig=TRUE, displaySpeciesASVNumber = TRUE){
   
   # Checks if gg_group is a factor
   checkIfFactor(sample_data(ps)[[gg_group]])
@@ -133,10 +133,9 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     
     if(taxa=="Species"){
       cor_melt$taxa_name <- paste(taxonomy[cor_melt$ASV, "Genus"],taxonomy[cor_melt$ASV, "Species"])
-      cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
-    }else{
-      cor_melt$taxa_name <- taxonomy[cor_melt$ASV, taxa]
-    }
+      if(displaySpeciesASVNumber){
+        cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
+      }
     
     # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
     if(displayOnlySig){
@@ -308,7 +307,7 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
   }
   
 }
-
+}
 
 
 #For design with like 2 groups but multiple timepoints

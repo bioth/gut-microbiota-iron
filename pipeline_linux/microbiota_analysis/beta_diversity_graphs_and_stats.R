@@ -754,7 +754,7 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
   
   # rda_result <- rda(model_formula, data = metadata)
   # View RDA results
-  summary(cap_result)
+  print(summary(cap_result))
   
   # Perform ANOVA-like permutation test on RDA axes
   anova_rda <- anova.cca(cap_result, by = "term", permutations = 999, parallel = 20)

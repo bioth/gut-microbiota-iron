@@ -64,7 +64,8 @@ asv_table <- asv_table[,-1]  # Drop the first column
 #loading metadata of interest
 metadata <- read.csv("metadata/metadata.csv", sep = ";")
   
-# Remove the non-metadata stuff (liver measures and stuff)
+
+  # Remove the non-metadata stuff (liver measures and stuff)
 metadata <- metadata[,-c(5:8)]
   
 # Remove the letter at the end of id
@@ -199,13 +200,13 @@ sum(taxa_sums(ps_flt))
 length(taxa_sums(ps_flt))
 
 # Put as factors variables that are going to be used
-sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, levels = c("50:water", "50:dss", "500:water", "500:dss")) # Put gg_group2 as factor
+sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss")) # Put gg_group2 as factor
 sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","54","final")) # Put timepoint as factor
 sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","dss")) # Put treatment as factor
 sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # Put diet as factor
 
 # Put as factors variables that are going to be used
-sample_data(ps_flt)$gg_group2 <- factor(sample_data(ps_flt)$gg_group2, levels = c("50:water", "50:dss", "500:water", "500:dss")) # Put gg_group2 as factor
+sample_data(ps_flt)$gg_group2 <- factor(sample_data(ps_flt)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss")) # Put gg_group2 as factor
 sample_data(ps_flt)$timepoint <- factor(sample_data(ps_flt)$timepoint, levels = c("0","35","49","54","final")) # Put timepoint as factor
 sample_data(ps_flt)$treatment <- factor(sample_data(ps_flt)$treatment, levels = c("water","dss")) # Put treatment as factor
 sample_data(ps_flt)$diet <- factor(sample_data(ps_flt)$diet, levels = c("50","500")) # Put diet as factor
@@ -230,8 +231,8 @@ ps_foo <- prune_samples(sample_data(ps_foo)$timepoint == "0", ps_foo)
 }
 
 # Alpha diveristy for diet only
-existingDirCheck("../figures/thibault/diet/")
-graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault/diet/", time = "timepoint", group = "diet", writeData = TRUE)
+existingDirCheck("../figures/thibault_new/diet/")
+graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault_new/diet/", time = "timepoint", group = "diet", writeData = TRUE)
 
 {
   ps_sub <- prune_samples(sample_data(ps_dss_alpha)$timepoint %in% c("49","54"), ps_dss_alpha)
@@ -433,14 +434,14 @@ sink()
 
 
 # Alpha diveristy for dss_diet only
-existingDirCheck("../figures/thibault/diet_dss/")
-graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/thibault/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
+existingDirCheck("../figures/thibault_new/diet_dss/")
+graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/thibault_new/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
 
 
 # Chao1
 p = graphs[[1]]+
-  scale_fill_manual(values = c("blue","darkblue","red","darkred"),
-                    labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+  scale_fill_manual(values = c("blue","red","darkblue","darkred"),
+                    labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
   scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
   scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
                    expand = c(0, 0.5))+
@@ -458,7 +459,7 @@ p = graphs[[1]]+
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-ggsave(plot = p, filename = "../figures/thibault/icm/chao1.png", width = 6, height = 4, dpi = 300, bg = "white")
+ggsave(plot = p, filename = "../figures/thibault_new/diet_dss/alpha_diversity/chao1.png", width = 6, height = 4, dpi = 300, bg = "white")
 nrmTest <- function(x,y,log=FALSE){
   
   if(log){
@@ -521,8 +522,8 @@ summary(model)
 
 # InvSimpson
 p = graphs[[3]]+
-  scale_fill_manual(values = c("blue","darkblue","red","darkred"),
-                    labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+  scale_fill_manual(values = c("blue","red","darkblue","darkred"),
+                    labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
   scale_pattern_manual(values = c("circle","stripe"))+
   scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
                    expand = c(0, 0.5))+
@@ -540,7 +541,7 @@ p = graphs[[3]]+
     panel.grid.major = element_blank(),  # Remove major grid lines
     panel.grid.minor = element_blank(),  # Remove minor grid lines
     axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-ggsave(plot = p, filename = "../figures/thibault/icm/invSim.png", width = 6, height = 4, dpi = 300, bg = "white")
+ggsave(plot = p, filename = "../figures/thibault_new/diet_dss/alpha_diversity/invSim.png", width = 6, height = 4, dpi = 300, bg = "white")
 
 
 nrmTest("49", "InvSimpson", log = TRUE)
@@ -702,6 +703,24 @@ betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare 
                                         aspect.ratio = 1
                                       ))
 
+# dbRDA method at last timepoint and for DSS groups // test for SPN
+ps_sub <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final", ps_flt_dss)
+sample_data(ps_sub)$gg_group2
+print(length(taxa_sums(ps_sub)))
+ps_sub <- prune_taxa(taxa_sums(ps_sub) > 10, ps_sub)
+ps_sub <- prune_taxa(colSums(otu_table(ps_sub) > 0) >= (0.05 * nsamples(ps_sub)), ps_sub)
+print(length(taxa_sums(ps_sub)))
+betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "full_id", varToCompare = "gg_group2", formula = "diet+treatment",
+                                    transform = "none", distMethod = "wunifrac", customColors = c("blue","red","darkblue","darkred"),
+                                    font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/dbRDA-all-groups/",
+                                    additionnalAes = 
+                                      theme(
+                                        plot.title = element_text(),
+                                        panel.grid.major = element_blank(),  # Add major grid lines
+                                        panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                        aspect.ratio = 1
+                                      ))
+
 # dbRDA method at t54 and last timepoint and for DSS groups
 ps_sub <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
 sample_data(ps_sub)$diet
@@ -785,7 +804,7 @@ betaDiversityTimepoint2Factors(ps_dss_only, sample_id = "full_id", timeVariable 
 
 # RDA method (constrained analysis), for both diet and treatment explanotory variables
 betaDiversityTimepoint2FactorsRDA(ps_dss, sample_id = "full_id", timeVariable = "timepoint",
-                                  varToCompare = "gg_group2", formula = "diet * treatment",
+                                  varToCompare = "gg_group2", formula = "diet",
                                   transform = "rel_ab", customColors = c("blue","blue4","red","red4"),
                                   font = "Arial", path = "../figures/thibault/diet_dss/beta_diversity/RDA/")
 
@@ -798,9 +817,17 @@ sample_data(ps_dss_only_flt)$gg_group <- factor(sample_data(ps_dss_only_flt)$gg_
 sample_data(ps_dss_only_flt)$timepoint
 
 # RDA method (constrained analysis), for both only treatment explanotory variables
-betaDiversityTimepointsGroupedRDA(ps_dss_only, sample_id = "full_id", varToCompare = "gg_group", formula = "diet*timepoint",
+betaDiversityTimepointsGroupedDbRDA(ps_dss_only_flt, sample_id = "full_id", varToCompare = "gg_group", formula = "diet*timepoint",
                                   transform = "rel_ab", customColors = c("blue", "red", "blue4","red4"),
-                                  font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/RDA/")
+                                  distMethod = "wunifrac",
+                                  font = "Arial", path = "../figures/thibault/dss_only/beta_diversity/RDA/",
+                                  additionnalAes = 
+                                    theme(
+                                      plot.title = element_text(),
+                                      panel.grid.major = element_blank(),  # Add major grid lines
+                                      panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                      aspect.ratio = 1
+                                    ))
 
 # dbRDA method at last 2 timepoints and for DSS groups
 betaDiversityTimepointsGroupedDbRDA(ps_dss_only_flt, sample_id = "full_id", varToCompare = "gg_group", formula = "diet*timepoint",
@@ -933,7 +960,7 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
 }
 
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups
-#Path where to save graphs
+# Path where to save graphs
 {
   pathToSave <- "~/Documents/CHUM_git/figures/thibault_new/relative_abundance_by_timepoint_all_groups/"
   existingDirCheck(pathToSave)
@@ -944,7 +971,7 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   sample_data(ps_dss_relab_flt)$gg_group2 <- factor(sample_data(ps_dss_relab_flt)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
   
   #Iterate through timepoints
-  for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
+  for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)[3]){
     
     #New path created for each week
     newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
@@ -977,7 +1004,20 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
                   list("50:water","500:water"), list("50:dss","500:dss"),
                   list("50:water","50:dss"), list("500:water","500:dss")),
                 path = newPath, single_factor_design = FALSE,
-                additionnalAes = NULL, dim = c(6,6), displayPvalue = FALSE)  
+                dim = c(4,5), displayPvalue = FALSE, displaySignificance = FALSE, additionnalAes =
+                  list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nDSS","500 ppm\nDSS")),
+                  theme(
+                    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                    axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                    legend.text = element_text(size = 12),  # Adjust legend font size
+                    panel.grid.major = element_blank(),  # Add major grid lines
+                    panel.grid.minor = element_blank(),  # Remove minor grid lines
+                    axis.line = element_line(color = "black", size = 1)),
+                  labs(color = "", x=""))) # Include axis lines  # Include axis bar)
   }
   
   #customColors for graph display
@@ -1025,7 +1065,20 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
                     list("50:water","500:water"), list("50:dss","500:dss"),
                     list("50:water","50:dss"), list("500:water","500:dss")),
                   path = newPath, single_factor_design = FALSE,
-                  additionnalAes = NULL, dim = c(6,6), displayPvalue = FALSE)  
+                  dim = c(5,5), displayPvalue = FALSE, displaySignificance = FALSE, additionnalAes =
+                    list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nDSS","500 ppm\nDSS")),
+                         theme(
+                           plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                           axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                           axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                           axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                           axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                           legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                           legend.text = element_text(size = 12),  # Adjust legend font size
+                           panel.grid.major = element_blank(),  # Add major grid lines
+                           panel.grid.minor = element_blank(),  # Remove minor grid lines
+                           axis.line = element_line(color = "black", size = 1)),
+                         labs(color = "", x="")))  
     }
     
     

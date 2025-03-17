@@ -137,7 +137,7 @@ ko_annotations <- ko_annotations[1:3,]
 
 # Function that iterates through list of compounds/pathways, subtract KO_abundance dataframe for KOs associated, and returns multiple graphs
 # ko_abundance needs to have kos as rownames
-KOsToCompoundAbundanceGraphs <- function(ko_abundance, ko_annotations, metadata, group, customColors, sample_id_col, path){
+KOsToCompoundAbundanceGraphs <- function(ko_abundance, ko_annotations, metadata, group, customColors, sample_id_col, path, dim = c(6,6), additionalAes){
 
   existingDirCheck(path)
 
@@ -195,8 +195,15 @@ KOsToCompoundAbundanceGraphs <- function(ko_abundance, ko_annotations, metadata,
         panel.grid.minor = element_blank(),  # Remove minor grid lines
         axis.line = element_line(color = "black", size = 1),
         panel.background = element_blank()) # Include axis lines  # Include axis bar
+    
+    if(isFALSE(is.null(additionalAes))){
+      # p <- do.call("+", c(list(p), additionnalAes))
+      
+      p <- Reduce("+", c(list(p), additionalAes))
+    }
+    
     # Save plot
-    ggsave(plot = p, filename = paste0(path, "/", clean_string(compound), "_predicted.png"), dpi = 300, width = 5, height = 5, bg = "white")
+    ggsave(plot = p, filename = paste0(path, "/", clean_string(compound), "_predicted.png"), dpi = 300, width = dim[1], height = dim[2], bg = "white")
   }
 }
 
@@ -206,7 +213,22 @@ KOsToCompoundAbundanceGraphs(ko_abundance = ko_metagenome[[1]],
                             group = "gg_group2",
                             customColors = c("blue","red","darkblue","darkred"),
                             sample_id_col="id",
-                            path = "~/Documents/CHUM_git/figures/thibault_new/picrust2")
+                            path = "~/Documents/CHUM_git/figures/thibault_new/picrust2",
+                            dim = c(5,4),
+                            additionalAes =
+                              list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nDSS","500 ppm\nDSS")),
+                                   theme(
+                                     plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                                     axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                                     axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                                     axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                                     axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                                     legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                                     legend.text = element_text(size = 12),  # Adjust legend font size
+                                     panel.grid.major = element_blank(),  # Add major grid lines
+                                     panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                     axis.line = element_line(color = "black", size = 1)),
+                                   labs(color = "", x="")))
 
 
 # Stats with mixed effect models
@@ -280,6 +302,18 @@ Anova(model, type = "III")
 } # This is pretty much awful and does not make any sense at all, I guess we are doing it on our own
 
 
+# Look at unstrat results
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/picrust2_out_pipeline2/")
+pred_ko_contrib <- read.table("KO_metagenome_out/pred_metagenome_contrib.tsv.gz", sep = "\t", header = TRUE)
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos2.xlsx")
+
+# For butyrate - reference ko K00929
+df <- pred_ko_contrib[pred_ko_contrib$function. == "K00929",]
+df <- df[order(df$norm_taxon_function_contrib, decreasing = TRUE), ]
+df[which.max(df$norm_taxon_function_contrib), ]
+unique(df$taxon)
+
+sub <- df[df$taxon == "ASV66",]
 
 
 

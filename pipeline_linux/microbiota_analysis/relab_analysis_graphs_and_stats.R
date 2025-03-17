@@ -679,7 +679,7 @@ relabTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCo
 # gg_group must be order with correct order prior to that (as a factor)
 relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, FDR = TRUE,
                         returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path, single_factor_design = FALSE,
-                        additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE){
+                        additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, displaySignificance = TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -861,44 +861,6 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
         labs(title = taxonName,
              y = "Relative abundance (%)", color = "Groups", x = "Groups") +
         scale_color_manual(values = customColors)+
-        
-        #Add significance bars
-        geom_signif(comparisons = list(c(groups[1],groups[2])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                  format(sigtab_taxon[sigtab_taxon$comparaison == 1, pvalue], digits = 2, scientific = TRUE)),
-                                  sigtab_taxon[sigtab_taxon$comparaison == 1, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
-
-        geom_signif(comparisons = list(c(groups[3],groups[4])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 2, pvalue], digits = 2, scientific = TRUE)),
-                                         sigtab_taxon[sigtab_taxon$comparaison == 2, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
-
-        geom_signif(comparisons = list(c(groups[1],groups[3])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 3, pvalue], digits = 2, scientific = TRUE)),
-                                         sigtab_taxon[sigtab_taxon$comparaison == 3, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance$rel_ab)+2/12*max(relative_abundance$rel_ab),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
-
-        geom_signif(comparisons = list(c(groups[2],groups[4])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 4, pvalue], digits = 2, scientific = TRUE)),
-                                         sigtab_taxon[sigtab_taxon$comparaison == 4, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance$rel_ab)+3/12*max(relative_abundance$rel_ab),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
-        
         theme_minimal()+
         theme(
           plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
@@ -911,7 +873,53 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
           panel.grid.major = element_blank(),  # Add major grid lines
           panel.grid.minor = element_blank(),  # Remove minor grid lines
           axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bar
-      ggsave(plot = p, filename = paste(dir_taxon,"/",taxonName,"_relab.png", sep = ""), dpi = 300, height = 6, width = 6, bg = 'white')
+        
+        if(displaySignificance){
+          #Add significance bars
+          p <- p + geom_signif(comparisons = list(c(groups[1],groups[2])),
+                      annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                format(sigtab_taxon[sigtab_taxon$comparaison == 1, pvalue], digits = 2, scientific = TRUE)),
+                                           sigtab_taxon[sigtab_taxon$comparaison == 1, "significance"]),
+                      tip_length = 0.02,
+                      y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
+                      size = 1.2,  # Make the bar wider
+                      color = "black") +
+            
+            geom_signif(comparisons = list(c(groups[3],groups[4])),
+                        annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                  format(sigtab_taxon[sigtab_taxon$comparaison == 2, pvalue], digits = 2, scientific = TRUE)),
+                                             sigtab_taxon[sigtab_taxon$comparaison == 2, "significance"]),
+                        tip_length = 0.02,
+                        y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
+                        size = 1.2,  # Make the bar wider
+                        color = "black") +
+            
+            geom_signif(comparisons = list(c(groups[1],groups[3])),
+                        annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                  format(sigtab_taxon[sigtab_taxon$comparaison == 3, pvalue], digits = 2, scientific = TRUE)),
+                                             sigtab_taxon[sigtab_taxon$comparaison == 3, "significance"]),
+                        tip_length = 0.02,
+                        y_position =  max(relative_abundance$rel_ab)+2/12*max(relative_abundance$rel_ab),
+                        size = 1.2,  # Make the bar wider
+                        color = "black") +
+            
+            geom_signif(comparisons = list(c(groups[2],groups[4])),
+                        annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                  format(sigtab_taxon[sigtab_taxon$comparaison == 4, pvalue], digits = 2, scientific = TRUE)),
+                                             sigtab_taxon[sigtab_taxon$comparaison == 4, "significance"]),
+                        tip_length = 0.02,
+                        y_position =  max(relative_abundance$rel_ab)+3/12*max(relative_abundance$rel_ab),
+                        size = 1.2,  # Make the bar wider
+                        color = "black")
+        }
+        
+      if(isFALSE(is.null(additionnalAes))){
+        # p <- do.call("+", c(list(p), additionnalAes))
+        
+        p <- Reduce("+", c(list(p), additionnalAes))
+      }
+      
+      ggsave(plot = p, filename = paste(dir_taxon,"/",taxonName,"_relab.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
       
       #Write as excel file the significance table specific to an ASV
       write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))

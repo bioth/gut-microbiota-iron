@@ -131,7 +131,9 @@ Use a function from the 'phyloseq_complete_run.R' to generate both inputs (fasta
 "Depending on the pipeline you used to process your raw 16S data there may be many extremely rare ASVs found across your samples. Such rare ASVs typically only add noise to analyses (especially singletons - ASVs found only by 1 read in 1 sample) and should be removed. Reducing the number of input ASVs will also make PICRUSt2 faster and less memory intensive." - https://github.com/picrust/picrust2/wiki/PICRUSt2-Tutorial-(v2.5.2)
 
 
-To run complete picrust2 pipeline: picrust2_pipeline.py -s seqs.fna -i otu_table.biom -o picrust2_out_pipeline -p 16
+To run complete picrust2 pipeline: picrust2_pipeline.py -s seqs.fna -i otu_table.biom -o picrust2_out_pipeline -p 16 --stratified
+
+--stratified provides information about the metagenomic contribution
 
 
 
