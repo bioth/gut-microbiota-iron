@@ -131,12 +131,15 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     taxonomy <- as.data.frame(tax_table(ps))
     taxonomy <- taxonomy[asvList,]
     
+    # Retrieve taxonomic information
+    cor_melt <- merge(cor_melt, taxonomy, by.x = "ASV", by.y = "row.names")
+    
     if(taxa=="Species"){
-      cor_melt$taxa_name <- paste(taxonomy[cor_melt$ASV, "Genus"],taxonomy[cor_melt$ASV, "Species"])
+      cor_melt$taxa_name <- paste(cor_melt$Genus,cor_melt$Species)
       if(displaySpeciesASVNumber){
         cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
       }
-    
+      
     # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
     if(displayOnlySig){
       asvList <- as.character(unique(cor_melt$ASV[cor_melt$significance != ""]))

@@ -37,7 +37,7 @@ pretty_string <- function(input_string) {
   return(result)
 }
 
-# Function to apply different type of counts transform for ASVs
+# Function to apply different type of counts transform for ASVs (rel_ab, log and CLR)
 transformCounts <- function(ps, transformation = "rel_ab", log_base = 10) {
   
   # Check orientation of OTU table and transpose if necessary

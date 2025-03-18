@@ -439,12 +439,12 @@ p <- p +
   coord_fixed() + # Makes thing squared
   scale_x_discrete(labels = pretty_string, position = "top") +  # Replace space with newline
   # scale_x_discrete(labels = pretty_string, position = "top")+
-  scale_y_discrete(limits = c("Lachnospiraceae NK4A136 group bacterium","Lachnospiraceae FCS020 group bacterium",
-                              "Romboutsia ilealis","Romboutsia hominis","Gordonibacter urolithinfaciens",
-                              "Escherichia-Shigella albertii","Bifidobacterium pseudolongum","Bacteroides acidifaciens"),
-                   labels = c("Lachnospiraceae NK4A136\ngroup bacterium","Lachnospiraceae FCS020\ngroup bacterium",
-                                        "Romboutsia ilealis","Romboutsia hominis","Gordonibacter urolithinfaciens",
-                                        "Escherichia-Shigella albertii","Bifidobacterium pseudolongum","Bacteroides acidifaciens"))+
+  scale_y_discrete(limits =  c("Lactobacillus johnsonii","Bifidobacterium pseudolongum","Romboutsia ilealis","Romboutsia hominis",
+                                                  "Lachnospiraceae FCS020 group bacterium","Escherichia-Shigella albertii","Enterococcus dispar",
+                                                  "Bacteroides acidifaciens"),
+                   labels =  c("Lactobacillus johnsonii","Bifidobacterium pseudolongum","Romboutsia ilealis","Romboutsia hominis",
+                               "Lachnospiraceae FCS020\ngroup bacterium","Escherichia-Shigella albertii","Enterococcus dispar",
+                               "Bacteroides acidifaciens"))+
   geom_tile(color = "black", lwd = 0.75, linetype = 1) +
   geom_text(aes(label = significance), color = "black", size = 6) +
   theme(
