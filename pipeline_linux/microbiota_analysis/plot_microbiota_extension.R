@@ -2829,7 +2829,7 @@ logFoldSignificanceHmap <- function(stats, selected_comparisons, main_taxons, su
     p <- ggplot(stat_hmap, aes(y = .data[[sub_txn_lvl]], x = comparaison, fill = log2FoldChange)) +
       geom_tile(color = "black", lwd = 0.5, linetype = 1) +
       coord_fixed() + # Makes thing squared
-      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+      scale_fill_gradient2(low = "darkblue", mid = "white", high = "darkred", midpoint = 0) +
       theme_minimal() +
       labs(x = "", y = "", fill = "Log2FC") +
       scale_y_discrete(limits = function(x) rev(x))+ # Reverse y-axis order

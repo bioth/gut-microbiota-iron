@@ -697,6 +697,9 @@ for(txnLevel in taxonomicLevels){
 #for Samuel's data, put gg_group as factor and define order
 sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
 
+
+sample_data(ps_samuel)$simple_id <- as.factor(paste0(1:52))
+
 il22_exp_family <- plot_microbiota_2Fac(
   ps_object = ps_samuel,
   exp_group = 'gg_group',
@@ -732,12 +735,27 @@ print(il22_exp_family$full_table_sub)
 
 # Extract plot and customize it
 plot <- il22_exp_family$plot
-p <- plot + theme(
+
+library(ggh4x)
+# Replace the sample names by some number as an id
+facet_levels <- unique(plot$data$gg_group)
+num_samples <- 13
+facet_scales <- lapply(seq_along(facet_levels), function(i) {
+  start_label <- 1+(i-1)*num_samples
+  end_label <- num_samples*i
+  scale_x_discrete(labels = as.character(start_label:end_label))
+})
+
+
+p <- plot + 
+  facetted_pos_scales(x = facet_scales) +
+  theme(
   text = element_text(family = "Times New Roman"),      # Global text settings
   strip.text = element_text(size = 14, face = "bold"),  # Facet titles
   plot.title = element_text(size = 20, face = "bold"),  # Main title
   axis.title = element_text(size = 15, face = "bold"),  # Axis titles
   axis.text = element_text(size = 12, face = "bold"),   # Axis text
+  axis.text.x = element_text(angle = 0, hjust = 0.5),
   legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
 ) +
   labs(x = "Sample ID")
@@ -784,12 +802,16 @@ p = logFoldSignificanceHmap(stats = as.data.frame(readxl::read_excel("../figures
                                          "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
                 main_txn_lvl = "Phylum", sub_txn_lvl="Family", lvl = "sub", main_taxons = il22_exp_family$main_names,
                 sub_taxons = il22_exp_family$sub_names, group = "gg_group", displaySignificance = TRUE, path = "../figures/Samuel_final/stackbar/") # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
-p <- p + theme(
+p <- p + 
+  scale_x_discrete(labels = c("Vehicle VS Putrescine / Wt", "Vehicle VS Putrescine / IL22-ra1-/-",
+                              "Wt VS IL22ra1-/- / Vehicle", "Wt VS IL22ra1-/- / Putrescine"))+
+  theme(
   text = element_text(family = "Times New Roman"),      # Global text settings
   strip.text = element_text(size = 14, face = "bold"),  # Facet titles
   plot.title = element_text(size = 20, face = "bold"),  # Main title
   axis.title = element_text(size = 15, face = "bold"),  # Axis titles
   axis.text = element_text(size = 12, face = "bold"),   # Axis text
+  axis.text.x = element_text(vjust = 0.5),
   legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
 )
 p
