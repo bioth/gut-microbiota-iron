@@ -1,7 +1,7 @@
 #Revised version, not doing separate distance calculations and adding path option
 
 #Beta diversity analysis for different timepoints. You must provide a filtered ps object, the timeVariable and the varToCompare (present in sample_data)
-betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, customColors, font, path){
+betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, customColors, font, dim = c(6,6), path){
   
   #calculating distance matrix
   dist <- phyloseq::distance(ps, method = distMethod)
@@ -30,6 +30,7 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
     
     #Perform PCoA
     pcoa_results <- ordinate(ps_subset, method = "PCoA", distance = dist_subset)
+    colnames(pcoa_results$vectors) <- gsub("Axis.", "PC", colnames(pcoa_results$vectors)) #Replace colnames "Axis.n" by "PCn"
     
     #Ordination plot
     p <- plot_ordination(ps_subset, pcoa_results, type = "samples", 
@@ -40,10 +41,10 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
-      labs(title = paste("PCoA of", distCharacter, "distance matrix at", timepoint, "weeks.", sep = " ")) +
+      labs(title = paste("PCoA of", distCharacter, "distance\nmatrix at", timepoint, "weeks.", sep = " ")) +
       scale_color_manual(values = customColors)+
       labs(color = "Diet")+
-      
+      theme(aspect.ratio = 1) + # Scale the x and y axis the same +
       theme(
         plot.title = element_text(size = 16, face = "bold", family = font),  # Adjust title font size and style
         axis.title.x = element_text(size = 14, face = "bold", family = font), # Adjust x-axis label font size and style   
@@ -65,7 +66,7 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
     write.xlsx(test.adonis, paste(dir,"/",distMethod,"_","week_",timepoint,".xlsx", sep = ""))
     
     #Save figure
-    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = 6, width = 6, bg = 'white')
+    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
     
     
     # cbn <- combn(x=unique(metadata$body.site), m = 2)

@@ -758,7 +758,7 @@ plot_microbiota_2Fac <- function(ps_object = ps,
       }
     }
     
-    # Create a table with all results for sub taxonomic level 
+    # Create a table with all results for main taxonomic level 
     if(fullMainAndSubTables){
       
       # Initialize an empty list to store all features for each comparison
@@ -1001,7 +1001,8 @@ plot_microbiota_timepoints <- function(ps_object = ps,
                             useT = FALSE,
                             minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
                             parallel = FALSE,
-                            showOnlySubLegend = FALSE
+                            showOnlySubLegend = FALSE,
+                            fullMainAndSubTables = FALSE
 ) {
   
   
@@ -1520,9 +1521,35 @@ plot_microbiota_timepoints <- function(ps_object = ps,
         # Convert to data frame and add to the list
         significant_features <- as.data.frame(significant_features)
         significant_features_sub[[comparison_name]] <- significant_features
+        
+
       }
     }
     
+    # Create a table with all results for sub taxonomic level 
+    if(fullMainAndSubTables){
+      
+      # Initialize an empty list to store all features for each comparison
+      full_features_sub <- list()
+      
+      # Iterate over the results_list to process each comparison
+      for (i in seq_along(results_list)) {
+        res <- results_list[[i]]
+        comparison_name <- names(results_list)[i]
+        
+        # Link features with their taxonomy information
+        features <- cbind(
+          res,
+          tax_table(fam_glom)[rownames(tax_table(fam_glom)) %in% rownames(res), , drop = FALSE]
+        )
+        
+        # Convert to data frame and add to the list
+        features <- as.data.frame(features)
+        full_features_sub[[comparison_name]] <- features
+        
+      }
+      
+    }
     
     
     
@@ -1618,6 +1645,10 @@ plot_microbiota_timepoints <- function(ps_object = ps,
         # Convert to data frame and add to the list
         significant_features <- as.data.frame(significant_features)
         significant_features_main[[comparison_name]] <- significant_features
+        
+        
+        
+        
       }
     }
     
@@ -1729,6 +1760,31 @@ plot_microbiota_timepoints <- function(ps_object = ps,
       }
     }
     
+    # Create a table with all results for sub taxonomic level 
+    if(fullMainAndSubTables){
+      
+      # Initialize an empty list to store all features for each comparison
+      full_features_sub <- list()
+      
+      # Iterate over the results_list to process each comparison
+      for (i in seq_along(results_list)) {
+        res <- results_list[[i]]
+        comparison_name <- names(results_list)[i]
+        
+        # Link features with their taxonomy information
+        features <- cbind(
+          res,
+          tax_table(fam_glom)[rownames(tax_table(fam_glom)) %in% rownames(res), , drop = FALSE]
+        )
+        
+        # Convert to data frame and add to the list
+        features <- as.data.frame(features)
+        full_features_sub[[comparison_name]] <- features
+        
+      }
+      
+    }
+    
       
   }
   
@@ -1835,6 +1891,30 @@ plot_microbiota_timepoints <- function(ps_object = ps,
       }
     }
     
+    # Create a table with all results for main taxonomic level 
+    if(fullMainAndSubTables){
+      
+      # Initialize an empty list to store all features for each comparison
+      full_features_main <- list()
+      
+      # Iterate over the results_list to process each comparison
+      for (i in seq_along(results_list)) {
+        res <- results_list[[i]]
+        comparison_name <- names(results_list)[i]
+        
+        # Link features with their taxonomy information
+        features <- cbind(
+          res,
+          tax_table(main_glom)[rownames(tax_table(main_glom)) %in% rownames(res), , drop = FALSE]
+        )
+        
+        # Convert to data frame and add to the list
+        features <- as.data.frame(features)
+        full_features_main[[comparison_name]] <- features
+        
+      }
+      
+    }
     
   }
   
@@ -1977,8 +2057,22 @@ plot_microbiota_timepoints <- function(ps_object = ps,
     
   }
   
-  
-  
+  if(fullMainAndSubTables && differential_analysis == T ){
+    
+    return(
+      list(
+        significant_table_main = significant_features_main,
+        significant_table_sub = significant_features_sub,
+        plot = p,
+        main_names=unique(df_long[[main_level]]),
+        sub_names=unique(df_long$plot_taxa),
+        full_table_main = full_features_main,
+        full_table_sub = full_features_sub
+        
+      )
+    )
+    
+  } 
   if (differential_analysis == T ) {
     
     return(
@@ -1986,8 +2080,8 @@ plot_microbiota_timepoints <- function(ps_object = ps,
         significant_table_main = significant_features_main,
         significant_table_sub = significant_features_sub,
         plot = p,
-        main_names = unique(df_long[[main_level]]),
-        sub_names = unique(df_long$plot_taxa)
+        main_names=unique(df_long[[main_level]]),
+        sub_names=unique(df_long$plot_taxa)
       )
     )
     

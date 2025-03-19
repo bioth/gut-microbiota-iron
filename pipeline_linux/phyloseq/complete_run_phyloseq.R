@@ -221,8 +221,8 @@ alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/Samuel_fi
 #Beta diversity analysis for different timepoints. You must provide a filtered ps object, the timeVariable and the varToCompare (present in sample_data)
 
 #For Claire
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), dim = c(5,5), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), dim = c(5,5), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
 
 
 #Samuel beta diversity
@@ -540,7 +540,7 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
 
 {
   # Subset for timePoint
-  ps_subset <- prune_samples(sample_data(ps_claire)$week == "10", ps_claire)
+  ps_subset <- prune_samples(sample_data(ps_claire)$week == "14", ps_claire)
   #replace tax names in the otu_table so that they are corresponding to the excel file
   sample_names(ps_subset) <- gsub("_.*", "", sample_names(ps_subset))
   # Deseq analysis
@@ -549,11 +549,11 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   print(resultsNames(deseq_subset))
   
   # Correlation for all groups, species level
-  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_10", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = FALSE, displaySpeciesASVNumber = FALSE)
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_14/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
   p$layers <- p$layers[-2] # Remove the second layer (geom_text)
-  p+
+  p <- p+
     # coord_fixed() + # Makes thing squared
-    geom_text(aes(label = significance), color = "black", size = 10) +
+    geom_text(aes(label = significance), color = "black", size = 6) +
     scale_x_discrete(labels = function(x) gsub(" ", "\n", x)) +  # Replace space with newline
     scale_y_discrete(limits = c("Romboutsia ilealis", "Romboutsia hominis", "Adlercreutzia equolifaciens",
                                 "Faecalibaculum rodentium", "Blautia coccoides"))+
@@ -566,6 +566,8 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
       legend.title = element_text(face = "bold", size = 16, vjust = 3),  # Legend title  # Legend text
     ) #axis.text.x = element_text(angle = -45, hjust = 1)
   
+  ggsave(filename = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_10/Species/all_groups/cor_hmap_week10.png",
+         plot = p, bg = "white", height = 6, width = 8, dpi = 300)
 }
 
 
@@ -877,7 +879,8 @@ iron_exp_family <- plot_microbiota_timepoints(
   n_phy = 4, # number of taxa to show 
   mult_comp = F, # pairwise comparaisons for diff ab analysis
   selected_comparisons = list(c( "50 ppm / 3w",  "500 ppm / 3w"), c( "50 ppm / 8w",  "500 ppm / 8w"), c( "50 ppm / 10w",  "500 ppm / 10w"), c("50 ppm / 14w", "500 ppm / 14w")),
-  showOnlySubLegend = TRUE
+  showOnlySubLegend = FALSE,
+  fullMainAndSubTables = TRUE
 )
 
 print(iron_exp_family$plot)
@@ -885,43 +888,102 @@ print(iron_exp_family$significant_table_main)
 
 library(ggh4x)
 
+# Replace the sample names by some number as an id
+facet_levels <- unique(plot$data$gg_group)
+num_samples <- 10
+facet_scales <- lapply(seq_along(facet_levels), function(i) {
+  start_label <- 1+(i-1)*num_samples
+  end_label <- num_samples*i
+  scale_x_discrete(labels = as.character(start_label:end_label))
+})
+
+# 
+  
+# Define the facet levels
+facet_levels <- unique(p$data$gg_group)
+
+# Assign IDs 1 to 10 to the top facets and 11 to 20 to the bottom facets
+top_facets <- facet_levels[1:4]
+bottom_facets <- facet_levels[5:8]
+
+# Create a named vector to map facet levels to their corresponding ID ranges
+facet_labels <- c(
+  setNames(as.character(1:10), paste0(top_facets, "_", 1:10)),
+  setNames(as.character(11:20), paste0(bottom_facets, "_", 11:20))
+)
+
+
+# Define custom x-axis labels for each facet
+facet_scales <- list(
+  scale_x_discrete(labels = as.character(c("1", "2", "3", "4", "5", "6", "7", "8", "10"))),
+  scale_x_discrete(labels = as.character(1:10)),
+  scale_x_discrete(labels = as.character(1:10)),
+  scale_x_discrete(labels = as.character(1:10)),
+  scale_x_discrete(labels = as.character(11:20)),
+  scale_x_discrete(labels = as.character(11:20)),
+  scale_x_discrete(labels = as.character(11:20)),
+  scale_x_discrete(labels = as.character(11:20))
+)
+
+
 # Custom the plot
 p <- iron_exp_family$plot + 
   facet_wrap2(~ gg_group, 
               scales  = "free_x", nrow = 2, ncol = 4,
               strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blue","blue","blue","red", "red", "red", "red"))))+
   theme(text = element_text(family = "Arial"),      # Global text settings
-        strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+        strip.text = element_text(size = 14, face = "bold", color = "white"),  # Facet titles
         plot.title = element_text(size = 20, face = "bold"),  # Main title
         axis.title = element_text(size = 15, face = "bold"),  # Axis titles
         axis.text = element_text(size = 12, face = "bold"),   # Axis text
-        legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+        axis.text.x = element_text(angle = 0, hjust = 0.5),
+        legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
         ) +
-  scale_x_discrete(labels = function(x) substr(x, 1, 5))+
+  # scale_x_discrete(labels = function(x) substr(x, 1, 5))+
+  facetted_pos_scales(x = facet_scales)+
   labs(x = "Sample ID")
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/claire/stackbar")
-ggsave(plot = p, filename = "../figures/claire/stackbar/family_stackbar.png", width = 14, height = 8, dpi = 300)
-writeStackbarExtendedSigTable(iron_exp_family$significant_table_main, iron_exp_family$significant_table_sub, filepath = "../figures/Claire_final/stackbar/stackbar_stats.xlsx")
-
-# pvalues heatmap for the main lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/stackbar_stats.xlsx")),
-            selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
-                                     "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
-            txn_lvl="Phylum", lvl = "main", taxons = iron_exp_family$main_names[!grepl("Others", x = iron_exp_family$main_names)], group = "gg_group", path)
-
-# pvalues heatmap for the sub lvl stats
-p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/stackbar_stats.xlsx")),
-            selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
-                                     "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
-            txn_lvl="Family", lvl = "sub", taxons = iron_exp_family$sub_names, group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
-p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
-  theme(text = element_text(family = "Arial"),
-        axis.text.x = element_text(size = 11))
+existingDirCheck("../figures/Claire_final/stackbar")
+ggsave(plot = p, filename = "../figures/Claire_final/stackbar/family_stackbar.png", width = 10, height = 6, dpi = 300)
+writeStackbarExtendedSigTable(main_table = iron_exp_family$significant_table_main, sub_table = iron_exp_family$significant_table_sub, includeSubTable = TRUE, filepath = "../figures/Claire_final/stackbar/stackbar_stats.xlsx")
+writeStackbarExtendedSigTable(main_table = iron_exp_family$full_table_main, sub_table = iron_exp_family$full_table_sub, includeSubTable = TRUE, filepath = "../figures/Claire_final/stackbar/full_stackbar_stats.xlsx")
 
 
+# # pvalues heatmap for the main lvl stats
+# pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/stackbar_stats.xlsx")),
+#             selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
+#                                      "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
+#             txn_lvl="Phylum", lvl = "main", taxons = iron_exp_family$main_names[!grepl("Others", x = iron_exp_family$main_names)], group = "gg_group", path)
+# 
+# # pvalues heatmap for the sub lvl stats
+# p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/stackbar_stats.xlsx")),
+#             selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w", "50 ppm / 8w_vs_500 ppm / 8w",
+#                                      "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
+#             txn_lvl="Family", lvl = "sub", taxons = iron_exp_family$sub_names, group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+# p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
+#   theme(text = element_text(family = "Arial"),
+#         axis.text.x = element_text(size = 11))
+
+p = logFoldSignificanceHmap(stats = as.data.frame(readxl::read_excel("../figures/Claire_final/stackbar/full_stackbar_stats.xlsx")),
+                            selected_comparisons = c("50 ppm / 3w_vs_500 ppm / 3w","50 ppm / 8w_vs_500 ppm / 8w",
+                                                     "50 ppm / 10w_vs_500 ppm / 10w", "50 ppm / 14w_vs_500 ppm / 14w"),
+                            main_txn_lvl = "Phylum", sub_txn_lvl="Family", lvl = "sub", main_taxons = iron_exp_family$main_names,
+                            sub_taxons = iron_exp_family$sub_names, group = "gg_group", displaySignificance = TRUE, path = "../figures/Claire_final/stackbar/") # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+p <- p + 
+  scale_x_discrete(labels = c("50 VS 500 / 3w", "50 VS 500 / 8w",
+                              "50 VS 500 / 10w", "50 VS 500 / 14w"))+
+  theme(
+    text = element_text(family = "Arial"),      # Global text settings
+    strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+    plot.title = element_text(size = 20, face = "bold"),  # Main title
+    axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+    axis.text = element_text(size = 12, face = "bold"),   # Axis text
+    axis.text.x = element_text(vjust = 0.5),
+    legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+  )
+p
 
 
 

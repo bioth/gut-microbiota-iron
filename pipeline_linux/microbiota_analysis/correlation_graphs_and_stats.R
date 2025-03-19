@@ -317,6 +317,7 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
 #the time variable must be ordered as a factor
 #identifying significant ASVs based on relabTimelineRevised, meaning deseq analysis is done within the function and then results are combined to identify significant ASVs across multiple timepoints
 #Logically, we should only be using last timepoint!
+# DEPRECIATED 
 correlationTimepoints <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, customColors, path, df, global = TRUE){
   
   #Creates directory for taxonomic level
@@ -683,11 +684,20 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     taxonomy <- as.data.frame(tax_table(ps))
     taxonomy <- taxonomy[asvList,]
     
+    # Retrieve taxonomic information
+    cor_melt <- merge(cor_melt, taxonomy, by.x = "ASV", by.y = "row.names")
+    
     if(taxa=="Species"){
-      cor_melt$taxa_name <- paste(taxonomy[cor_melt$ASV, "Genus"],taxonomy[cor_melt$ASV, "Species"])
+      cor_melt$taxa_name <- paste(cor_melt$Genus,cor_melt$Species)
       if(displaySpeciesASVNumber){
         cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
       }
+    
+    # if(taxa=="Species"){
+    #   cor_melt$taxa_name <- paste(taxonomy[cor_melt$ASV, "Genus"],taxonomy[cor_melt$ASV, "Species"])
+    #   if(displaySpeciesASVNumber){
+    #     cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
+    #   }
       
     }else{
       cor_melt$taxa_name <- taxonomy[cor_melt$ASV, taxa]
