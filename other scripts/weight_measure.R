@@ -668,7 +668,14 @@ print(leveneTest(df[["log_spleen"]] ~ gg_group, data = df))
 
 # Perform anova
 result <- aov(df[["log_spleen"]] ~ treatment * diet, data = df)
-print(summary(result))
+model <- lm(log_spleen ~ treatment * diet, data = df)
+result <- anova(model)
+print(result)
+library(emmeans)
+# Compute estimated marginal means (EMMs)
+emm <- emmeans(model, pairwise ~ treatment * diet)
+# Display results
+summary(emm)
 print(TukeyHSD(result))
 
 result <- oneway.test(log_spleen ~ gg_group, data = df, var.equal = FALSE)
