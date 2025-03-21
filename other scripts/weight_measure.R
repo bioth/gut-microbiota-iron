@@ -20,6 +20,7 @@ setwd("D:/CHUM_git/gut-microbiota-iron/")
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
 #If working from la bête
 setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
+setwd("~/Documents/CHUM_git/gut-microbiota-iron/")
 
 #loading functions for data manipulation
 source("other scripts/dataManipFunctions.R")
@@ -522,4 +523,165 @@ summary(anova)
 # Perform Tukey's HSD test and store the results in the list
 results <- TukeyHSD(anova)
 print(results)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# All graphs regarding young mice experiment 
+setwd("experiments/finished exp/young-DSS-exp3/")
+
+# Mice weight evolution
+young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
+young_weight <- young_weight[,-c(6:10)] #removing first week body weight measurements
+young_weight <- weightDataManipulation(young_weight,4, fromDay0 = TRUE) #Manipulating weight measures data
+
+# creating scatter plot with the four different treatments (diet combined with dss or control)
+young_weight_plot <- weightPlot(young_weight, percentage = FALSE, diet_only = FALSE)
+young_weight_plot
+
+# Mice DAI evolution
+young_dss_followup <- read.csv("young48_dss_followup.csv", header = TRUE, sep = ";")
+young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-05-29",nbrDays = 5, negativeOnly = TRUE)
+
+# creating scatter plot with the four different treatments (diet combined with dss or control)
+young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
+young_dssflwup_plot
+
+#DAI measures at final day of DSS
+young_final_DSI_plot <- dssDsiFinalDay(young_dss_followup)
+young_final_DSI_plot
+
+# Mice dissection data
+dissec_young <- read.csv("young48_dss_dissection.csv", sep = ";", header = TRUE)
+dissec_young <- dissectionDataManipulation(dissec_young,4)
+dissec_young$gg_group <- factor(dissec_young$gg_group, levels = c("50 water","500 water","50 dss","500 dss"))
+dissec_young$colon_length_nrm <- dissec_young$colon_length/dissec_young$body_weight
+
+#boxplot for body weight
+young_dissec_bw <- dissecBoxplot(dissec_young,"body") 
+young_dissec_bw
+
+#boxplot for std liver weight
+young_dissec_lvr <- dissecBoxplot(dissec_young,"liver") 
+young_dissec_lvr
+
+# boxplot for std spleen weight
+young_dissec_spln <- dissecBoxplot(dissec_young,"spleen") 
+young_dissec_spln
+# Statistics for spleen measurements
+df <- young_dissec_spln$data 
+dss50 <- df[df$gg_group == "50 dss",]
+dss500 <- df[df$gg_group == "500 dss",]
+water50 <- df[df$gg_group == "50 water",]
+water500 <- df[df$gg_group == "500 water",]
+
+# Shapiro-Wilk test for normality
+print(shapiro.test(dss50[["std_spleen_weigth"]]))
+print(shapiro.test(dss500[["std_spleen_weigth"]]))
+print(shapiro.test(water50[["std_spleen_weigth"]]))
+print(shapiro.test(water500[["std_spleen_weigth"]])) # Conclusion => most of the data is not normally distributed
+
+df$log_spleen <- log(df$std_spleen_weigth)
+print(shapiro.test(dss50[["log_spleen"]]))
+hist(dss50[["log_spleen"]], breaks = 15)
+dss500 <- dss500[-9,] # Remove super high spleen weight outlier
+print(shapiro.test(dss500[["log_spleen"]]))
+hist(dss500[["log_spleen"]], breaks = 15)
+print(shapiro.test(water50[["log_spleen"]]))
+print(shapiro.test(water500[["log_spleen"]]))
+
+df <- df[df$id != "10966B", ]
+
+# Levene's test for homogeneity of variance
+print(leveneTest(df[["log_spleen"]] ~ gg_group, data = df))
+
+# Perform anova
+result <- aov(df[["log_spleen"]] ~ treatment * diet, data = df)
+print(summary(result))
+print(TukeyHSD(result))
+
+result <- oneway.test(log_spleen ~ gg_group, data = df, var.equal = FALSE)
+print(result)
+library(rstatix)
+post_hoc <- df %>% games_howell_test(log_spleen ~ gg_group)
+print(post_hoc)
+
+#boxplot for colon length (non std)
+young_dissec_cln <- dissecBoxplot(dissec_young,"colon") 
+young_dissec_cln
+
+# boxplot for colon length normalized for body weight
+young_dissec_cln <- dissecBoxplot(dissec_young,"colon_nrm") 
+young_dissec_cln
 
