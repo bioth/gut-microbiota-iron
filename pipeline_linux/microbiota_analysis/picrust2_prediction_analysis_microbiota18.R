@@ -443,3 +443,118 @@ plots[[2]]
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Utilizing ggpicrust2 tools to perform statistical analyis and find differentially abundant KOs
+ko_abundance <- ko_metagenome[[1]]
+
+# Load metadata (groups must be as factors)
+meta_sub <- meta[colnames(ko_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+
+# Subsets of metadata and ko_abundance matrix for only dss groups
+meta_sub <- meta_sub[meta_sub$treatment == "dss",]
+ko_abundance <- ko_abundance[,meta_sub$id]
+
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta_sub, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta_sub, group = "diet", daa_method = "ALDEx2")
+View(daa_res)
+
+
+butyrate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate1"]
+butyrate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate2"]
+propionate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate1"]
+propionate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate2"]
+propionate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate3"]
+acetate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Acetate"]
+print(daa_res[daa_res$feature == butyrate,])
+print(daa_res[daa_res$feature == propionate,])
+print(daa_res[daa_res$feature == acetate,])
+
+
+
+
+# Aldex2 workflow for analysis of picrust2 output
+# Load KO abundance data
+library(ALDEx2)
+ko_abundance <- ko_metagenome[[1]]
+
+# Round to nearest integer
+ko_abundance <- round(ko_abundance)
+
+# Load metadata (groups must be as factors)
+meta_sub <- metadata[colnames(ko_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+
+# Subsets of metadata and ko_abundance matrix for only dss groups
+meta_sub <- meta_sub[meta_sub$treatment == "dss",]
+ko_abundance <- ko_abundance[,meta_sub$id]
+
+# Create the model matrix
+# model_matrix <- model.matrix(~ diet, data = meta_sub)
+
+# # Create group column for CLR to work
+# meta_sub$group <- meta_sub[,"gg_group2"] 
+# meta_sub$group <- as.character(meta_sub$group)
+
+meta_sub$group <- as.character(meta_sub$diet)
+
+# Generate the clr-transformed values
+aldex_clr <- aldex.clr(ko_abundance, conds = meta_sub$group, mc.samples = 128, denom = "all", verbose = FALSE, useMC = TRUE)
+# aldex_clr <- aldex.clr(ko_abundance, conds = meta_sub$group, mc.samples = 128, denom = "all", verbose = FALSE, useMC = TRUE)
+
+# Perform Welch’s t-test and Wilcoxon rank-sum test
+aldex_tt_results <- aldex.ttest(aldex_clr, hist.plot = FALSE, paired.test = FALSE, verbose = FALSE)
+View(aldex_tt_results["K00929",]) # Butyrate1
+View(aldex_tt_results["K01034",]) # Butyrate2
+View(aldex_tt_results["K01026",]) # Propionate1
+
+
+
+# Perform the Kruskal-Wallis test
+aldex_kw_results <- aldex.kw(aldex_clr, useMC = TRUE)
+
+# Perform glm 
+aldex_glm <- ALDEx2::aldex.glm(aldex_clr, model_matrix)
+
+# Extract contrasts for pairwise comparisons
+# For example, comparing 'treatmentdss' vs 'treatment50' within 'dietwater'
+contrast_matrix <- makeContrasts(
+  treatmentdss_vs_50_water = treatmentdss - treatment50,
+  levels = colnames(model_matrix)
+)
+
+# Apply the contrast to the GLM results
+pairwise_results <- coef(aldex_glm) %*% t(contrast_matrix)
+
+butyrate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate"]
+propionate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate"]
+acetate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Acetate"]
+View(aldex_glm[butyrate,])
+print(aldex_glm[propionate,])
+print(aldex_glm[acetate,])
+
+
+# Calculate effect sizes
+aldex_effect <- aldex.glm.effect(aldex_clr)
