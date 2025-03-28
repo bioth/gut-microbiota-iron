@@ -384,11 +384,18 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays, negat
 
 
 #function for data manipulation of the dissection measures (body weight, liver, spleen and colon length)
-dissectionDataManipulation <- function(df,groupInfoCols){
+dissectionDataManipulation <- function(df,groupInfoCols, numerical = TRUE){
+  
   #getting rid of empty rows (dead mice)
   df <- emptyRow(df)
+  
   #measures cols into numerical variables
-  df <- charToNum(df)
+  if(isFALSE(numerical)){
+    df <- charToNum(df)
+  }
+  
+
+  
   
   #setting the diet column data into a string format so that it can be used into ggplot (if its numeric)
   if(is.numeric(df$diet)){
