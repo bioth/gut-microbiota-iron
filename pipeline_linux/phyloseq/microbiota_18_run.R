@@ -1481,6 +1481,49 @@ producePicrust2Inputs(ps_subset, "~/Documents/CHUM_git/Microbiota_18/")
 
 
 
+# Prepare picrust2 input for t35
+ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == "35", ps_flt_diet)
+
+# Filtering
+# Function filtering out ASVs for which they were in total less than a threshold count
+ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+# Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+existingDirCheck("~/Documents/CHUM_git/Microbiota_18/t35")
+producePicrust2Inputs(ps_subset, "~/Documents/CHUM_git/Microbiota_18/t35/")
+
+
+
+
+# Prepare picrust2 input for t49
+ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "49", ps_dss_relab_flt)
+
+# Filtering
+# Function filtering out ASVs for which they were in total less than a threshold count
+ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+# Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+existingDirCheck("~/Documents/CHUM_git/Microbiota_18/t49")
+producePicrust2Inputs(ps_subset, "~/Documents/CHUM_git/Microbiota_18/t49/")
+
+
+
+
+
+# Prepare picrust2 input for t49
+ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "54", ps_dss_relab_flt)
+
+# Filtering
+# Function filtering out ASVs for which they were in total less than a threshold count
+ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+# Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+existingDirCheck("~/Documents/CHUM_git/Microbiota_18/t54")
+producePicrust2Inputs(ps_subset, "~/Documents/CHUM_git/Microbiota_18/t54/")
+
+
+
+
 
 
 

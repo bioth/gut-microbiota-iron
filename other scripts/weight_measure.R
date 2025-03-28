@@ -598,7 +598,7 @@ print(results)
 
 
 
-# All graphs regarding young mice experiment 
+# All graphs regarding young mice colitis experiment 
 setwd("experiments/finished exp/young-DSS-exp3/")
 
 # Mice weight evolution
@@ -691,4 +691,99 @@ young_dissec_cln
 # boxplot for colon length normalized for body weight
 young_dissec_cln <- dissecBoxplot(dissec_young,"colon_nrm") 
 young_dissec_cln
+
+
+# All graphs regarding adult mice colitis experiment 
+setwd("experiments/ongoing exp/combined exp/")
+
+# Mice weight evolution
+adult_weight <- read.csv("adult48_weight_cageChanges.csv", header = TRUE, sep = ";")
+adult_weight <- adult_weight[,-c(6:10)] #removing first week body weight measurements
+adult_weight <- weightDataManipulation(adult_weight,4, fromDay0 = TRUE) #Manipulating weight measures data
+
+# creating scatter plot with the four different treatments (diet combined with dss or control)
+adult_weight_plot <- weightPlot(adult_weight, percentage = FALSE, diet_only = FALSE)
+adult_weight_plot
+
+# Mice DAI evolution
+adult_dss_followup <- read.csv("combined_adult_dss_followup.csv", header = TRUE, sep = ";")
+adult_dss_followup <- dssFollowupManipulation(df = adult_dss_followup,groupInfoCols = 4,dateStart = "2024-05-29",nbrDays = 5, negativeOnly = TRUE)
+
+# creating scatter plot with the four different treatments (diet combined with dss or control)
+adult_dssflwup_plot <- dssDiseaseIndexPlot(adult_dss_followup)
+adult_dssflwup_plot
+
+#DAI measures at final day of DSS
+adult_final_DSI_plot <- dssDsiFinalDay(adult_dss_followup)
+adult_final_DSI_plot
+
+# Mice dissection data
+dissec_adult <- read.csv("combined_adult_young.csv", sep = ";", header = TRUE)
+dissec_adult <- dissectionDataManipulation(dissec_adult,4)
+dissec_adult$gg_group <- factor(dissec_adult$gg_group, levels = c("50 water","500 water","50 dss","500 dss"))
+dissec_adult$colon_length_nrm <- dissec_adult$colon_length/dissec_adult$body_weight
+
+#boxplot for body weight
+adult_dissec_bw <- dissecBoxplot(dissec_adult,"body") 
+adult_dissec_bw
+
+#boxplot for std liver weight
+adult_dissec_lvr <- dissecBoxplot(dissec_adult,"liver") 
+adult_dissec_lvr
+
+# boxplot for std spleen weight
+adult_dissec_spln <- dissecBoxplot(dissec_adult,"spleen") 
+adult_dissec_spln
+# Statistics for spleen measurements
+df <- adult_dissec_spln$data 
+dss50 <- df[df$gg_group == "50 dss",]
+dss500 <- df[df$gg_group == "500 dss",]
+water50 <- df[df$gg_group == "50 water",]
+water500 <- df[df$gg_group == "500 water",]
+
+# Shapiro-Wilk test for normality
+print(shapiro.test(dss50[["std_spleen_weigth"]]))
+print(shapiro.test(dss500[["std_spleen_weigth"]]))
+print(shapiro.test(water50[["std_spleen_weigth"]]))
+print(shapiro.test(water500[["std_spleen_weigth"]])) # Conclusion => most of the data is not normally distributed
+
+df$log_spleen <- log(df$std_spleen_weigth)
+print(shapiro.test(dss50[["log_spleen"]]))
+hist(dss50[["log_spleen"]], breaks = 15)
+dss500 <- dss500[-9,] # Remove super high spleen weight outlier
+print(shapiro.test(dss500[["log_spleen"]]))
+hist(dss500[["log_spleen"]], breaks = 15)
+print(shapiro.test(water50[["log_spleen"]]))
+print(shapiro.test(water500[["log_spleen"]]))
+
+df <- df[df$id != "10966B", ]
+
+# Levene's test for homogeneity of variance
+print(leveneTest(df[["log_spleen"]] ~ gg_group, data = df))
+
+# Perform anova
+result <- aov(df[["log_spleen"]] ~ treatment * diet, data = df)
+model <- lm(log_spleen ~ treatment * diet, data = df)
+result <- anova(model)
+print(result)
+library(emmeans)
+# Compute estimated marginal means (EMMs)
+emm <- emmeans(model, pairwise ~ treatment * diet)
+# Display results
+summary(emm)
+print(TukeyHSD(result))
+
+result <- oneway.test(log_spleen ~ gg_group, data = df, var.equal = FALSE)
+print(result)
+library(rstatix)
+post_hoc <- df %>% games_howell_test(log_spleen ~ gg_group)
+print(post_hoc)
+
+#boxplot for colon length (non std)
+adult_dissec_cln <- dissecBoxplot(dissec_adult,"colon") 
+adult_dissec_cln
+
+# boxplot for colon length normalized for body weight
+adult_dissec_cln <- dissecBoxplot(dissec_adult,"colon_nrm") 
+adult_dissec_cln
 
