@@ -794,6 +794,7 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
                              labels = c("***", "**", "*", "NS")))
   
+  
   #Find asvs that have at least one significant value at some timepoint
   asvList <- unique(sigtab[(sigtab[pvalue])<threshold,"asv"])
 

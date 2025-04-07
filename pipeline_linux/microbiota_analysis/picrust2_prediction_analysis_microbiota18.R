@@ -8,6 +8,57 @@ library(readxl)
 library(openxlsx)
 
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/picrust2/picrust2_utilities.R")
+
+# Metadata handling
+{
+  #loading metadata of interest
+  metadata <- read.csv("~/Documents/CHUM_git/Microbiota_18/metadata/metadata.csv", sep = ";")
+  
+  # Remove the non-metadata stuff (liver measures and stuff)
+  metadata <- metadata[,-c(5:8)]
+  
+  # Remove the letter at the end of id
+  metadata$id <- substring(metadata$id, 1, 5)
+  
+  #adding id col as rownames too
+  rownames(metadata) <- metadata$id
+  
+  # Remove dead mouse
+  metadata <- metadata[-46,]
+  
+  # Extract 16S reads sample ids
+  samples <- read.xlsx("~/Documents/CHUM_git/Microbiota_18/metadata/Microbiota_18_samples_2025-01-13.xlsx")
+  samples <- as.data.frame(samples$Nom)
+  colnames(samples) <- "sample_id"
+  samples$id <- substring(samples$sample_id, 1, 5)
+  samples$timepoint <- substring(samples$sample_id, 8, nchar(samples$sample_id)) 
+  
+  # Bind both metadata df to link timepoints with their metadata (diet and treatment)
+  metadata <- merge(samples, metadata, by = "id")
+  
+  # Consider timepoint 53 similar as timepoint 54
+  metadata[metadata$timepoint=="53","timepoint"] <- "54"
+  
+  # Add week column 
+  metadata$week <- ifelse(metadata$timepoint == "final", "18", as.character(round(as.numeric(metadata$timepoint)/7, 1)+3))
+  
+  # Adding gg_group variable (combination of time, diet and treatment)
+  metadata$gg_group <- 
+    paste(metadata$timepoint, 
+          metadata$diet,
+          metadata$treatment, 
+          sep = ":")
+  
+  # Another gg_group variable (diet and treatment only)
+  metadata$gg_group2 <- 
+    paste(metadata$diet,
+          metadata$treatment, 
+          sep = ":")
+  
+  # Put full_id as rownames
+  rownames(metadata) <- metadata$sample_id
+}
 
 # Analysis of picrust2 results for last timepoint
 setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/picrust2_out_pipeline/")
@@ -43,61 +94,6 @@ marker <- read.table("marker_predicted_and_nsti.tsv.gz", sep = "\t", header = TR
 View(marker)
 
 ko_predicted <- read.table("KO_predicted.tsv.gz", sep = "\t", header = TRUE, row.names = 1)
-
-
-
-
-# colnames(ko_metagenome[[1]])[1] = "KO_id"
-
-# Metadata handling
-{
-  #loading metadata of interest
-  metadata <- read.csv("../../metadata/metadata.csv", sep = ";")
-  
-  # Remove the non-metadata stuff (liver measures and stuff)
-  metadata <- metadata[,-c(5:8)]
-  
-  # Remove the letter at the end of id
-  metadata$id <- substring(metadata$id, 1, 5)
-  
-  #adding id col as rownames too
-  rownames(metadata) <- metadata$id
-  
-  # Remove dead mouse
-  metadata <- metadata[-46,]
-  
-  # Extract 16S reads sample ids
-  samples <- read.xlsx("../../metadata/Microbiota_18_samples_2025-01-13.xlsx")
-  samples <- as.data.frame(samples$Nom)
-  colnames(samples) <- "sample_id"
-  samples$id <- substring(samples$sample_id, 1, 5)
-  samples$timepoint <- substring(samples$sample_id, 8, nchar(samples$sample_id)) 
-  
-  # Bind both metadata df to link timepoints with their metadata (diet and treatment)
-  metadata <- merge(samples, metadata, by = "id")
-  
-  # Consider timepoint 53 similar as timepoint 54
-  metadata[metadata$timepoint=="53","timepoint"] <- "54"
-  
-  # Add week column 
-  metadata$week <- ifelse(metadata$timepoint == "final", "18", as.character(round(as.numeric(metadata$timepoint)/7, 1)+3))
-  
-  # Adding gg_group variable (combination of time, diet and treatment)
-  metadata$gg_group <- 
-    paste(metadata$timepoint, 
-          metadata$diet,
-          metadata$treatment, 
-          sep = ":")
-  
-  # Another gg_group variable (diet and treatment only)
-  metadata$gg_group2 <- 
-    paste(metadata$diet,
-          metadata$treatment, 
-          sep = ":")
-  
-  # Put full_id as rownames
-  rownames(metadata) <- metadata$sample_id
-}
 
 # Only final timepoint metadata
 meta <- metadata[metadata$timepoint == "final",]
@@ -558,3 +554,744 @@ print(aldex_glm[acetate,])
 
 # Calculate effect sizes
 aldex_effect <- aldex.glm.effect(aldex_clr)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Analysis of picrust2 results for timepoint t35
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t35/picrust2/picrust2_out_pipeline/")
+ko_metagenome <- read.table("KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load data
+
+# Remove the X at the start of the names
+colnames(ko_metagenome)[2:ncol(ko_metagenome)] = substring(colnames(ko_metagenome[2:ncol(ko_metagenome)]), first = 2, 6)
+rownames(ko_metagenome) <- ko_metagenome$function.
+ko_metagenome <- ko_metagenome[,-1]
+ko_predicted <- read.table("KO_predicted.tsv.gz", sep = "\t", header = TRUE, row.names = 1) 
+
+# Only t35  metadata
+meta <- metadata[metadata$timepoint == "35",]
+rownames(meta) <- meta$id
+meta$diet <- factor(meta$diet, levels = c("50", "500"))
+meta$treatment <- factor(meta$treatment, levels = c("water", "dss"))
+meta$gg_group2 <- factor(meta$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+
+# Load file with KOs annotations for compound/pathways of interest
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos.xlsx")
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos2.xlsx")
+
+# Graphs of SCFAs predicted abundance at t35
+KOsToCompoundAbundanceGraphs(ko_abundance = ko_metagenome,
+                             ko_annotations = ko_annotations,
+                             metadata = meta,
+                             group = "diet",
+                             customColors = c("blue","red"),
+                             sample_id_col="id",
+                             path = "~/Documents/CHUM_git/figures/thibault_new/picrust2/t35",
+                             dim = c(5,4),
+                             additionalAes =
+                               list(scale_x_discrete(labels = c("50 ppm","500 ppm")),
+                                    theme(
+                                      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                                      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                                      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                                      axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                                      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                                      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                                      legend.text = element_text(size = 12),  # Adjust legend font size
+                                      panel.grid.major = element_blank(),  # Add major grid lines
+                                      panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                      axis.line = element_line(color = "black", size = 1)),
+                                    labs(color = "", x="")))
+
+# Stats with mixed effect models
+{
+# Iterate through the compounds/pathways
+for(i in 1:nrow(ko_annotations)){
+  compound <- ko_annotations$`compound/pathway`[i]
+  kos <- unlist(strsplit(ko_annotations$Kos[i], ";"))
+  abundance <- ko_metagenome[[1]][rownames(ko_metagenome[[1]]) %in% kos, ]
+  total_ab <- as.data.frame(colSums(abundance))
+  
+  # # Associate gg_group with each sample_id using metadata information
+  # for(i in 1:nrow(total_ab)){
+  # total_ab[[group]][i] <- metadata[metadata[[sample_id_col]]==rownames(total_ab)[i],group]
+  # }
+  
+  total_ab <- merge(total_ab, meta, by = "row.names")
+  
+  # Replacing a colname and adding a sample_id column
+  colnames(total_ab)[2] <- compound
+  
+}
+
+
+library(lme4)
+library(car)
+# Assuming your data frame 'df' includes:
+# - scfa: predicted normalized SCFA abundance
+# - treatment: factor with levels (e.g., "water" and "DSS")
+# - diet: factor with levels (e.g., "50ppm" and "500ppm")
+# - cage: a factor indicating cage identity
+model <- glmer(Propionate ~ treatment * diet, data = total_ab,
+               family = Gamma(link = "log"))
+
+total_ab$log_scfa <- log(total_ab$Propionate)
+model <- lm(Propionate ~ treatment * diet, data = total_ab)
+model <- glm(Propionate ~ treatment * diet, data = total_ab, family = poisson)
+model <- glm(Propionate ~ treatment * diet, data = total_ab, family = Gamma)
+summary(model)
+
+# Plot residuals vs fitted plot = check if non-linear patterm
+plot(model, which = 1)
+
+qqnorm(resid(model))
+qqline(resid(model))
+
+hist(total_ab$Propionate[total_ab$gg_group2 == "50:dss"], breaks = 20, main = "Histogram of Residuals")
+
+summary(model)
+Anova(model, type = "III")
+}
+
+# Utilizing ggpicrust2 tools to perform statistical analysis and find differentially abundant KOs
+ko_abundance <- ko_metagenome
+
+# Load metadata (groups must be as factors)
+meta <- meta[colnames(ko_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "ALDEx2")
+View(daa_res)
+
+butyrate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate1"]
+butyrate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate2"]
+propionate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate1"]
+propionate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate2"]
+propionate3 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate3"]
+acetate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Acetate"]
+print(daa_res[daa_res$feature == butyrate1,])
+print(daa_res[daa_res$feature == butyrate2,])
+print(daa_res[daa_res$feature == propionate1,])
+print(daa_res[daa_res$feature == propionate2,])
+print(daa_res[daa_res$feature == propionate3,])
+print(daa_res[daa_res$feature == acetate,])
+
+
+
+# Analysis of picrust2 results for timepoint t49
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t49/picrust2/picrust2_out_pipeline/")
+ko_metagenome <- read.table("KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load data
+
+# Remove the X at the start of the names
+colnames(ko_metagenome)[2:ncol(ko_metagenome)] = substring(colnames(ko_metagenome[2:ncol(ko_metagenome)]), first = 2, 6)
+rownames(ko_metagenome) <- ko_metagenome$function.
+ko_metagenome <- ko_metagenome[,-1]
+ko_predicted <- read.table("KO_predicted.tsv.gz", sep = "\t", header = TRUE, row.names = 1) 
+
+# Only t49  metadata
+meta <- metadata[metadata$timepoint == "49",]
+rownames(meta) <- meta$id
+meta$diet <- factor(meta$diet, levels = c("50", "500"))
+meta$treatment <- factor(meta$treatment, levels = c("water", "dss"))
+meta$gg_group2 <- factor(meta$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+
+# Load file with KOs annotations for compound/pathways of interest
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos.xlsx")
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos2.xlsx")
+
+
+# Test of kegg2ko abundance workflow
+# Convert KO abundance to KEGG pathway abundance
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t49/picrust2/picrust2_out_pipeline/")
+kegg_abundance <- ko2kegg_abundance(file = "KO_metagenome_out/pred_metagenome_unstrat.tsv")
+colnames(kegg_abundance)[1:ncol(kegg_abundance)] = substring(colnames(kegg_abundance[1:ncol(kegg_abundance)]), first = 1, 5)
+butyrate <- t(kegg_abundance["ko00650",]) # https://www.kegg.jp/entry/map00650
+propionate <- t(kegg_abundance["ko00640",])
+colnames(butyrate) <- "abundance"
+colnames(propionate) <- "abundance"
+meta <- metadata[metadata$timepoint == "35",]
+row.names(meta) <- meta$id
+meta$diet <- factor(meta$diet, levels = c("50", "500"))
+butyrate <- merge(butyrate, meta, by = "row.names")
+propionate <- merge(propionate, meta, by = "row.names")
+
+p <- ggplot(propionate, aes(x = diet, y = abundance, color = diet)) +
+  geom_point(size = 1, 
+             position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
+  
+  #Error bars
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               aes(color = diet),
+               width = 0.2, size = 0.7,
+               position = position_dodge(-0.75)) +
+  
+  #Mean lines
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               aes(ymin = ..y.., ymax = ..y.., group = diet),
+               color = "black", linewidth = 0.5, width = 0.5,
+               position = position_dodge(-0.75))+
+  
+  #Connecting mean points with lines
+  # stat_summary(fun = mean, geom = "line", size = 1.2) +  # Connecting means with lines
+  
+  
+  
+  labs(title = "Predicted propionate abundance", y = paste("Normalized Abundance"), color = "", x = "") +
+  scale_color_manual(values = c("blue", "red"))+
+  scale_y_continuous(limits = c(0, NA))+
+  scale_x_discrete(labels = c("50 ppm","500 ppm"))+
+  theme(
+    plot.title = element_text(size = 13, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_text(size = 13, face = "bold"),  # Adjust x-axis label font size and style
+    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Add major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black", size = 1))
+
+ggsave(plot = p, filename = "~/Documents/CHUM_git/figures/thibault_new/icm_seminar/butyrate_t35.png", bg = "white", width = 4, height = 3, dpi = 300)
+
+# Statistics
+# Load metadata (groups must be as factors)
+meta <- meta[colnames(kegg_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = kegg_abundance, metadata = meta, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = kegg_abundance, metadata = meta, group = "diet", daa_method = "ALDEx2")
+View(daa_res[daa_res$feature == "ko00650",])
+View(daa_res[daa_res$feature == "ko00640",])
+
+
+
+# Analysis of picrust2 results for timepoint t35
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t35/picrust2/picrust2_out_pipeline/")
+# Test of kegg2ko abundance workflow
+# Convert KO abundance to KEGG pathway abundance
+kegg_abundance <- ko2kegg_abundance(file = "KO_metagenome_out/pred_metagenome_unstrat.tsv")
+colnames(kegg_abundance)[1:ncol(kegg_abundance)] = substring(colnames(kegg_abundance[1:ncol(kegg_abundance)]), first = 1, 5)
+butyrate <- t(kegg_abundance["ko00650",]) # https://www.kegg.jp/entry/map00650
+colnames(butyrate) <- "abundance"
+butyrate <- merge(butyrate, meta, by = "row.names")
+
+ggplot(butyrate, aes(x = diet, y = abundance, color = diet)) +
+  geom_point(size = 1, 
+             position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
+  
+  #Error bars
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               aes(color = diet),
+               width = 0.2, size = 0.7,
+               position = position_dodge(-0.75)) +
+  
+  #Mean lines
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               aes(ymin = ..y.., ymax = ..y.., group = diet),
+               color = "black", linewidth = 0.5, width = 0.5,
+               position = position_dodge(-0.75))+
+  
+  #Connecting mean points with lines
+  # stat_summary(fun = mean, geom = "line", size = 1.2) +  # Connecting means with lines
+  
+  
+  
+  labs(title = "Predicted butyrate abundance", y = paste("Normalized Abundance"), color = "", x = "") +
+  scale_color_manual(values = c("blue", "red"))+
+  scale_y_continuous(limits = c(0, NA))+
+  scale_x_discrete(labels = c("50 ppm","500 ppm"))+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Add major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black", size = 1))
+
+# Statistics
+# Load metadata (groups must be as factors)
+meta <- meta[colnames(kegg_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = kegg_abundance, metadata = meta, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "ALDEx2")
+View(daa_res[daa_res$feature == "ko00650",])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Graphs of SCFAs predicted abundance at t49
+KOsToCompoundAbundanceGraphs(ko_abundance = ko_metagenome,
+                             ko_annotations = ko_annotations,
+                             metadata = meta,
+                             group = "diet",
+                             customColors = c("blue","red"),
+                             sample_id_col="id",
+                             path = "~/Documents/CHUM_git/figures/thibault_new/picrust2/t49",
+                             dim = c(5,4),
+                             additionalAes =
+                               list(scale_x_discrete(labels = c("50 ppm","500 ppm")),
+                                    theme(
+                                      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                                      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                                      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                                      axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                                      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                                      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                                      legend.text = element_text(size = 12),  # Adjust legend font size
+                                      panel.grid.major = element_blank(),  # Add major grid lines
+                                      panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                      axis.line = element_line(color = "black", size = 1)),
+                                    labs(color = "", x="")))
+
+# Stats with mixed effect models
+{
+  # Iterate through the compounds/pathways
+  for(i in 1:nrow(ko_annotations)){
+    compound <- ko_annotations$`compound/pathway`[i]
+    kos <- unlist(strsplit(ko_annotations$Kos[i], ";"))
+    abundance <- ko_metagenome[[1]][rownames(ko_metagenome[[1]]) %in% kos, ]
+    total_ab <- as.data.frame(colSums(abundance))
+    
+    # # Associate gg_group with each sample_id using metadata information
+    # for(i in 1:nrow(total_ab)){
+    # total_ab[[group]][i] <- metadata[metadata[[sample_id_col]]==rownames(total_ab)[i],group]
+    # }
+    
+    total_ab <- merge(total_ab, meta, by = "row.names")
+    
+    # Replacing a colname and adding a sample_id column
+    colnames(total_ab)[2] <- compound
+    
+  }
+  
+  
+  library(lme4)
+  library(car)
+  # Assuming your data frame 'df' includes:
+  # - scfa: predicted normalized SCFA abundance
+  # - treatment: factor with levels (e.g., "water" and "DSS")
+  # - diet: factor with levels (e.g., "50ppm" and "500ppm")
+  # - cage: a factor indicating cage identity
+  model <- glmer(Propionate ~ treatment * diet, data = total_ab,
+                 family = Gamma(link = "log"))
+  
+  total_ab$log_scfa <- log(total_ab$Propionate)
+  model <- lm(Propionate ~ treatment * diet, data = total_ab)
+  model <- glm(Propionate ~ treatment * diet, data = total_ab, family = poisson)
+  model <- glm(Propionate ~ treatment * diet, data = total_ab, family = Gamma)
+  summary(model)
+  
+  # Plot residuals vs fitted plot = check if non-linear patterm
+  plot(model, which = 1)
+  
+  qqnorm(resid(model))
+  qqline(resid(model))
+  
+  hist(total_ab$Propionate[total_ab$gg_group2 == "50:dss"], breaks = 20, main = "Histogram of Residuals")
+  
+  summary(model)
+  Anova(model, type = "III")
+}
+
+# Utilizing ggpicrust2 tools to perform statistical analysis and find differentially abundant KOs
+ko_abundance <- ko_metagenome
+
+# Load metadata (groups must be as factors)
+meta <- meta[colnames(ko_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "ALDEx2")
+View(daa_res)
+
+butyrate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate1"]
+butyrate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate2"]
+propionate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate1"]
+propionate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate2"]
+propionate3 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate3"]
+acetate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Acetate"]
+print(daa_res[daa_res$feature == butyrate1,])
+print(daa_res[daa_res$feature == butyrate2,])
+print(daa_res[daa_res$feature == propionate1,])
+print(daa_res[daa_res$feature == propionate2,])
+print(daa_res[daa_res$feature == propionate3,])
+print(daa_res[daa_res$feature == acetate,])
+
+
+
+
+# Analysis of picrust2 results for timepoint t54
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t54/picrust2/picrust2_out_pipeline/")
+ko_metagenome <- read.table("KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load data
+
+# Remove the X at the start of the names
+colnames(ko_metagenome)[2:ncol(ko_metagenome)] = substring(colnames(ko_metagenome[2:ncol(ko_metagenome)]), first = 2, 6)
+rownames(ko_metagenome) <- ko_metagenome$function.
+ko_metagenome <- ko_metagenome[,-1]
+ko_predicted <- read.table("KO_predicted.tsv.gz", sep = "\t", header = TRUE, row.names = 1) 
+
+# Only t54  metadata
+meta <- metadata[metadata$timepoint == "54",]
+meta <- meta[!meta$sample_id %in% c("10959_T54","33115_T54", # Remove samples for which t54 failed
+                                    "33105_T54","10994_T54","10994_d53","10961_T54"),]
+
+rownames(meta) <- meta$id
+meta$diet <- factor(meta$diet, levels = c("50", "500"))
+meta$treatment <- factor(meta$treatment, levels = c("water", "dss"))
+meta$gg_group2 <- factor(meta$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+
+# Load file with KOs annotations for compound/pathways of interest
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos.xlsx")
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos2.xlsx")
+
+# Graphs of SCFAs predicted abundance at t54
+KOsToCompoundAbundanceGraphs(ko_abundance = ko_metagenome,
+                             ko_annotations = ko_annotations,
+                             metadata = meta,
+                             group = "gg_group2",
+                             customColors = c("blue","red", "darkblue", "darkred"),
+                             sample_id_col="id",
+                             path = "~/Documents/CHUM_git/figures/thibault_new/picrust2/t54",
+                             dim = c(5,4),
+                             additionalAes =
+                               list(scale_x_discrete(labels = c("50:water", "500:water", "50:dss", "500:dss")),
+                                    theme(
+                                      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                                      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                                      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                                      axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                                      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                                      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                                      legend.text = element_text(size = 12),  # Adjust legend font size
+                                      panel.grid.major = element_blank(),  # Add major grid lines
+                                      panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                      axis.line = element_line(color = "black", size = 1)),
+                                    labs(color = "", x="")))
+
+# Stats with mixed effect models
+{
+  # Iterate through the compounds/pathways
+  for(i in 1:nrow(ko_annotations)){
+    compound <- ko_annotations$`compound/pathway`[i]
+    kos <- unlist(strsplit(ko_annotations$Kos[i], ";"))
+    abundance <- ko_metagenome[[1]][rownames(ko_metagenome[[1]]) %in% kos, ]
+    total_ab <- as.data.frame(colSums(abundance))
+    
+    # # Associate gg_group with each sample_id using metadata information
+    # for(i in 1:nrow(total_ab)){
+    # total_ab[[group]][i] <- metadata[metadata[[sample_id_col]]==rownames(total_ab)[i],group]
+    # }
+    
+    total_ab <- merge(total_ab, meta, by = "row.names")
+    
+    # Replacing a colname and adding a sample_id column
+    colnames(total_ab)[2] <- compound
+    
+  }
+  
+  
+  library(lme4)
+  library(car)
+  # Assuming your data frame 'df' includes:
+  # - scfa: predicted normalized SCFA abundance
+  # - treatment: factor with levels (e.g., "water" and "DSS")
+  # - diet: factor with levels (e.g., "50ppm" and "500ppm")
+  # - cage: a factor indicating cage identity
+  model <- glmer(Propionate ~ treatment * diet, data = total_ab,
+                 family = Gamma(link = "log"))
+  
+  total_ab$log_scfa <- log(total_ab$Propionate)
+  model <- lm(Propionate ~ treatment * diet, data = total_ab)
+  model <- glm(Propionate ~ treatment * diet, data = total_ab, family = poisson)
+  model <- glm(Propionate ~ treatment * diet, data = total_ab, family = Gamma)
+  summary(model)
+  
+  # Plot residuals vs fitted plot = check if non-linear patterm
+  plot(model, which = 1)
+  
+  qqnorm(resid(model))
+  qqline(resid(model))
+  
+  hist(total_ab$Propionate[total_ab$gg_group2 == "50:dss"], breaks = 20, main = "Histogram of Residuals")
+  
+  summary(model)
+  Anova(model, type = "III")
+}
+
+# Utilizing ggpicrust2 tools to perform statistical analysis and find differentially abundant KOs
+ko_abundance <- ko_metagenome
+
+# Load metadata (groups must be as factors)
+meta <- meta[colnames(ko_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "ALDEx2")
+View(daa_res)
+
+butyrate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate1"]
+butyrate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate2"]
+propionate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate1"]
+propionate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate2"]
+propionate3 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate3"]
+acetate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Acetate"]
+print(daa_res[daa_res$feature == butyrate1,])
+print(daa_res[daa_res$feature == butyrate2,])
+print(daa_res[daa_res$feature == propionate1,])
+print(daa_res[daa_res$feature == propionate2,])
+print(daa_res[daa_res$feature == propionate3,])
+print(daa_res[daa_res$feature == acetate,])
+
+
+
+
+
+# Analysis of picrust2 results for timepoint t49 with all groups
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t49/picrust2/picrust2_out_pipeline/")
+ko_metagenome <- read.table("KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load data
+
+# Remove the X at the start of the names
+colnames(ko_metagenome)[2:ncol(ko_metagenome)] = substring(colnames(ko_metagenome[2:ncol(ko_metagenome)]), first = 2, 6)
+rownames(ko_metagenome) <- ko_metagenome$function.
+ko_metagenome <- ko_metagenome[,-1]
+ko_predicted <- read.table("KO_predicted.tsv.gz", sep = "\t", header = TRUE, row.names = 1) 
+
+# Only t54  metadata
+meta <- metadata[metadata$timepoint == "49",]
+rownames(meta) <- meta$id
+meta$diet <- factor(meta$diet, levels = c("50", "500"))
+meta$treatment <- factor(meta$treatment, levels = c("water", "dss"))
+meta$gg_group2 <- factor(meta$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+
+# Load file with KOs annotations for compound/pathways of interest
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos.xlsx")
+ko_annotations <- readxl::read_excel("~/Documents/CHUM_git/picrust2 database/compound_to_kos2.xlsx")
+
+# Graphs of SCFAs predicted abundance at t54
+KOsToCompoundAbundanceGraphs(ko_abundance = ko_metagenome,
+                             ko_annotations = ko_annotations,
+                             metadata = meta,
+                             group = "gg_group2",
+                             customColors = c("blue","red", "darkblue", "darkred"),
+                             sample_id_col="id",
+                             path = "~/Documents/CHUM_git/figures/thibault_new/picrust2/t49_all_groups",
+                             dim = c(5,4),
+                             additionalAes =
+                               list(scale_x_discrete(labels = c("50:water", "500:water", "50:dss", "500:dss")),
+                                    theme(
+                                      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+                                      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                                      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+                                      axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                                      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+                                      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+                                      legend.text = element_text(size = 12),  # Adjust legend font size
+                                      panel.grid.major = element_blank(),  # Add major grid lines
+                                      panel.grid.minor = element_blank(),  # Remove minor grid lines
+                                      axis.line = element_line(color = "black", size = 1)),
+                                    labs(color = "", x="")))
+
+# Stats with mixed effect models
+{
+  # Iterate through the compounds/pathways
+  for(i in 1:nrow(ko_annotations)){
+    compound <- ko_annotations$`compound/pathway`[i]
+    kos <- unlist(strsplit(ko_annotations$Kos[i], ";"))
+    abundance <- ko_metagenome[[1]][rownames(ko_metagenome[[1]]) %in% kos, ]
+    total_ab <- as.data.frame(colSums(abundance))
+    
+    # # Associate gg_group with each sample_id using metadata information
+    # for(i in 1:nrow(total_ab)){
+    # total_ab[[group]][i] <- metadata[metadata[[sample_id_col]]==rownames(total_ab)[i],group]
+    # }
+    
+    total_ab <- merge(total_ab, meta, by = "row.names")
+    
+    # Replacing a colname and adding a sample_id column
+    colnames(total_ab)[2] <- compound
+    
+  }
+  
+  
+  library(lme4)
+  library(car)
+  # Assuming your data frame 'df' includes:
+  # - scfa: predicted normalized SCFA abundance
+  # - treatment: factor with levels (e.g., "water" and "DSS")
+  # - diet: factor with levels (e.g., "50ppm" and "500ppm")
+  # - cage: a factor indicating cage identity
+  model <- glmer(Propionate ~ treatment * diet, data = total_ab,
+                 family = Gamma(link = "log"))
+  
+  total_ab$log_scfa <- log(total_ab$Propionate)
+  model <- lm(Propionate ~ treatment * diet, data = total_ab)
+  model <- glm(Propionate ~ treatment * diet, data = total_ab, family = poisson)
+  model <- glm(Propionate ~ treatment * diet, data = total_ab, family = Gamma)
+  summary(model)
+  
+  # Plot residuals vs fitted plot = check if non-linear patterm
+  plot(model, which = 1)
+  
+  qqnorm(resid(model))
+  qqline(resid(model))
+  
+  hist(total_ab$Propionate[total_ab$gg_group2 == "50:dss"], breaks = 20, main = "Histogram of Residuals")
+  
+  summary(model)
+  Anova(model, type = "III")
+}
+
+# Utilizing ggpicrust2 tools to perform statistical analysis and find differentially abundant KOs
+ko_abundance <- ko_metagenome
+
+# Load metadata (groups must be as factors)
+meta <- meta[colnames(ko_abundance), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = ko_abundance, metadata = meta, group = "diet", daa_method = "ALDEx2")
+View(daa_res)
+
+butyrate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate1"]
+butyrate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Butyrate2"]
+propionate1 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate1"]
+propionate2 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate2"]
+propionate3 <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Propionate3"]
+acetate <- ko_annotations$Kos[ko_annotations$`compound/pathway`== "Acetate"]
+print(daa_res[daa_res$feature == butyrate1,])
+print(daa_res[daa_res$feature == butyrate2,])
+print(daa_res[daa_res$feature == propionate1,])
+print(daa_res[daa_res$feature == propionate2,])
+print(daa_res[daa_res$feature == propionate3,])
+print(daa_res[daa_res$feature == acetate,])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Kegg pathways at last timepoint
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/tfinal/picrust2_out_pipeline2/")
+setwd("~/Documents/CHUM_git/Microbiota_18/picrust2/t54/picrust2/picrust2_out_pipeline//")
+# Test of kegg2ko abundance workflow
+# Convert KO abundance to KEGG pathway abundance
+kegg_abundance <- ko2kegg_abundance(file = "KO_metagenome_out/pred_metagenome_unstrat.tsv")
+colnames(kegg_abundance)[1:ncol(kegg_abundance)] = substring(colnames(kegg_abundance[1:ncol(kegg_abundance)]), first = 1, 5)
+butyrate <- t(kegg_abundance["ko00650",]) # https://www.kegg.jp/entry/map00650
+propionate <- t(kegg_abundance["ko00640",])
+colnames(butyrate) <- "abundance"
+colnames(propionate) <- "abundance"
+meta <- metadata[metadata$timepoint == "final",]
+meta <- metadata[metadata$timepoint == "54",]
+meta <- meta[!meta$sample_id %in% c("10959_T54","33115_T54", # Remove samples for which t54 failed
+                                    "33105_T54","10994_T54","10994_d53","10961_T54"),]
+rownames(meta) <- meta$id
+meta$gg_group2 <- factor(meta$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss"))
+meta$diet <- factor(meta$diet, levels = c("50", "500"))
+meta$treatment <- factor(meta$treatment, levels = c("water", "dss"))
+butyrate <- merge(butyrate, meta, by = "row.names")
+propionate <- merge(propionate, meta, by = "row.names")
+
+ggplot(butyrate, aes(x = gg_group2, y = abundance, color = gg_group2)) +
+  geom_point(size = 1, 
+             position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
+  
+  #Error bars
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               aes(color = gg_group2),
+               width = 0.2, size = 0.7,
+               position = position_dodge(-0.75)) +
+  
+  #Mean lines
+  stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+               aes(ymin = ..y.., ymax = ..y.., group = gg_group2),
+               color = "black", linewidth = 0.5, width = 0.5,
+               position = position_dodge(-0.75))+
+  
+  #Connecting mean points with lines
+  # stat_summary(fun = mean, geom = "line", size = 1.2) +  # Connecting means with lines
+  
+  
+  
+  labs(title = "Predicted butyrate abundance", y = paste("Normalized Abundance"), color = "", x = "") +
+  scale_color_manual(values = c("blue", "red", "darkblue", "darkred"))+
+  scale_y_continuous(limits = c(0, NA))+
+  scale_x_discrete(labels = c("50 ppm\nctrl", "500 ppm\nctrl", "50 ppm\nDSS", "500 ppm\nDSS"))+
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+    axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+    axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+    axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+    legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+    legend.text = element_text(size = 12),  # Adjust legend font size
+    panel.grid.major = element_blank(),  # Add major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black", size = 1))
+
+# Statistics, only between dss groups
+# Load metadata (groups must be as factors)
+meta_sub <- meta[meta$treatment == "dss",]
+meta_sub <- meta[meta$treatment == "water",]
+meta_sub <- meta[meta$diet == "50",]
+meta_sub <- meta[meta$diet == "500",]
+kegg_ab_sub <- kegg_abundance[,colnames(kegg_abundance) %in% unique(meta_sub$id)]
+meta_sub <- meta_sub[colnames(kegg_ab_sub), ] # reorder the metadata df with same order as colnames of the ko_abundance table
+daa_res <- pathway_daa(abundance = kegg_ab_sub, metadata = meta_sub, group = "diet", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = kegg_ab_sub, metadata = meta_sub, group = "treatment", daa_method = "DESeq2", p.adjust = "fdr")
+daa_res <- pathway_daa(abundance = kegg_ab_sub, metadata = meta_sub, group = "diet", daa_method = "ALDEx2")
+daa_res <- pathway_daa(abundance = kegg_ab_sub, metadata = meta_sub, group = "treatment", daa_method = "ALDEx2")
+print(daa_res[daa_res$feature == "ko00650",])
+print(daa_res[daa_res$feature == "ko00640",])

@@ -174,9 +174,16 @@ names(dna) <- taxa_names(ps)
 # Add tree to phyloseq object
 ps <- merge_phyloseq(ps, phy_tree(tree))
 length(taxa_sums(ps))
+
+# Check sparsity of ASVs
+View(otu_table(ps))
+otu_table <- otu_table(ps)
+sparcity_matrix <- apply(otu_table, 2, function(col) max(col) / sum(col))
+
+# Remove ASVs for which no identification at the phylum level (optional)
 {
   # Check if there are ASVs that are NAs at the phylum level
-  length(tax_table(ps)[is.na(tax_table(ps)[,"Phylum"])])
+  nrow(tax_table(ps)[is.na(tax_table(ps)[,"Phylum"])])
   
   # Remove them as they probably correspond to chimeric sequences
   ps <- prune_taxa(!is.na(as.data.frame(tax_table(ps))$Phylum), ps)
@@ -188,7 +195,52 @@ length(taxa_sums(ps))
 sum(taxa_sums(ps)) #total number of reads
 length(taxa_sums(ps)) #total number of ASVs
 nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,7])) #how many species detected
+nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,6])) #how many genuses detected
+nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,5])) #how many families detected
+nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,4])) #how many orders detected
+nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,3])) #how many classes detected
 
+# Put as factors variables that are going to be used
+sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss")) # Put gg_group2 as factor
+sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","54","final")) # Put timepoint as factor
+sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","dss")) # Put treatment as factor
+sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # Put diet as factor
+
+ps_t0 <- prune_samples(sample_data(ps)$timepoint %in% c("0"), ps)
+ps_t0_flt <- prune_taxa(taxa_sums(ps_t0) > 10, ps_t0)
+ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.3 * nsamples(ps_t0_flt)), ps_t0_flt)
+length(taxa_sums(ps_t0_flt))
+
+ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
+ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.3 * nsamples(ps_t35_flt)), ps_t35_flt)
+length(taxa_sums(ps_t35_flt))
+
+ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
+ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.3 * nsamples(ps_t49_flt)), ps_t49_flt)
+length(taxa_sums(ps_t49_flt))
+
+ps_t54 <- prune_samples(sample_data(ps)$timepoint %in% c("54"), ps)
+ps_t54_flt <- prune_taxa(taxa_sums(ps_t54) > 10, ps_t54)
+ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.3 * nsamples(ps_t54_flt)), ps_t54_flt)
+length(taxa_sums(ps_t54_flt))
+
+ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("final"), ps)
+ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
+ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.3 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
+length(taxa_sums(ps_tfinal_flt))
+
+# Create phyloseq obejcts that we need for the analysis
+ps_diet <- merge_phyloseq(ps_t0, ps_t35, ps_t49)
+ps_dss_alpha <- prune_samples(sample_data(ps)$timepoint %in% c("49", "54", "final"), ps)
+ps_dss_relab_flt <- prune_samples(sample_data(ps_flt)$timepoint %in% c("49", "54", "final"), ps_flt)
+ps_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps)
+ps_flt_diet <- prune_samples(sample_data(ps)$timepoint %in% c("0", "35", "49"), ps_flt)
+ps_flt_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps_flt)
+
+
+{
 # Function filtering out ASVs for which they were in total less than a threshold count
 ps_flt <- prune_taxa(taxa_sums(ps) > 10, ps)
 sum(taxa_sums(ps_flt))
@@ -198,12 +250,7 @@ length(taxa_sums(ps_flt))
 ps_flt <- prune_taxa(colSums(otu_table(ps_flt) > 0) >= (0.05 * nsamples(ps_flt)), ps_flt)
 sum(taxa_sums(ps_flt))
 length(taxa_sums(ps_flt))
-
-# Put as factors variables that are going to be used
-sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss")) # Put gg_group2 as factor
-sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","54","final")) # Put timepoint as factor
-sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","dss")) # Put treatment as factor
-sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # Put diet as factor
+nrow(tax_table(ps_flt))-sum(is.na(tax_table(ps_flt)[,7])) #how many species detected
 
 # Put as factors variables that are going to be used
 sample_data(ps_flt)$gg_group2 <- factor(sample_data(ps_flt)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss")) # Put gg_group2 as factor
@@ -219,7 +266,6 @@ ps_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps)
 ps_flt_diet <- prune_samples(sample_data(ps)$timepoint %in% c("0", "35", "49"), ps_flt)
 ps_flt_dss <- prune_samples(sample_data(ps)$timepoint %in% c("54", "final"), ps_flt)
 
-{
 ps_foo <- ps
 rownames(otu_table(ps_foo))
 sample_data(ps_foo)[sample_data(ps_foo)$timepoint == 0,c("id","diet")]
@@ -229,6 +275,8 @@ sample_data(ps_foo)$diet[sample_data(ps_foo)$timepoint == 0 & sample_data(ps_foo
 sample_data(ps_foo)$diet[sample_data(ps_foo)$timepoint == 0 & sample_data(ps_foo)$id %in% c("33105","10946","10966")] 
 ps_foo <- prune_samples(sample_data(ps_foo)$timepoint == "0", ps_foo)
 }
+
+
 
 # Alpha diveristy for diet only
 existingDirCheck("../figures/thibault_new/diet/")
@@ -240,8 +288,8 @@ graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault_new/diet/", tim
   
   # Chao1
   p = graphs[[1]]+
-    scale_fill_manual(values = c("blue","darkblue","red","darkred"),
-                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+    scale_fill_manual(values = c("blue","red","darkblue","darkred"),
+                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
                      expand = c(0, 0.5))+
@@ -259,16 +307,16 @@ graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault_new/diet/", tim
       panel.grid.major = element_blank(),  # Remove major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-  ggsave(plot = p, filename = "../figures/thibault/icm/chao1.png", width = 5, height = 4, dpi = 300, bg = "white")
+  ggsave(plot = p, filename = "../figures/thibault_new/icm_seminar/chao1.png", width = 5, height = 4, dpi = 300, bg = "white")
   
   
   ps_sub <- prune_samples(sample_data(ps_dss_alpha)$timepoint %in% c("final"), ps_dss_alpha)
-  graphs = alphaDiversityTimeSeries2(ps_sub, "../figures/thibault/icm/", time = "timepoint", group = "gg_group2", writeData = FALSE)
+  graphs = alphaDiversityTimeSeries2(ps_sub, "../figures/thibault/icm/", time = "timepoint", group = "gg_group2", writeData = TRUE)
   
   # Chao1
   p = graphs[[1]]+
-    scale_fill_manual(values = c("blue","darkblue","red","darkred"),
-                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+    scale_fill_manual(values = c("blue","red","darkblue","darkred"),
+                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("End of\nrecovery"),
                      expand = c(0, 0.5))+
@@ -286,12 +334,12 @@ graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault_new/diet/", tim
       panel.grid.major = element_blank(),  # Remove major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-  ggsave(plot = p, filename = "../figures/thibault/icm/chao1_2.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
+  ggsave(plot = p, filename = "../figures/thibault_new/icm_seminar/chao1_2.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
   
   # Inverse simpson
   p = graphs[[3]]+
-    scale_fill_manual(values = c("blue","darkblue","red","darkred"),
-                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
+    scale_fill_manual(values = c("blue","red","darkblue","darkred"),
+                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("End of\nrecovery"),
                      expand = c(0, 0.5))+
@@ -309,14 +357,14 @@ graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/thibault_new/diet/", tim
       panel.grid.major = element_blank(),  # Remove major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-  ggsave(plot = p, filename = "../figures/thibault/icm/invsim.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
+  ggsave(plot = p, filename = "../figures/thibault_new/icm_seminar/invsim.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
   
   
 }
 
 
 # Stats
-alpha_d <- read.xlsx("../figures/thibault/diet/alpha_diversity/alpha_diversity_data.xlsx")
+alpha_d <- read.xlsx("../figures/thibault/icm/alpha_diversity/alpha_diversity/alpha_diversity_data.xlsx")
 alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
 alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("0", "35", "49"))
 
@@ -983,11 +1031,11 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
     
     # Filtering
     # Function filtering out ASVs for which they were in total less than a threshold count
-    ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
-    # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
-    ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
-    # print(sum(taxa_sums(ps_subset)))
-    print(length(taxa_sums(ps_subset)))
+    # ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+    # # Filtering out ASVs that are present in less than a chosen fraction of samples (here 5%)
+    # ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.05 * nsamples(ps_subset)), ps_subset)
+    # # print(sum(taxa_sums(ps_subset)))
+    # print(length(taxa_sums(ps_subset)))
     
     #Simple deseq object only accounting for the differences in diet
     deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ treatment*diet) 
@@ -1004,13 +1052,13 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
                   list("50:water","500:water"), list("50:dss","500:dss"),
                   list("50:water","50:dss"), list("500:water","500:dss")),
                 path = newPath, single_factor_design = FALSE,
-                dim = c(4,5), displayPvalue = FALSE, displaySignificance = FALSE, additionnalAes =
+                dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = FALSE, additionnalAes =
                   list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nDSS","500 ppm\nDSS")),
                   theme(
-                    plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-                    axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+                    plot.title = element_text(size = 13, face = "bold"),  # Adjust title font size and style
+                    axis.title.x = element_text(size = 13, face = "bold"),  # Adjust x-axis label font size and style
                     axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-                    axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
+                    axis.text.x = element_text(size = 9, angle = 0, hjust = 0.5),  # Adjust x-axis tick label font size
                     axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
                     legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
                     legend.text = element_text(size = 12),  # Adjust legend font size

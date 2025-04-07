@@ -616,7 +616,7 @@ young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoC
 
 # creating scatter plot with the four different treatments (diet combined with dss or control)
 young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
-young_dssflwup_plot
+ggsave(plot = young_dssflwup_plot, filename = "~/Documents/CHUM_git/figures/thibault_new/icm_seminar/young_dai.png", width = 5, height = 5, dpi = 300, bg = "white")
 
 #DAI measures at final day of DSS
 young_final_DSI_plot <- dssDsiFinalDay(young_dss_followup)
@@ -704,6 +704,7 @@ adult_dss_followup <- dssFollowupManipulation(df = adult_dss_followup,groupInfoC
 # creating scatter plot with the four different treatments (diet combined with dss or control)
 adult_dssflwup_plot <- dssDiseaseIndexPlot(adult_dss_followup)
 adult_dssflwup_plot
+ggsave(plot = adult_dssflwup_plot, filename = "~/Documents/CHUM_git/figures/thibault_new/icm_seminar/adult_dai.png", width = 5, height = 5, dpi = 300, bg = "white")
 
 #DAI measures at final day of DSS
 adult_final_DSI_plot <- dssDsiFinalDay(adult_dss_followup)

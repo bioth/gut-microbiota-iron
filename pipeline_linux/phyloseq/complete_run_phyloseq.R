@@ -45,6 +45,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/deseq2_log2fold_change_analysis.R")
 
 
 #for microbiota 17
@@ -330,7 +331,10 @@ resultsNames(deseq_samuel)
 
 customColors = list('black','#A22004',"#AB8F23","#04208D")
 pairs <- list(list("Wt:Vehicle","Wt:Putrescine"), list("IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine"), list("Wt:Vehicle","IL-22ra1-/-:Vehicle"), list("Wt:Putrescine","IL-22ra1-/-:Putrescine"))
-relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.01, customColors, pairs, "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
+relabGroups(ps_samuel, deseq_samuel, measure = "log2fold", "gg_group", taxa = "Species", displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, threshold = 0.05, customColors = customColors, pairs = pairs, path = "~/Documents/CHUM_git/figures/Samuel_final/differential_abundance/")
+customColors = list('#04208D','#A22004')
+log2foldChangeGraphMultipleGroups(ps_samuel, deseq_samuel, "gg_group", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, customColors = customColors, pairs = pairs, path = "~/Documents/CHUM_git/figures/Samuel_final/test_log2fold/", dim = c(6,12))
+
 
 #At other taxonomic levels
 taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
@@ -364,6 +368,7 @@ for(txnLevel in taxonomicLevels){
 
 #Path where to save graphs
 pathToSave <- "~/Documents/CHUM_git/figures/Claire_final/relative_abundance_by_timepoint/"
+pathTestLfc <- "~/Documents/CHUM_git/figures/Claire_final/test_lfc/"
 
 #customColors for graph display
 customColors = c("blue","red")
@@ -388,6 +393,29 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
   relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.01, customColors, newPath)  
+  
+}
+
+#Iterate through timepoints (for lfc calculations only)
+for(timePoint in levels(sample_data(ps_claire)$week)){
+  
+  #New path created for each week
+  newPath <- paste(pathToSave, "week_", timePoint, "/", sep = "")
+  existingDirCheck(newPath)
+  
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- subset_samples(ps_claire, week == timePoint)
+  
+  #Simple deseq object only accounting for the differences in diet
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  
+  #Performing the deseq analysis
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  
+  print(resultsNames(deseq_subset))
+  
+  # Creates lfc graph at timepoint of interest
+  log2foldChangeGraphSingleTimepoint(ps = ps_subset, deseq = deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, path = pathTestLfc, dim = c(6,12))
   
 }
 

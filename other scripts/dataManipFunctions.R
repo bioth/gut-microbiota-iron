@@ -418,7 +418,7 @@ dissectionDataManipulation <- function(df,groupInfoCols, numerical = TRUE){
 desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 
 # Define your custom color palette
-custom_colors <- c("blue","red")
+custom_colors <- c("darkblue","darkred")
 
 
 
