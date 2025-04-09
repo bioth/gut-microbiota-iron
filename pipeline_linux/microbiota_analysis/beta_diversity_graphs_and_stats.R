@@ -753,6 +753,8 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
     cap_result <- capscale(as.formula(paste0("dist ~", formula)), data = metadata)
   }
   
+  print(1)
+  
   # rda_result <- rda(model_formula, data = metadata)
   # View RDA results
   print(summary(cap_result))

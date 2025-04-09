@@ -714,64 +714,114 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   if(single_factor_design){
     
     #Partition results for specific pairwise comparaisons
-    res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #wt putrescine vs vehicle
+    # res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #wt putrescine vs vehicle / # 50 vs 500 ctrl
+    # sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+    # sigtab_1$comparaison <- 1
+    # sigtab_1$vs <- vs[1]
+    # 
+    # res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle / 50 dss vs 500 dss
+    # sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+    # sigtab_2$comparaison <- 2
+    # sigtab_2$vs <- vs[2]
+    # 
+    # res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #vehicle wt vs il22 ko / 50 water vs 50 dss
+    # sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+    # sigtab_3$comparaison <- 3
+    # sigtab_3$vs <- vs[3]
+    # 
+    # res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko / 500 water vs 500 dss
+    # sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+    # sigtab_4$comparaison <- 4
+    # sigtab_4$vs <- vs[4]
+    # 
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[1]))) # Do genotypes respond differently to treatment, comparisons of comparisons
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction" 
+    
+    res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #wt putrescine vs vehicle / # 50 vs 500 ctrl
     sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
     sigtab_1$comparaison <- 1
     sigtab_1$vs <- vs[1]
     
-    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
+    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle / 50 dss vs 500 dss
     sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
     sigtab_2$comparaison <- 2
     sigtab_2$vs <- vs[2]
     
-    res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #vehicle wt vs il22 ko
+    res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #vehicle wt vs il22 ko / 50 water vs 50 dss
     sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
     sigtab_3$comparaison <- 3
     sigtab_3$vs <- vs[3]
     
-    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
+    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko / 500 water vs 500 dss
     sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
     sigtab_4$comparaison <- 4
     sigtab_4$vs <- vs[4]
     
-    interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[1]))) # Do genotypes respond differently to treatment, comparisons of comparisons
-    sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
-    sigtab_interaction$comparaison <- 5
-    sigtab_interaction$vs <- "interaction" 
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[1]))) # Do genotypes respond differently to treatment, comparisons of comparisons
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction" 
     
     
   }else{ # If you performed deseq with 2 variables, each with 2 groups
     
     #Partition results for specific pairwise comparaisons
-    res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #wt putrescine vs vehicle
+    # res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #wt putrescine vs vehicle
+    # sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+    # sigtab_1$comparaison <- 1
+    # sigtab_1$vs <- vs[1]
+    # 
+    # res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
+    # sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+    # sigtab_2$comparaison <- 2
+    # sigtab_2$vs <- vs[2]
+    # 
+    # res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #vehicle wt vs il22 ko
+    # sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+    # sigtab_3$comparaison <- 3
+    # sigtab_3$vs <- vs[3]
+    # 
+    # res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
+    # sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+    # sigtab_4$comparaison <- 4
+    # sigtab_4$vs <- vs[4]
+    # 
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[4]))) # Do genotypes respond differently to treatment, comparisons of comparisons
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction" 
+    
+    res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) # 50 vs 500 ctrl
     sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
     sigtab_1$comparaison <- 1
     sigtab_1$vs <- vs[1]
-    
-    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
+
+    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[5]))) # 50 dss vs 500 dss
     sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
     sigtab_2$comparaison <- 2
     sigtab_2$vs <- vs[2]
-    
-    res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #vehicle wt vs il22 ko
+
+    res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) # 50 water vs 50 dss
     sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
     sigtab_3$comparaison <- 3
     sigtab_3$vs <- vs[3]
-    
-    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
+
+    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[5]))) # 500 water vs 500 dss
     sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
     sigtab_4$comparaison <- 4
     sigtab_4$vs <- vs[4]
-    
-    interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[4]))) # Do genotypes respond differently to treatment, comparisons of comparisons
-    sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
-    sigtab_interaction$comparaison <- 5
-    sigtab_interaction$vs <- "interaction" 
+
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[4]))) # cage?
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction"
     
   }
     
   #Append the sigtabs together
-  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4, sigtab_interaction)
+  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4) #sigtab_interaction
   
   #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
   sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))
@@ -1154,7 +1204,7 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
 
 #Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
 relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE,
-                                 LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE){
+                                 LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, blockFactor = FALSE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -1167,7 +1217,11 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   # resTimeVariable <- levels(sample_data(ps)[[timeVariable]])[-1]
   
   #Save results at single timepoint
-  res <- results(deseq, name = resultsNames(deseq)[2])
+  if(blockFactor){ # Block factor is used to explain some variability, but overall results are used
+    res <- results(deseq)
+  }else{
+    res <- results(deseq, name = resultsNames(deseq)[2])
+  }
   
   #Save significance table
   sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res),], "matrix"))
@@ -1198,12 +1252,14 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   
   #Find asvs that have at least one significant value at some timepoint
   asvList <- unique(sigtab[(sigtab[pvalue])<threshold,"asv"])
-  
-  # results()$log2FoldChange
+
+  if(length(asvList)==0){
+    return(NULL)
+  }
   
   #Loop along ASVs (single taxons analyzed)
   for(i in seq_along(asvList)){
-
+    
     # Save asv value
     asv = asvList[i]
 
@@ -1267,6 +1323,8 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
     #Saving groups variables as list of levels for varToCompare
     groups <- levels(sample_data(ps)[[varToCompare]])
+    
+
 
     p <- ggplot(data = relative_abundance, aes(x = !!sym(varToCompare), y = rel_ab, color = !!sym(varToCompare)), group = !!sym(varToCompare)) +
 

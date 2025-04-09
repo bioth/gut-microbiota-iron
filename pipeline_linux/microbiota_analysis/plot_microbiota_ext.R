@@ -457,6 +457,11 @@ writeStackbarExtendedSigTable <- function(main_table, sub_table, filepath){
     # Add col indication if it is from main or sub table
     table$level <- "main"
     
+    # Add signifiance symbols column
+    table$significance <- cut(table$padj,
+                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                              labels = c("***", "**", "*", "NS"))
+    
     # Append to the final table
     table_to_write <- rbind(table_to_write, table)
     
@@ -473,6 +478,11 @@ writeStackbarExtendedSigTable <- function(main_table, sub_table, filepath){
     
     # Add col indication if it is from main or sub table
     table$level <- "sub"
+    
+    # Add signifiance symbols column
+    table$significance <- cut(table$padj,
+                              breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                              labels = c("***", "**", "*", "NS"))
     
     # Append to the final table
     table_to_write <- rbind(table_to_write, table)
