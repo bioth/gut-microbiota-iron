@@ -1204,7 +1204,7 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
 
 #Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
 relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE,
-                                 LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, blockFactor = FALSE){
+                                 LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, blockFactor = FALSE, displaySampleID = FALSE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -1389,6 +1389,11 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
         panel.grid.minor = element_blank(),  # Remove minor grid lines
         axis.line = element_line(color = "black", size = 1),
         panel.background = element_blank()) # Include axis lines  # Include axis bar
+    
+    # Add sample IDs as text labels if displaySample is TRUE
+    if (displaySampleID) {
+      p <- p+geom_text(aes(label = sample_id), position = position_jitter(width = 0.1, height = 0), size = 3, vjust = -0.5)
+    }
     
     if(isFALSE(is.null(additionnalAes))){
       p <- p + additionnalAes

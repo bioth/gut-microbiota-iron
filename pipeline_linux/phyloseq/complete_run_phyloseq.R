@@ -22,6 +22,7 @@
   library(Hmisc)
   library(plotly) #To plot 3D pcoas
   library(StackbarExtended) # Thibault C. package
+  library(ggh4x)
   
 }
 
@@ -396,11 +397,12 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   
 }
 
+customPhylaColors = c("#e6550d","#31a354", "#583093")
 #Iterate through timepoints (for lfc calculations only)
-for(timePoint in levels(sample_data(ps_claire)$week)){
+for(timePoint in levels(sample_data(ps_claire)$week)[3]){
   
   #New path created for each week
-  newPath <- paste(pathToSave, "week_", timePoint, "/", sep = "")
+  newPath <- paste(pathTestLfc, "week_", timePoint, "/", sep = "")
   existingDirCheck(newPath)
   
   #Creating phyloseq objects for each timepoint
@@ -415,7 +417,7 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   print(resultsNames(deseq_subset))
   
   # Creates lfc graph at timepoint of interest
-  log2foldChangeGraphSingleTimepoint(ps = ps_subset, deseq = deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, path = pathTestLfc, dim = c(6,12))
+  log2foldChangeGraphSingleTimepoint(ps = ps_subset, deseq = deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = pathTestLfc, dim = c(6,10))
   
 }
 
@@ -798,19 +800,22 @@ ggsave(plot = p, filename = "../figures/Samuel_final/stackbar/phylum_family_stac
 # write a combined sigtable for main and sub levels
 writeStackbarExtendedSigTable(il22_exp_family$significant_table_main, il22_exp_family$significant_table_sub, filepath = "../figures/Samuel_final/stackbar/stackbar_stats.xlsx")
 
-
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
 # pvalues heatmap for the main lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
+p <- pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
                                      "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
-            txn_lvl="Phylum", lvl = "main", taxons = il22_exp_family$main_names[!grepl("Others", x = il22_exp_family$main_names)], group = "gg_group", path)
+            txn_lvl="Phylum", lvl = "main", taxons = il22_exp_family$main_names, group = "gg_group", displayChangeArrows = TRUE, displayPValues = FALSE)
+p + scale_x_discrete(labels = c("Wt/ Veh VS Putr","IL-22ra1-/- Veh VS Putr",
+                       "Veh / Wt VS IL-22ra1-/-", "Putr / Wt VS IL-22ra1-/-"))
 
 # pvalues heatmap for the sub lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
+p <- pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Samuel_final/stackbar/stackbar_stats.xlsx")),
             selected_comparisons = c("Wt:Vehicle_vs_Wt:Putrescine","IL-22ra1-/-:Vehicle_vs_IL-22ra1-/-:Putrescine",
                                      "Wt:Vehicle_vs_IL-22ra1-/-:Vehicle", "Wt:Putrescine_vs_IL-22ra1-/-:Putrescine"),
-            txn_lvl="Family", lvl = "sub", taxons = il22_exp_family$sub_names[!grepl("Others", x = il22_exp_family$sub_names)], group = "gg_group", path)
-
+            txn_lvl="Family", lvl = "sub", taxons = il22_exp_family$sub_names, group = "gg_group", displayChangeArrows = TRUE, displayPValues = FALSE)
+p + scale_x_discrete(labels = c("Wt/ Veh VS Putr","IL-22ra1-/- Veh VS Putr",
+                                "Veh / Wt VS IL-22ra1-/-", "Putr / Wt VS IL-22ra1-/-"))
 
 
 # # pvalues heatmap for the sub lvl stats

@@ -125,7 +125,6 @@ tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree
 ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
                tax_table(taxa), sample_data(metadata))
 
-
 #use short names for the asvs (eg ASV21) rather than full dna sequence name
 #though we can keep these dna sequences for other purposes (?)
 #And adds refseq entry to the phyloseq object
@@ -954,7 +953,7 @@ for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
   relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", varToCompare = "diet",
                        timePoint = timePoint, taxa = "Species", threshold = 0.05, FDR = FALSE, blockFactor = TRUE,
-                       LDA = FALSE, customColors = customColors, path = newPath, displayPvalue = TRUE, additionnalAes = NULL)  
+                       LDA = FALSE, customColors = customColors, path = newPath, displayPvalue = TRUE, additionnalAes = NULL, displaySampleID = TRUE)  
 }
 
 # At other taxonomic levels
@@ -1636,8 +1635,18 @@ betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable 
                                transform = "rel_ab", customColors = c("darkblue","darkred"),
                                font = "Arial", path = "../figures/thibault_new/dss/beta_diversity/filtered/")
 
+# Beta diversity, for dss only at t54 and tfinal, test with Jaccard index 
+ps_subset <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss) # Create subset
+length(taxa_sums(ps))
+ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset)
+length(taxa_sums(ps))
+betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
+                               varToCompare =  "diet", distMethod ="jaccard",
+                               transform = "none", customColors = c("darkblue","darkred"),
+                               font = "Arial", path = "../figures/thibault_new/dss/beta_diversity/jaccard/")
+
 # Beta diversity, for 50 only at t54 and tfinal (showing that they remain different)
-ps_subset <- prune_samples(sample_data(ps_flt_dss)$diet == "50", ps_flt_dss) # Create subset
+ps_subset <- prune_samples(sample_data(ps_dss)$diet == "50", ps_dss) # Create subset
 # Bray curtis filtered (results show that they are more different at the end of the recovery than at last timepoint of dss)
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "treatment", distMethod ="bray",
@@ -1683,20 +1692,28 @@ betaDiversityTimepointsGroupedDbRDA(ps = ps_subset, sample_id = "sample_id", var
 
 
 # Testing a presence/absence approach on the tfinal for the diets
-ps_subset <- prune_samples(sample_data(ps_tfinal_flt)$treatment == "dss", ps_tfinal_flt)
-ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset) # remove taxa with zero counts across all samples
-if (!taxa_are_rows(ps_subset)) {
-  ps_subset <- transform_sample_counts(ps_subset, function(x) x) # To force re-evaluation
-  otu_table(ps_subset) <- t(otu_table(ps_subset))
-}
+ps_subset <- prune_samples(sample_data(ps)$timepoint %in% c("final") & sample_data(ps)$treatment == "dss", ps)
+ps_subset <- prune_taxa(taxa_sums(ps_subset) > 10, ps_subset)
+ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) >= (0.2 * nsamples(ps_subset)), ps_subset)
+length(taxa_sums(ps_subset))
+ps_subset <- subset_taxa(ps_subset, !is.na(tax_table(ps_subset)[, "Species"])) # Keep ASVs that were identified at the species level
 print(length(taxa_sums(ps_subset)))
-jaccard_dist <- phyloseq::distance(ps_subset, method = "jaccard", binary = TRUE)
+# jaccard_dist <- phyloseq::distance(ps_subset, method = "jaccard", binary = TRUE)
 otu_table <- as.data.frame(t(otu_table(ps_subset)))
 presence_absence <- as.data.frame(otu_table > 0) # Transform into matrix of presence absence
 presence_absence[] <- lapply(presence_absence, as.numeric) # Ensure data is numeric and not boolean
 presence_absence <- as.matrix(presence_absence)
-# Remove columns (taxa) with all zeros (or constant values)
-presence_absence <- presence_absence[, apply(presence_absence, 2, function(x) length(unique(x)) > 1), drop = FALSE]
+
+# Subset of mice from 50:dss group
+dss50 <- presence_absence[,sample_names(ps_subset)[sample_data(ps_subset)$diet == "50"]]
+dss500 <- presence_absence[,sample_names(ps_subset)[sample_data(ps_subset)$diet == "500"]]
+
+
+asvList50 <- row.names(dss50[!rowSums(dss50) > 0,])
+asvList500 <- row.names(dss500[!rowSums(dss500) > 0,])
+# Identify ASVs that are only present for dss50 and dss500
+# # Remove columns (taxa) with all zeros (or constant values)
+# presence_absence <- presence_absence[, apply(presence_absence, 2, function(x) length(unique(x)) > 1), drop = FALSE]
 
 
 if (any(is.na(rownames(presence_absence))) || any(duplicated(rownames(presence_absence)))) {
@@ -1714,8 +1731,99 @@ library(vegan)
 # Compute Jaccard dissimilarity matrix
 jaccard_dist <- vegdist(presence_absence, method = "jaccard", binary = TRUE)
 
+# Perform NMDS
+nmds <- metaMDS(jaccard_dist, k = 2, trymax = 100)
 
-# Use a small subset for testing (first 10 samples and first 10 taxa)
-test_matrix <- presence_absence[1:min(10, nrow(presence_absence)), 1:min(10, ncol(presence_absence))]
-test_jaccard <- vegdist(test_matrix, method = "jaccard", binary = TRUE)
-print(test_jaccard)
+# Plot NMDS
+plot(nmds, type = "t")
+points(nmds, col = as.factor(sample_data$DietGroup), pch = 16)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### Tests for timeline graphs ####
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/chronobiome.R")
+
+plot_timeline_2_groups(
+  ps_object = ps_flt_diet,
+  exp_group =  "gg_group2", # must be as factor
+  time_group = "week", # must be as factor
+  sample_name = "sample_id",
+  main_level = 'Phylum',
+  sub_level = 'Family',
+  n_phy = 4,
+  differential_analysis = FALSE,
+  test = c("Wald", "LRT")[1],
+  fdr_threshold = 0.05,
+  sig_lab = FALSE,
+  fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
+  sfType = c("ratio", "poscounts", "iterate")[1],
+  betaPrior = FALSE,
+  reduced = FALSE,
+  quiet = TRUE,
+  minReplicatesForReplace = 7,
+  modelMatrixType = c("standard", "expanded")[1],
+  useT = FALSE,
+  minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
+  parallel = FALSE
+  
+)

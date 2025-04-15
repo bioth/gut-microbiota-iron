@@ -447,7 +447,12 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
   }
   
   #calculating distance matrix
-  dist <- phyloseq::distance(ps, method = distMethod)
+  if(distMethod =="jaccard"){
+    dist <- phyloseq::distance(ps, method = "jaccard", binary = TRUE)
+  }else{
+    dist <- phyloseq::distance(ps, method = distMethod)
+  }
+  
   
   for(timepoint in levels(sample_data(ps)[[timeVariable]])){
     
@@ -472,6 +477,8 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     }
     else if(distMethod == "unifrac"){
       distCharacter = "Unweighted Unifrac"
+    }else if(distMethod == "jaccard"){
+      distCharacter = "Jaccard"
     }
     
     #Perform PCoA

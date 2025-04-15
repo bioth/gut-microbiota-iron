@@ -139,7 +139,7 @@ log2foldChangeGraphMultipleGroups <- function(ps, deseq, gg_group, taxa = "Speci
 }
 
 log2foldChangeGraphSingleTimepoint <- function(ps, deseq, gg_group, timePoint, taxa = "Species", threshold = 0.05, FDR = TRUE,
-                                              customColors, path, single_factor_design = FALSE,additionnalAes = NULL,
+                                              customColors, customPhylaColors = NULL, path, single_factor_design = FALSE,additionnalAes = NULL,
                                               dim = c(6,6)){
   
   #Creates directory for taxonomic level
@@ -182,36 +182,130 @@ log2foldChangeGraphSingleTimepoint <- function(ps, deseq, gg_group, timePoint, t
   sigtab$lower <- sigtab$log2FoldChange-sigtab$lfcSE
   sigtab$change_dir <- ifelse(sigtab$log2FoldChange < 0, "-", "+")
     
-  sigtab <- sigtab %>% # Arrange taxa in increasing order of log2fc values
-    arrange(log2FoldChange)
-  sigtab[[taxa]] <- factor(sigtab[[taxa]], levels = rev(sigtab[[taxa]]))
+  # sigtab <- sigtab %>% # Arrange taxa in increasing order of log2fc values
+  #   arrange(log2FoldChange)
+  # sigtab[[taxa]] <- factor(sigtab[[taxa]], levels = rev(sigtab[[taxa]]))
+  
+  # Arrange by Phylum, then log2FoldChange direction (- then +), then species (or chosen taxonomic level)
+  sigtab <- sigtab %>%
+    arrange(Phylum, log2FoldChange)
+  
+  View(sigtab)
     
   max_val <- max(abs(c(sigtab$lower, sigtab$upper)))
   
+  # Update factor levels for plotting in the arranged order
+  sigtab[[taxa]] <- factor(sigtab[[taxa]], levels = rev(sigtab[[taxa]]))
+  
+  # p <- ggplot(data = sigtab, aes(x = log2FoldChange, y = .data[[taxa]], color = change_dir)) +
+  #   geom_point(size = 3) +
+  #   geom_errorbarh(aes(xmin = lower, xmax = upper), height = 0.2) +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   scale_color_manual(values = customColors) +
+  #   scale_x_continuous(limits = c(-max_val, max_val), position = "top") +
+  #   theme_minimal(base_size = 13) +
+  #   theme(
+  #     axis.text.y = element_text(size = 10),
+  #     legend.position = "right",
+  #   ) +
+  #   guides(color = "none")+
+  #   labs(
+  #     x = "Log Fold Change",
+  #     y = NULL,
+  #     color = ""
+  #   )+annotate(
+  #     "text",
+  #     x = 0,
+  #     y = -Inf,
+  #     vjust = -1,      # Push below the panel edge
+  #     hjust = 0.5,
+  #     label = timePoint
+  #   )
+  
+  # p <- ggplot(data = sigtab, aes(x = log2FoldChange, y = .data[[taxa]], color = change_dir)) +
+  #   geom_point(size = 3) +
+  #   geom_errorbarh(aes(xmin = lower, xmax = upper), height = 0.2) +
+  #   geom_vline(xintercept = 0, linetype = "dashed") +
+  #   scale_color_manual(values = customColors) +
+  #   scale_x_continuous(limits = c(-max_val, max_val), position = "top") +
+  #   facet_grid(Phylum ~ ., scales = "free_y", space = "free_y") +  # <-- this creates "huge windows"
+  #   theme_minimal(base_size = 13) +
+  #   theme(
+  #     strip.text.y = element_text(angle = 0, size = 12, face = "bold"),
+  #     axis.text.y = element_text(size = 10),
+  #     legend.position = "right",
+  #     panel.spacing = unit(1.2, "lines"),
+  #     panel.grid.major.y = element_blank(),  # optional: clean look
+  #     panel.grid.minor.y = element_blank()
+  #   ) +
+  #   guides(color = "none") +
+  #   labs(
+  #     x = "Log Fold Change",
+  #     y = NULL,
+  #     color = ""
+  #   ) +
+  #   annotate(
+  #     "text",
+  #     x = 0,
+  #     y = -Inf,
+  #     vjust = -1,
+  #     hjust = 0.5,
+  #     label = timePoint
+  #   )
+  
+  # Assign colors to phyla (one color per Phylum for the strip background)
+  if(is.null(customPhylaColors)){
+    phyla_colors <- scales::hue_pal()(length(unique(sigtab$Phylum)))
+  }else{
+    phyla_colors <- customPhylaColors
+  }
+  names(phyla_colors) <- unique(sigtab$Phylum)
+  
+  # Plot
   p <- ggplot(data = sigtab, aes(x = log2FoldChange, y = .data[[taxa]], color = change_dir)) +
     geom_point(size = 3) +
     geom_errorbarh(aes(xmin = lower, xmax = upper), height = 0.2) +
     geom_vline(xintercept = 0, linetype = "dashed") +
     scale_color_manual(values = customColors) +
     scale_x_continuous(limits = c(-max_val, max_val), position = "top") +
+    
+    # This is the enhanced facet with custom strip fills
+    ggh4x::facet_grid2(
+      Phylum ~ .,
+      scales = "free_y",
+      space = "free_y",
+      strip = ggh4x::strip_themed(
+        background_x = elem_list_rect(fill = "grey90"),
+        background_y = elem_list_rect(fill = phyla_colors),
+        text_y = elem_list_text(face = "bold", color = "white", size = 12, angle = 0)
+      )
+    ) +
+    
     theme_minimal(base_size = 13) +
     theme(
-      axis.text.y = element_text(size = 10),
+      axis.text.y = element_text(size = 10, face = "bold"),
       legend.position = "right",
+      panel.spacing.y = unit(1.2, "lines"),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.major.x = element_blank(),
+      axis.title.x = element_text(size = 12, face = "bold")
     ) +
-    guides(color = "none")+
+    guides(color = "none") +
     labs(
       x = "Log Fold Change",
       y = NULL,
       color = ""
-    )+annotate(
-      "text",
-      x = 0,
-      y = -Inf,
-      vjust = -1,      # Push below the panel edge
-      hjust = 0.5,
-      label = timePoint
-    )
+    ) 
+  # +
+  #   annotate(
+  #     "text",
+  #     x = 0,
+  #     y = -Inf,
+  #     vjust = -1,
+  #     hjust = 0.5,
+  #     label = timePoint
+  #   )
+  
   
   ggsave(filename = paste(path, timePoint, "_lfc.png"), height = dim[1], width = dim[2], dpi = 300, bg = "white")
 }
