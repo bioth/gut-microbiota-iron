@@ -1805,11 +1805,12 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analy
 
 plot_timeline_2_groups(
   ps_object = ps_flt_diet,
-  exp_group =  "gg_group2", # must be as factor
+  exp_group =  "diet", # must be as factor
   time_group = "week", # must be as factor
   sample_name = "sample_id",
   main_level = 'Phylum',
   sub_level = 'Family',
+  average_relab_per_group = TRUE,
   n_phy = 4,
   differential_analysis = FALSE,
   test = c("Wald", "LRT")[1],

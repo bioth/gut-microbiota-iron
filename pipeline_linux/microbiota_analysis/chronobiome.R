@@ -8,8 +8,10 @@ plot_timeline_2_groups <- function(
     main_level = 'Phylum',
     sub_level = 'Family',
     threshold = 1,
+    average_relab_per_group = TRUE,
     n_phy,
     hues = c("Oranges", "Greens", "Blues", "Purples"),
+    color_bias = 2,
     differential_analysis = FALSE,
     test = c("Wald", "LRT")[1],
     fdr_threshold = 0.05,
@@ -99,26 +101,32 @@ plot_timeline_2_groups <- function(
       )
     )
   
+  # Group unknowns and "others" relative abundance values
+  # 1. Identify numeric/sample columns (those you want to sum)
+  sample_cols <- c(colnames(otu_f), "Mean")  # Add all sample columns here
+  
+  # 2. Identify metadata columns (those you want to preserve, without summing)
+  metadata_cols <- setdiff(colnames(otu_tax_f), c(sample_cols, "plot_taxa"))
+  
+  # 3. Group by plot_taxa and keep one representative row for metadata columns
+  otu_tax_f <- otu_tax_f %>%
+    group_by(plot_taxa) %>%
+    summarise(
+      across(all_of(sample_cols), sum, na.rm = TRUE),
+      across(all_of(metadata_cols), ~ first(.x)),  # keep first value for each metadata column
+      .groups = "drop"
+    )
+  
   if (nrow(topx) != length(hues)) {
     message('the number of colors chosen (', length(hues),
             ') is different from the defined number of features to plot (', nrow(topx), ')')
   }
   
-  # print(levels(sample_data(ps_object)$combined_group))
-  
-  # print(sample_data(ps_object))
-  print(otu_tax_f[,"33107_T49"])
   # Add rowmeans for groups of interest => provides mean relative abundance per group within each timepoint
   for(group in levels(sample_data(ps_object)$combined_group)){
-    # print(otu_tax_f[,as.character(sample_data(ps_object)[sample_data(ps_object)$combined_group == group,sample_name])])
-    print(otu_tax_f[,c(as.character(sample_data(ps_object)[sample_data(ps_object)$combined_group == group, sample_name]))])
-    # otu_tax_f[[group]]<- rowMeans(otu_tax_f[sample_names(ps_object)[sample_data(ps_object)$combined_group == group,]])
-
+    otu_tax_f[[group]]<- rowMeans(otu_tax_f[,sample_data(ps_object)[[sample_name]][sample_data(ps_object)$combined_group == group]])
   }
-  
-  View(otu_tax_f)  
-  return(NULL)
-  
+
   #### 2. Color Assignment ####
   df <- as_tibble(matrix(nrow = 0, ncol = length(colnames(otu_tax_f))),
                   .name_repair = ~ colnames(otu_tax_f))
@@ -155,16 +163,30 @@ plot_timeline_2_groups <- function(
   df$plot_taxa <- factor(df$plot_taxa, levels = unique(df$plot_taxa))
   
   # Melt the data frame (long format)
-  df_long <- melt(df,
-                  id = c("plot_taxa", "MyColors", main_level),
-                  measure.vars = meta[, sample_name],
-                  variable.name = sample_name)
-  df_long <- left_join(df_long, meta, by = sample_name)
-  df_long[, main_level] <- ifelse(df_long[, main_level] %in% pull(topx[, main_level]),
-                                  df_long[, main_level],
-                                  "Others ")
-  
-  
+  if(average_relab_per_group){
+    
+    group_cols <- intersect(colnames(df), unique(meta$combined_group)) # group-level average columns only
+    
+    df_long <- melt(df,
+                    id = c("plot_taxa", "MyColors", main_level),
+                    measure.vars = group_cols,
+                    variable.name = "combined_group")
+    
+    df_long[, main_level] <- ifelse(df_long[, main_level] %in% pull(topx[, main_level]),
+                                    df_long[, main_level],
+                                    "Others ")
+    
+  }else{
+    df_long <- melt(df,
+                    id = c(sub_level, "MyColors", main_level),
+                    measure.vars = meta[, sample_name],
+                    variable.name = sample_name)
+    df_long <- left_join(df_long, meta, by = sample_name)
+    df_long[, main_level] <- ifelse(df_long[, main_level] %in% pull(topx[, main_level]),
+                                    df_long[, main_level],
+                                    "Others ")
+  }
+
   #### 3. Differential Analysis (Optional) ####
   significant_features_sub <- NULL
   significant_features_main <- NULL
@@ -512,5 +534,56 @@ plot_timeline_2_groups <- function(
       }
     }
   }
+  
+  
+  #### 4. Prepare Colors for Plotting ####
+  MyColors <- df_long$MyColors
+  names(MyColors) <- df_long$plot_taxa
+  MyColors2 <- unique(df_long$MyColors)
+  names(MyColors2) <- unique(df_long$plot_taxa)
+  main_level_col[length(main_level_col) + 1] <- '#000000'
+  df_long[, main_level] <- factor(df_long[, main_level], levels = unique(df_long[, main_level]))
+  vec1 <- unique(df_long[, main_level])
+  vec2 <- c(pull(topx[, main_level]), paste0("Others"))
+  core_text_vec1 <- gsub("(<[^>]*>|\\*|\\s+$)", "", vec1)
+  core_text_vec1 <- trimws(core_text_vec1)
+  order_index <- match(core_text_vec1, vec2)
+  main_level_col <- main_level_col[order_index]
+  names(main_level_col) <- as.character(vec1)
+  
+  #### 5. Plotting ####
+  if (average_relab_per_group) {
+    df_long <- merge(df_long, meta, by = "combined_group") # Merge metadata to retrieve the timepoint and group column
+    View(df_long)
+    
+    # Ensure your time variable is numeric (so geom_area draws it as continuous)
+    df_long[[time_group]] <- as.numeric(as.character(df_long[[time_group]]))
+    
+    # Make sure plot_taxa is a factor in the stacking order you want
+    df_long$plot_taxa <- factor(df_long$plot_taxa,
+                                levels = unique(df_long$plot_taxa))
+    
+    # Build the ggplot
+    p <- ggplot(df_long,
+                aes(x = .data[[time_group]],
+                    y = value,
+                    fill = plot_taxa,
+                    group = plot_taxa)) +
+      geom_area() +
+      # use your named‐vector of colours (plot_taxa → hex) that you built earlier
+      scale_fill_manual(name = sub_level, values = MyColors2) +
+      # one facet per experimental group (e.g. diet)
+      facet_wrap(as.formula(paste("~", exp_group)), ncol = 1) +
+      labs(x    = time_group,
+           y    = "Relative abundance (%)",
+           fill = sub_level) +
+      theme_minimal()
+    
+    print(p)
+    
+    
+  }
+    
+  
   
 }
