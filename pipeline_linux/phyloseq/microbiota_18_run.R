@@ -202,6 +202,7 @@ nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,3])) #how many classes detected
 # Put as factors variables that are going to be used
 sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, levels = c("50:water", "500:water", "50:dss", "500:dss")) # Put gg_group2 as factor
 sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","54","final")) # Put timepoint as factor
+sample_data(ps)$week <- factor(sample_data(ps)$week, levels = c("3","8","10","10.7","18")) # Put week as factor
 sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","dss")) # Put treatment as factor
 sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # Put diet as factor
 
@@ -237,6 +238,7 @@ ps_dss_relab_flt <- merge_phyloseq(ps_t49_flt, ps_t54_flt, ps_tfinal_flt)
 ps_dss <- merge_phyloseq(ps_t54, ps_tfinal)
 ps_flt_diet <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt)
 ps_flt_dss <- merge_phyloseq(ps_t54_flt, ps_tfinal_flt)
+ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_tfinal_flt)
 
 # Old implementation for creating multiple ps objects
 {
@@ -1828,3 +1830,68 @@ plot_timeline_2_groups(
   parallel = FALSE
   
 )
+
+
+
+# Run statistical tests, for now, independent from the chronobiome functions
+# LRT to detect time effects within each group
+# Subset for 50 ppm, and for family level taxa
+ps_subset <- prune_samples(sample_data(ps_flt_diet)$diet == "50", ps_flt_diet)
+ps_taxa <- tax_glom(ps_subset, taxrank = "Family")
+ps_taxa <- tax_glom(ps_flt_diet, taxrank = "Family")
+deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet+week+diet:week)
+deseq_subset <- DESeq(deseq_subset, test="LRT", reduced = ~diet+week)
+resultsNames(deseq_subset)
+print(results(deseq_subset))
+res <- results(deseq_subset, contrast = c("week", "3", "8"))
+print(res)
+res <- results(deseq_subset, contrast = c("week", "8", "10"))
+print(res)
+
+sigtab <- NULL
+res_sub <- results(deseq_subset, contrast = c("week", , cmp[[2]]))
+res_sub <- subset(res_sub, padj < 0.05) # Keep only significant fematures
+res_sub <- cbind(as(res_sub, "data.frame"), as(tax_table(ps_taxa)[rownames(res_sub), ], "matrix"))
+res_sub$comparaison <- paste0(cmp[[1]],"_vs_",cmp[[2]])
+sigtab <- bind_rows(sigtab, res_sub) # Append res_sub to final complete sigtab 
+
+
+selected_comparisons = list(c("3", "8"),
+                            c("8", "10"))
+
+sigtab <- NULL
+for(cmp in selected_comparisons){
+  res_sub <- results(deseq_subset, contrast = c("week", cmp[[1]], cmp[[2]]))
+  res_sub <- subset(res_sub, padj < 0.05) # Keep only significant features
+  res_sub <- cbind(as(res_sub, "data.frame"), as(tax_table(ps_taxa)[rownames(res_sub), ], "matrix"))
+  res_sub$comparaison <- paste0(cmp[[1]],"_vs_",cmp[[2]])
+  sigtab <- bind_rows(sigtab, res_sub) # Append res_sub to final complete sigtab 
+}
+sigtab$ASV <- gsub("^(ASV\\d{1,3}).*", "\\1", rownames(sigtab))
+View(sigtab)
+
+if (nrow(significant_features) == 0) {
+  message("No significant feature detected at")
+} else {
+  significant_features <- as.data.frame(cbind(significant_features,
+                                              tax_table(fam_glom)[rownames(tax_table(fam_glom)) %in%
+                                                                    rownames(significant_features), ]))
+  significant_features_sub <- significant_features
+  df_long$differential_abundance <- FALSE
+  df_long$differential_abundance[df_long$plot_taxa %in% significant_features[, sub_level]] <- TRUE
+  significant_features$stars <- ""
+  if (sig_lab == TRUE) {
+    significant_features$stars <- symnum(significant_features$padj,
+                                         symbols = c("***", "**", "*", ""),
+                                         cutpoints = c(0, .001, .01, .05, 1),
+                                         corr = FALSE)
+    star_vec <- significant_features$stars[match(df_long$plot_taxa, significant_features[, sub_level])]
+    star_vec[is.na(star_vec)] <- ""
+    df_long$plot_taxa <- paste0(df_long$plot_taxa, " ", star_vec)
+  }
+  df_long$legend_label <- ifelse(df_long$differential_abundance,
+                                 paste0("<b>", df_long$plot_taxa, "</b>"),
+                                 as.character(df_long$plot_taxa))
+  df_long$plot_taxa <- df_long$legend_label
+  df_long$plot_taxa <- factor(df_long$plot_taxa, levels = unique(df_long$plot_taxa))
+}
