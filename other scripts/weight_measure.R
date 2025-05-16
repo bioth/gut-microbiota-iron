@@ -13,9 +13,8 @@
 }
 
 
-
 #If working from huawei pc
-setwd("D:/CHUM_git/gut-microbiota-iron/")
+setwd("D:/wow these are nice graphs/gut-microbiota-iron/")
 #If working from CHUM pc
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
 #If working from la bête
@@ -134,7 +133,7 @@ ggsave("yapaletemps.png", width = 11, height = 6, dpi = 300, bg = "white")
 
 ###DSS FOLLOW UP SHEET DATA
 #loading the dss followup sheet data
-setwd("../adult-DSS-exp/")
+setwd("adult-DSS-exp/")
 adult_dss_followup <- read.csv("adult36dss_followup.csv", header = TRUE, sep = ";")
 setwd("../young-DSS-exp2/")
 young_dss_followup <- read.csv("young32dss_followup.csv", header = TRUE, sep = ";")
@@ -182,7 +181,7 @@ ggsave("young32_dIndex.png", width = 9, height = 5, dpi = 300, bg = "white")
 
 #repeated young mice experiment
 ###LOADING YOUNG MICE DATA
-setwd("../young-DSS-exp3/")
+setwd("experiments/finished exp/young-DSS-exp3/")
 young_dss_followup <- read.csv("young48_dss_followup.csv", header = TRUE, sep = ";")
 
 young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-05-29",nbrDays = 5, negativeOnly = TRUE)
@@ -394,27 +393,6 @@ ggsave(plot = young_dissec_bw,"body_weight.png", width = 9, height = 5, dpi = 30
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #Iron content measurements
 #For young48 dss experiment
 setwd("experiments/finished exp/young-DSS-exp3/")
@@ -428,9 +406,19 @@ colnames(df)[1:2] <- c("id","iron_concentration")
 df <- df[-c(1,2,27),]
 df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
 df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$gg_group <- df$diet
 df$iron_concentration <- as.numeric(df$iron_concentration)
 
-ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p = ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p <- p+
+  scale_x_discrete(labels = c("50 ppm","500 ppm"))+
+  labs(y = "µg iron per g of stool", title = "")+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 10))
+ggsave(filename = "D:/icm_poster_2025/iron_stool_8w.png", height =3, width =2.3 , dpi = 300, bg = "white")
+
 
 #Fit a ANOVA model for the current time point
 anova <- aov(iron_concentration ~ diet * treatment, data = df)
@@ -438,6 +426,17 @@ summary(anova)
 # Perform Tukey's HSD test and store the results in the list
 results <- TukeyHSD(anova)
 print(results)
+
+read_excel_allsheets <- function(filename, tibble = FALSE) {
+  # I prefer straight data.frames
+  # but if you like tidyverse tibbles (the default with read_excel)
+  # then just pass tibble = TRUE
+  sheets <- readxl::excel_sheets(filename)
+  x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X))
+  if(!tibble) x <- lapply(x, as.data.frame)
+  names(x) <- sheets
+  x
+}
 
 #Tf ferrozine assay for liver
 #They are multiple sheets so we use a custom function
@@ -463,7 +462,15 @@ df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
 df$total_iron <- df$iron_concentration*df$liver_weight*df$dry_to_wet_ratio
 
 
-ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total liver iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p = ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total liver iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p <- p+
+  scale_x_discrete(labels = c("50 ppm\nCtrl","50 ppm\nDSS","500 ppm\nCtrl","500 ppm\nDSS"))+
+  labs(y = "µg iron per g of liver", title = "")+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 9))
+ggsave(filename = "D:/icm_poster_2025/iron_liver.png", height =3, width =3 , dpi = 300, bg = "white")
 
 #Fit a ANOVA model for the current time point
 anova <- aov(total_iron ~ diet * treatment, data = df)
@@ -493,7 +500,16 @@ df$dry_to_wet_ratio <- df$wet_weight/df$dry_weight
 #need to take into account the wet to dry ratio!
 df$total_iron <- df$iron_concentration*df$spleen_weight*df$dry_to_wet_ratio
 
-ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total spleen iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p = ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total spleen iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p+
+  scale_x_discrete(labels = c("50 ppm\nCtrl","50 ppm\nDSS","500 ppm\nCtrl","500 ppm\nDSS"))+
+  labs(y = "µg iron per g of spleen", title = "")+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 9))
+ggsave(filename = "D:/icm_poster_2025/iron_spleen.png", height =3, width =3 , dpi = 300, bg = "white")
+
 
 #Fit a ANOVA model for the current time point
 anova <- aov(iron_concentration ~ diet * treatment, data = df)
@@ -508,18 +524,157 @@ df <- as.data.frame(sheets["Ferrozine Stool Tfinal"])
 df <- df[4:53,c(3,14:16)]
 colnames(df) <- df[1,]
 colnames(df)[1:2] <- c("id","iron_concentration")
-df <- na.omit(df)
-df <- df[-1,]
+df <- df[-c(1,26,48),]
 df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
 df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
 df$iron_concentration <- as.numeric(df$iron_concentration)
 
-ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at final day", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+a = readxl::read_excel("")
+setwd("../")
+df
 
+
+
+
+p = ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at final day", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p
+p+
+  scale_x_discrete(labels = c("50 ppm\nCtrl","50 ppm\nDSS","500 ppm\nCtrl","500 ppm\nDSS"))+
+  labs(y = "µg iron per g of liver", title = "")+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 9))
+ggsave(filename = "D:/icm_poster_2025/iron_liver.png", height =3, width =3 , dpi = 300, bg = "white")
 #Fit a ANOVA model for the current time point
 anova <- aov(iron_concentration ~ diet * treatment, data = df)
 summary(anova)
 # Perform Tukey's HSD test and store the results in the list
 results <- TukeyHSD(anova)
 print(results)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Iron content measurements
+#For young48 abx experiment
+setwd("../abx48_ferrozine/")
+
+# Load metadata to retrieve group information
+meta <- read_xlsx("abx48_dissection.xlsx")
+meta <- meta[,c(1:4)]
+meta$ID <- substring(meta$ID, first = 1, last = 5)
+meta <- meta[-17,] # Remove dead mouse
+
+#T35 ferrozine assay for stools
+df <- read_xlsx("t35_stool_ferrozine.xlsx")
+df <- df[,c(1,12)]
+colnames(df) <- df[1,]
+colnames(df)[1:2] <- c("ID","iron_concentration")
+df <- df[-c(1),] 
+df <- df[!is.na(df$iron_concentration),]  # Remove dead mice
+df$iron_concentration <- as.numeric(df$iron_concentration)
+df <- merge(df, meta, by ="ID") # Bind metadata information to df
+df$diet <- factor(df$diet, levels = c("50","500"))
+df$gg_group <- df$diet
+
+p = ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at day 35", y_axis_title = "µg Fe/g of stool", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p <- p+
+  scale_x_discrete(labels = c("50 ppm","500 ppm"))+
+  labs(y = "µg Fe/g of stool", title = "")+
+  ylim(0,NA)+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 10))
+p
+ggsave(filename = "abx48_iron_stool_8w.png", height =3, width =2.3 , dpi = 300, bg = "white")
+
+# Test normality and homoscedasticity
+# Levene's Test for homogeneity of variance
+leveneTest(iron_concentration ~ gg_group, data = df)
+
+# Shapiro test per group for normality assumptions
+by(df$iron_concentration, df$gg_group, shapiro.test)
+
+# Wilcoxon rank-sum test (Mann–Whitney U) (equivalent of t test for non normal and heteroscedastic data)
+wilcox.test(df$iron_concentration[df$gg_group == "50"], df$iron_concentration[df$gg_group == "500"], paired = FALSE)
+
+#TF ferrozine assay for stools
+df <- read_xlsx("tF_stool_ferrozine.xlsx")
+df <- df[,c(1,12)]
+colnames(df)[1:2] <- c("ID","iron_concentration")
+df <- df[-c(1),] 
+df <- df[!is.na(df$iron_concentration),]  # Remove empty rows
+df$iron_concentration <- as.numeric(df$iron_concentration)
+df <- merge(df, meta, by ="ID") # Bind metadata information to df
+df$diet <- factor(df$diet, levels = c("50","500"))
+df$treatment <- factor(df$treatment, levels = c("water","abx"))
+df$gg_group <- paste0(df$diet, ":", df$treatment)
+df$gg_group <- factor(df$gg_group, levels = c("50:water", "500:water", "50:abx", "500:abx"))
+
+p = ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Iron concentration in stools at final day", y_axis_title = "µg Fe/g of stool", custom_colors = c("blue","red", "darkblue", "darkred"))
+p <- p+
+  scale_x_discrete(labels = c("50 ppm\nctrl","500 ppm\nctrl","50 ppm\nAbx","500 ppm\nAbx"))+
+  labs(y = "µg Fe/g of stool", title = "")+
+  ylim(0,NA)+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 10))
+p
+ggsave(filename = "abx48_iron_stool_tf.png", height =3, width =3.5 , dpi = 300, bg = "white")
+
+# Test normality and homoscedasticity
+# Levene's Test for homogeneity of variance
+leveneTest(iron_concentration ~ gg_group, data = df)
+
+# Shapiro test per group for normality assumptions
+by(df$iron_concentration, df$gg_group, shapiro.test)
+
+df$log_iron_c <- log(df$iron_concentration) # Log transform because one group is not normally distributed 
+
+# Levene's Test for homogeneity of variance
+leveneTest(log_iron_c ~ gg_group, data = df)
+
+# Shapiro test per group for normality assumptions
+by(df$log_iron_c, df$gg_group, shapiro.test)
+
+#Fit a ANOVA model for the current time point
+anova <- aov(log_iron_c ~ diet * treatment, data = df)
+summary(anova)
+# Perform Tukey's HSD test and store the results in the list
+results <- TukeyHSD(anova)
+print(results)
+
+p = ironBoxplot(df, "log_iron_c", display_significance_bars = F, title = "Iron concentration in stools at final day", y_axis_title = "log(µg Fe/g of stool)", custom_colors = c("blue","red", "darkblue", "darkred"))
+p <- p+
+  scale_x_discrete(labels = c("50 ppm\nctrl","500 ppm\nctrl","50 ppm\nAbx","500 ppm\nAbx"))+
+  labs(y = "log(µg Fe/g of stool)", title = "")+
+  ylim(0,NA)+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 10))
+p
+ggsave(filename = "abx48_iron_stool_tf_log_transformed.png", height =3, width =3.5 , dpi = 300, bg = "white")
+
 
