@@ -18,7 +18,7 @@ relabSpeciesPairwise <- function(ps, deseq, measure = "log2fold", gg_group, pair
     #Save significance table
     sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res), ], "matrix"))
     
-    #Keeping only ASVs for whcih species were identified 
+    #Keeping only ASVs for which species were identified 
     sigtab <- sigtab[!is.na(sigtab$Species),]
     
     #Replacing NA padj by 1 (they correspond to this anyways)
@@ -675,37 +675,381 @@ relabTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCo
   }
 }
 
-#For design with 4 groups based on 2 conditions
-#gg_group must be order with correct order prior to that (as a factor)
-relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE ,customColors, path){
+#For design with 4 groups based on 2 conditions - this the latest version used
+# gg_group must be order with correct order prior to that (as a factor)
+relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, FDR = TRUE,
+                        returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path, single_factor_design = FALSE,
+                        additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, displaySignificance = TRUE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
   existingDirCheck(path = dir)
   
-  #Get normalized counts from DESeq2 object
-  normalized_counts <- counts(deseq, normalized = TRUE)
+  if(normalizeCounts){
+    #Get normalized counts from DESeq2 object
+    normalized_counts <- counts(deseq, normalized = TRUE)
+    print(normalized_counts)
+  }else{
+    # ps <- transformCounts(ps, transformation = "rel_ab")
+    normalized_counts <- t(otu_table(ps))
+    # # Ensure consistent structure: convert to a matrix
+    # normalized_counts <- as.data.frame(normalized_counts)
+  }
+  
+  #Define empty list that will contain pairs comparaisons names
+  vs <- c()
+  
+  #Save pairs comparaisons names for displaying them in the final sigtable
+  for(k in seq_along(pairs)){
+    
+    #Save pair
+    pair <- unlist(pairs[k])
+    
+    #Save specific pair comparaison
+    vs <- c(vs, paste(clean_string(pair[1]), "vs", clean_string(pair[2]), sep="_"))
+  }
+  
+
+  # If you performed deseq with a single variable containing the four groups
+  if(single_factor_design){
+    
+    #Partition results for specific pairwise comparaisons
+    # res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #wt putrescine vs vehicle / # 50 vs 500 ctrl
+    # sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+    # sigtab_1$comparaison <- 1
+    # sigtab_1$vs <- vs[1]
+    # 
+    # res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle / 50 dss vs 500 dss
+    # sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+    # sigtab_2$comparaison <- 2
+    # sigtab_2$vs <- vs[2]
+    # 
+    # res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #vehicle wt vs il22 ko / 50 water vs 50 dss
+    # sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+    # sigtab_3$comparaison <- 3
+    # sigtab_3$vs <- vs[3]
+    # 
+    # res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko / 500 water vs 500 dss
+    # sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+    # sigtab_4$comparaison <- 4
+    # sigtab_4$vs <- vs[4]
+    # 
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[1]))) # Do genotypes respond differently to treatment, comparisons of comparisons
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction" 
+    
+    res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #wt putrescine vs vehicle / # 50 vs 500 ctrl
+    sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+    sigtab_1$comparaison <- 1
+    sigtab_1$vs <- vs[1]
+    
+    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle / 50 dss vs 500 dss
+    sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+    sigtab_2$comparaison <- 2
+    sigtab_2$vs <- vs[2]
+    
+    res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #vehicle wt vs il22 ko / 50 water vs 50 dss
+    sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+    sigtab_3$comparaison <- 3
+    sigtab_3$vs <- vs[3]
+    
+    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko / 500 water vs 500 dss
+    sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+    sigtab_4$comparaison <- 4
+    sigtab_4$vs <- vs[4]
+    
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[1]))) # Do genotypes respond differently to treatment, comparisons of comparisons
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction" 
     
     
+  }else{ # If you performed deseq with 2 variables, each with 2 groups
+    
+    #Partition results for specific pairwise comparaisons
+    # res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) #wt putrescine vs vehicle
+    # sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+    # sigtab_1$comparaison <- 1
+    # sigtab_1$vs <- vs[1]
+    # 
+    # res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
+    # sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+    # sigtab_2$comparaison <- 2
+    # sigtab_2$vs <- vs[2]
+    # 
+    # res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) #vehicle wt vs il22 ko
+    # sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+    # sigtab_3$comparaison <- 3
+    # sigtab_3$vs <- vs[3]
+    # 
+    # res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
+    # sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+    # sigtab_4$comparaison <- 4
+    # sigtab_4$vs <- vs[4]
+    # 
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[4]))) # Do genotypes respond differently to treatment, comparisons of comparisons
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction" 
+    
+    res_subset1 <- results(deseq, contrast = list(c(resultsNames(deseq)[3]))) # 50 vs 500 ctrl
+    sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+    sigtab_1$comparaison <- 1
+    sigtab_1$vs <- vs[1]
+
+    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[5]))) # 50 dss vs 500 dss
+    sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+    sigtab_2$comparaison <- 2
+    sigtab_2$vs <- vs[2]
+
+    res_subset3 <- results(deseq, contrast = list(c(resultsNames(deseq)[2]))) # 50 water vs 50 dss
+    sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+    sigtab_3$comparaison <- 3
+    sigtab_3$vs <- vs[3]
+
+    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[5]))) # 500 water vs 500 dss
+    sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+    sigtab_4$comparaison <- 4
+    sigtab_4$vs <- vs[4]
+
+    # interaction <- results(deseq, contrast= list(c(resultsNames(deseq)[4]))) # cage?
+    # sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+    # sigtab_interaction$comparaison <- 5
+    # sigtab_interaction$vs <- "interaction"
+    
+  }
+    
+  #Append the sigtabs together
+  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4) #sigtab_interaction
+  
+  #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
+  sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))
+  
+  #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  
+  if(FDR){
+    pvalue <- as.character("padj")
+  }else{
+    pvalue <- as.character("pvalue")
+  }
+  
+  #Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab$padj[is.na(sigtab[pvalue])] <- 1
+  
+  #Add column that adds symbols for the significance 
+  # Define significance levels
+  sigtab$significance <- as.character(cut(sigtab[,pvalue],
+                             breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                             labels = c("***", "**", "*", "NS")))
+  
+  
+  #Find asvs that have at least one significant value at some timepoint
+  asvList <- unique(sigtab[(sigtab[pvalue])<threshold,"asv"])
+
+    #Loop along ASVs (single taxons analyzed)
+    for(i in seq_along(asvList)){
+      
+      #Save asv value
+      asv = asvList[i]
+      
+      #Save speciesName for dir creation and for graph title
+      if(taxa == "Species"){
+        taxonName <- paste(unique(sigtab[sigtab$asv == asv, "Genus"]),unique(sigtab[sigtab$asv == asv, "Species"]), paste("(", asv, ")", sep =""), sep = " ")
+      }else{
+        taxonName <- unique(sigtab[sigtab$asv == asv, taxa])
+      }
+      
+      #Sigtab specific to the taxon analyzed
+      sigtab_taxon <- sigtab[sigtab$asv == asv,]
+      
+      #Add the 16s sequence to the sigtab specific to ASV of interest (only for species, higher taxonomical levels have multiple ASVs associated with them)
+      if(taxa == "Species"){
+        sigtab_taxon$dna_sequence <- as.character(refseq(ps)[asv])
+      }
+      
+      #Creates directory with taxon name
+      dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
+      existingDirCheck(path = dir_taxon)
+      
+      ##Calculate relative abundance as a percentage for each sample
+      relative_abundance <- apply(normalized_counts, 2, prop.table) * 100
+        #normalized_counts[asv, ]
+      
+      #Keep for taxa of interest
+      relative_abundance <- relative_abundance[asv, ]
+      # relative_abundance <- asv_counts * 100 / colSums(normalized_counts)
+      
+      #Convert relative abundance to a data frame
+      relative_abundance <- data.frame(
+        sample_id = names(relative_abundance),
+        rel_ab = as.numeric(relative_abundance)
+      )
+      
+      #Merge relative abundance with sample metadata
+      relative_abundance <- merge(relative_abundance, as(sample_data(ps), "data.frame"), by = "sample_id")
+      
+      #Save group names for using them in the ggsignif
+      groups <- levels(sample_data(ps)[[gg_group]])
+      
+      p <- ggplot(data = relative_abundance, aes(x = .data[[gg_group]], y = rel_ab, color = .data[[gg_group]])) +
+        geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
+        
+        #Error bars
+        stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                     aes(color = .data[[gg_group]]),
+                     width = 0.2, size = 0.7,
+                     position = position_dodge(-0.75)) +
+        
+        #Mean lines
+        stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                     aes(ymin = ..y.., ymax = ..y.., group = .data[[gg_group]]),
+                     color = "black", linewidth = 0.5, width = 0.5,
+                     position = position_dodge(-0.75))+
+        
+        
+        labs(title = taxonName,
+             y = "Relative abundance (%)", color = "Groups", x = "Groups") +
+        scale_color_manual(values = customColors)+
+        theme_minimal()+
+        theme(
+          plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+          axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+          axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+          legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+          legend.text = element_text(size = 12),  # Adjust legend font size
+          panel.grid.major = element_blank(),  # Add major grid lines
+          panel.grid.minor = element_blank(),  # Remove minor grid lines
+          axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bar
+        
+        if(displaySignificance){
+          #Add significance bars
+          p <- p + geom_signif(comparisons = list(c(groups[1],groups[2])),
+                      annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                format(sigtab_taxon[sigtab_taxon$comparaison == 1, pvalue], digits = 2, scientific = TRUE)),
+                                           sigtab_taxon[sigtab_taxon$comparaison == 1, "significance"]),
+                      tip_length = 0.02,
+                      y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
+                      size = 1.2,  # Make the bar wider
+                      color = "black") +
+            
+            geom_signif(comparisons = list(c(groups[3],groups[4])),
+                        annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                  format(sigtab_taxon[sigtab_taxon$comparaison == 2, pvalue], digits = 2, scientific = TRUE)),
+                                             sigtab_taxon[sigtab_taxon$comparaison == 2, "significance"]),
+                        tip_length = 0.02,
+                        y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
+                        size = 1.2,  # Make the bar wider
+                        color = "black") +
+            
+            geom_signif(comparisons = list(c(groups[1],groups[3])),
+                        annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                  format(sigtab_taxon[sigtab_taxon$comparaison == 3, pvalue], digits = 2, scientific = TRUE)),
+                                             sigtab_taxon[sigtab_taxon$comparaison == 3, "significance"]),
+                        tip_length = 0.02,
+                        y_position =  max(relative_abundance$rel_ab)+2/12*max(relative_abundance$rel_ab),
+                        size = 1.2,  # Make the bar wider
+                        color = "black") +
+            
+            geom_signif(comparisons = list(c(groups[2],groups[4])),
+                        annotations = ifelse(displayPvalue, paste("p = ", 
+                                                                  format(sigtab_taxon[sigtab_taxon$comparaison == 4, pvalue], digits = 2, scientific = TRUE)),
+                                             sigtab_taxon[sigtab_taxon$comparaison == 4, "significance"]),
+                        tip_length = 0.02,
+                        y_position =  max(relative_abundance$rel_ab)+3/12*max(relative_abundance$rel_ab),
+                        size = 1.2,  # Make the bar wider
+                        color = "black")
+        }
+        
+      if(isFALSE(is.null(additionnalAes))){
+        # p <- do.call("+", c(list(p), additionnalAes))
+        
+        p <- Reduce("+", c(list(p), additionnalAes))
+      }
+      
+      ggsave(plot = p, filename = paste(dir_taxon,"/",taxonName,"_relab.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
+      
+      #Write as excel file the significance table specific to an ASV
+      write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
+
+      #Write as excel file the relative abundance data specific  to an ASV
+      write.xlsx(relative_abundance, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.xlsx", sep = ""))
+      
+    }
+
+  #Returns list of significant asvs
+  if(returnSigAsvs){
+    return(asvList)
+  }
+    
+}
+
+#For design with 4 groups based on 2 conditions - this the latest version used
+#gg_group must be order with correct order prior to that (as a factor)
+relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path){
+  
+  #Creates directory for taxonomic level
+  dir <- paste(path, taxa, sep = "")
+  existingDirCheck(path = dir)
+  
+  if(normalizeCounts){
+    #Get normalized counts from DESeq2 object
+    normalized_counts <- counts(deseq, normalized = TRUE)
+    print(normalized_counts)
+  }else{
+    # ps <- transformCounts(ps, transformation = "rel_ab")
+    normalized_counts <- t(otu_table(ps))
+    # # Ensure consistent structure: convert to a matrix
+    # normalized_counts <- as.data.frame(normalized_counts)
+    print(normalized_counts)
+  }
+  
+  
+  
+  #Define empty list that will contain pairs comparaisons names
+  vs <- c()
+  
+  #Save pairs comparaisons names for displaying them in the final sigtable
+  for(k in seq_along(pairs)){
+    
+    #Save pair
+    pair <- unlist(pairs[k])
+    
+    #Save specific pair comparaison
+    vs <- c(vs, paste(clean_string(pair[1]), "vs", clean_string(pair[2]), sep="_"))
+  }
+  
   #Partition results for specific pairwise comparaisons
-  res_subset1 <- results(deseq, name = resultsNames(deseq)[3]) #wt putrescine vs vehicle
+  res_subset1 <- results(deseq, contrast = list(resultsNames(deseq)[3])) #wt putrescine vs vehicle
   sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
   sigtab_1$comparaison <- 1
+  sigtab_1$vs <- vs[1]
   
   res_subset2 <- results(deseq, contrast=list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
   sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
   sigtab_2$comparaison <- 2
+  sigtab_2$vs <- vs[2]
   
-  res_subset3 <- results(deseq, name=resultsNames(deseq)[2]) #vehicle wt vs il22 ko
+  res_subset3 <- results(deseq, contrast=list(resultsNames(deseq)[2])) #vehicle wt vs il22 ko
   sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
   sigtab_3$comparaison <- 3
+  sigtab_3$vs <- vs[3]
   
   res_subset4 <- results(deseq, contrast=list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
   sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
   sigtab_4$comparaison <- 4
-
+  sigtab_4$vs <- vs[4]
+  
+  interaction <- results(deseq, contrast=list(resultsNames(deseq)[4])) # Do genotypes respond differently to treatment, comparisons of comparisons
+  sigtab_interaction <- cbind(as(interaction, "data.frame"), as(tax_table(ps)[rownames(interaction), ], "matrix"))
+  sigtab_interaction$comparaison <- 5
+  sigtab_interaction$vs <- "interaction" 
+  
   #Append the sigtabs together
-  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4)
+  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4, sigtab_interaction)
   
   #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
   sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))
@@ -719,125 +1063,617 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   #Add column that adds symbols for the significance 
   # Define significance levels
   sigtab$significance <- as.character(cut(sigtab$padj,
-                             breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
-                             labels = c("***", "**", "*", "NS")))
+                                          breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                          labels = c("***", "**", "*", "NS")))
+  
+
   
   #Find asvs that have at least one significant value at some timepoint
   asvList <- unique(sigtab[(sigtab$padj)<threshold,"asv"])
+  
+  #Loop along ASVs (single taxons analyzed)
+  for(i in seq_along(asvList)){
+    
+    #Save asv value
+    asv = asvList[i]
+    
+    #Save speciesName for dir creation and for graph title
+    if(taxa == "Species"){
+      taxonName <- paste(unique(sigtab[sigtab$asv == asv, "Genus"]),unique(sigtab[sigtab$asv == asv, "Species"]), paste("(", asv, ")", sep =""), sep = " ")
+    }else{
+      taxonName <- unique(sigtab[sigtab$asv == asv, taxa])
+    }
+    
+    #Sigtab specific to the taxon analyzed
+    sigtab_taxon <- sigtab[sigtab$asv == asv,]
+    
+    #Add the 16s sequence to the sigtab specific to ASV of interest (only for species, higher taxonomical levels have multiple ASVs associated with them)
+    if(taxa == "Species"){
+      sigtab_taxon$dna_sequence <- as.character(refseq(ps)[asv])
+    }
+    
+    #Creates directory with taxon name
+    dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
+    existingDirCheck(path = dir_taxon)
+    
+    ##Calculate relative abundance as a percentage for each sample
+    relative_abundance <- apply(normalized_counts, 2, prop.table) * 100
+    #normalized_counts[asv, ]
+    
+    #Keep for taxa of interest
+    relative_abundance <- relative_abundance[asv, ]
+    # relative_abundance <- asv_counts * 100 / colSums(normalized_counts)
+    
+    #Convert relative abundance to a data frame
+    relative_abundance <- data.frame(
+      sample_id = names(relative_abundance),
+      rel_ab = as.numeric(relative_abundance)
+    )
+    
+    #Merge relative abundance with sample metadata
+    relative_abundance <- merge(relative_abundance, as(sample_data(ps), "data.frame"), by = "sample_id")
+    
+    #Save group names for using them in the ggsignif
+    groups <- levels(sample_data(ps)[[gg_group]])
+    
+    p <- ggplot(data = relative_abundance, aes(x = gg_group, y = rel_ab, color = gg_group)) +
+      geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
+      
+      #Error bars
+      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                   aes(color = gg_group),
+                   width = 0.2, size = 0.7,
+                   position = position_dodge(-0.75)) +
+      
+      #Mean lines
+      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                   aes(ymin = ..y.., ymax = ..y.., group = gg_group),
+                   color = "black", linewidth = 0.5, width = 0.5,
+                   position = position_dodge(-0.75))+
+      
+      
+      labs(title = taxonName,
+           y = "Relative abundance (%)", color = "Groups", x = "Groups") +
+      scale_color_manual(values = customColors)+
+      
+      #Add significance bars
+      geom_signif(comparisons = list(c(groups[1],groups[2])),
+                  annotations = ifelse(displayPvalue, paste("p = ", 
+                                                            format(sigtab_taxon[sigtab_taxon$comparaison == 1, "padj"], digits = 2, scientific = TRUE)),
+                                       sigtab_taxon[sigtab_taxon$comparaison == 1, "significance"]),
+                  tip_length = 0.02,
+                  y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
+                  size = 1.2,  # Make the bar wider
+                  color = "black") +
+      
+      geom_signif(comparisons = list(c(groups[3],groups[4])),
+                  annotations = ifelse(displayPvalue, paste("p = ", 
+                                                            format(sigtab_taxon[sigtab_taxon$comparaison == 2, "padj"], digits = 2, scientific = TRUE)),
+                                       sigtab_taxon[sigtab_taxon$comparaison == 2, "significance"]),
+                  tip_length = 0.02,
+                  y_position =  max(relative_abundance$rel_ab)+1/12*max(relative_abundance$rel_ab),
+                  size = 1.2,  # Make the bar wider
+                  color = "black") +
+      
+      geom_signif(comparisons = list(c(groups[1],groups[3])),
+                  annotations = ifelse(displayPvalue, paste("p = ", 
+                                                            format(sigtab_taxon[sigtab_taxon$comparaison == 3, "padj"], digits = 2, scientific = TRUE)),
+                                       sigtab_taxon[sigtab_taxon$comparaison == 3, "significance"]),
+                  tip_length = 0.02,
+                  y_position =  max(relative_abundance$rel_ab)+2/12*max(relative_abundance$rel_ab),
+                  size = 1.2,  # Make the bar wider
+                  color = "black") +
+      
+      geom_signif(comparisons = list(c(groups[2],groups[4])),
+                  annotations = ifelse(displayPvalue, paste("p = ", 
+                                                            format(sigtab_taxon[sigtab_taxon$comparaison == 4, "padj"], digits = 2, scientific = TRUE)),
+                                       sigtab_taxon[sigtab_taxon$comparaison == 4, "significance"]),
+                  tip_length = 0.02,
+                  y_position =  max(relative_abundance$rel_ab)+3/12*max(relative_abundance$rel_ab),
+                  size = 1.2,  # Make the bar wider
+                  color = "black") +
+      
+      theme_minimal()+
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+        axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+        axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+        axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+        axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+        legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+        legend.text = element_text(size = 12),  # Adjust legend font size
+        panel.grid.major = element_blank(),  # Add major grid lines
+        panel.grid.minor = element_blank(),  # Remove minor grid lines
+        axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bar
+    ggsave(plot = p, filename = paste(dir_taxon,"/",taxonName,"_relab.png", sep = ""), dpi = 300, height = 6, width = 6, bg = 'white')
+    
+    #Write as excel file the significance table specific to an ASV
+    write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
+    
+    #Write as excel file the relative abundance data specific  to an ASV
+    write.xlsx(relative_abundance, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.xlsx", sep = ""))
+    
+  }
+  
+  #Returns list of significant asvs
+  if(returnSigAsvs){
+    return(asvList)
+  }
+  
+}
 
-    #Loop along ASVs (single taxons analyzed)
-    for(i in seq_along(asvList)){
-      
-      #Save asv value
-      asv = asvList[i]
-      
-      #Save speciesName for dir creation and for graph title
-      if(taxa == "Species"){
-        taxonName <- paste(unique(sigtab[sigtab$asv == asv, "Genus"]),unique(sigtab[sigtab$asv == asv, "Species"]), sep = " ")
-      }else{
-        taxonName <- unique(sigtab[sigtab$asv == asv, taxa])
-      }
-      
-      #Sigtab specific to the taxon analyzed
-      sigtab_taxon <- sigtab[sigtab$asv == asv,]
-      
-      print(taxonName)
-      
-      #Creates directory with taxon name
-      dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
-      existingDirCheck(path = dir_taxon)
-      
-      #Select counts for ASV of interest
-      asv_counts <- normalized_counts[asv, ]
-      
-      #Calculate relative abundance as a percentage for each sample
-      relative_abundance <- asv_counts * 100 / colSums(normalized_counts)
-      
-      #Convert relative abundance to a data frame
-      relative_abundance <- data.frame(
-        sample_id = names(relative_abundance),
-        rel_ab = as.numeric(relative_abundance)
-      )
-      
-      #Merge relative abundance with sample metadata
-      relative_abundance <- merge(relative_abundance, as(sample_data(ps), "data.frame"), by = "sample_id")
-      
-      #y_position = max(relative_abundance$rel_ab, na.rm = TRUE) + 0.1,
-      
-      groups <- c("Wt:Vehicle","Wt:Putrescine","IL-22ra1-/-:Vehicle","IL-22ra1-/-:Putrescine")
-      
-      p <- ggplot(data = relative_abundance, aes(x = gg_group, y = rel_ab, color = gg_group)) +
-        geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
-        
-        #Error bars
-        stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-                     aes(color = gg_group),
-                     width = 0.2, size = 0.7,
-                     position = position_dodge(-0.75)) +
-        
-        #Mean lines
-        stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-                     aes(ymin = ..y.., ymax = ..y.., group = gg_group),
-                     color = "black", linewidth = 0.5, width = 0.5,
-                     position = position_dodge(-0.75))+
-        
-        
-        labs(title = taxonName,
-             y = "Relative abundance (%)", color = "Groups", x = "Groups") +
-        scale_color_manual(values = customColors)+
-        
-        #Add significance bars
-        geom_signif(comparisons = list(c(groups[1],groups[2])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                  format(sigtab_taxon[sigtab_taxon$comparaison == 1, "padj"], digits = 2, scientific = TRUE)),
-                                  sigtab_taxon[sigtab_taxon$comparaison == 1, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance[relative_abundance[[gg_group]] %in% c(groups[1], groups[2]), "rel_ab"], na.rm = TRUE),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
+#Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
+relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE,
+                                 LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, blockFactor = FALSE, displaySampleID = FALSE){
+  
+  #Creates directory for taxonomic level
+  dir <- paste(path, taxa, sep = "")
+  existingDirCheck(path = dir)
+  
+  # Get counts from DESeq2 object
+  normalized_counts <- counts(deseq, normalized = FALSE)
+  
+  # #Variable similar to timeVariable but without the first term (because first time point is reference time point)
+  # resTimeVariable <- levels(sample_data(ps)[[timeVariable]])[-1]
+  
+  #Save results at single timepoint
+  if(blockFactor){ # Block factor is used to explain some variability, but overall results are used
+    res <- results(deseq)
+  }else{
+    res <- results(deseq, name = resultsNames(deseq)[2])
+  }
+  
+  #Save significance table
+  sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res),], "matrix"))
+  
+  #Add timeVariable column to the sigtab
+  # sigtab[[timeVariable]] <- levels(sample_data(ps)[[timeVariable]])[1]
 
-        geom_signif(comparisons = list(c(groups[3],groups[4])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 2, "padj"], digits = 2, scientific = TRUE)),
-                                         sigtab_taxon[sigtab_taxon$comparaison == 2, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance[relative_abundance[[gg_group]] %in% c(groups[3], groups[4]), "rel_ab"], na.rm = TRUE),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
+  #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
+  sigtab["asv"] <- rownames(sigtab)
+  
+  #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  
+  if(FDR){
+    pvalue <- as.character("padj")
+  }else{
+    pvalue <- as.character("pvalue")
+  }
+  
+  #Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab[pvalue][is.na(sigtab[pvalue])] <- 1
+  
+  #Add column that adds symbols for the significance 
+  # Define significance levels
+  sigtab$significance <- cut(sigtab[,pvalue],
+                             breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                             labels = c("***", "**", "*", "NS"))
+  
+  #Find asvs that have at least one significant value at some timepoint
+  asvList <- unique(sigtab[(sigtab[pvalue])<threshold,"asv"])
 
-        geom_signif(comparisons = list(c(groups[1],groups[3])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 3, "padj"], digits = 2, scientific = TRUE)),
-                                         sigtab_taxon[sigtab_taxon$comparaison == 3, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance[relative_abundance[[gg_group]] %in% c(groups[1], groups[3]), "rel_ab"], na.rm = TRUE),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
+  if(length(asvList)==0){
+    return(NULL)
+  }
+  
+  #Loop along ASVs (single taxons analyzed)
+  for(i in seq_along(asvList)){
+    
+    # Save asv value
+    asv = asvList[i]
 
-        geom_signif(comparisons = list(c(groups[2],groups[4])),
-                    annotations = ifelse(displayPvalue, paste("p = ", 
-                                                              format(sigtab_taxon[sigtab_taxon$comparaison == 4, "padj"], digits = 2, scientific = TRUE)),
-                                         sigtab_taxon[sigtab_taxon$comparaison == 4, "significance"]),
-                    tip_length = 0.02,
-                    y_position =  max(relative_abundance[relative_abundance[[gg_group]] %in% c(groups[2], groups[4]), "rel_ab"], na.rm = TRUE),
-                    size = 1.2,  # Make the bar wider
-                    color = "black") +
-        
-        theme_minimal()+
-        theme(
-          plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-          axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-          axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-          legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-          legend.text = element_text(size = 12),  # Adjust legend font size
-          panel.grid.major = element_blank(),  # Add major grid lines
-          panel.grid.minor = element_blank(),  # Remove minor grid lines
-          axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bar
-      ggsave(plot = p, filename = paste(dir_taxon,"/",taxonName,"_relab.png", sep = ""), dpi = 300, height = 6, width = 6, bg = 'white')
-      
+    # Save speciesName for dir creation and for graph title
+    if(taxa == "Species"){
+      taxonName <- paste(unique(sigtab[sigtab$asv == asv, "Genus"]),unique(sigtab[sigtab$asv == asv, "Species"]), paste("(", asv, ")", sep =""), sep = " ")
+    }else{
+      taxonName <- unique(sigtab[sigtab$asv == asv, taxa])
     }
 
+    # Sigtab specific to the taxon analyzed
+    sigtab_taxon <- sigtab[sigtab$asv == asv,]
+
+    # Add the 16s sequence to the sigtab specific to ASV of interest (only for species, higher taxonomical levels have multiple ASVs associated with them)
+    if(taxa == "Species"){
+      sigtab_taxon$dna_sequence <- as.character(refseq(ps)[asv])
+    }
+
+    #Save p-value
+    p_value <- sigtab_taxon[,pvalue]
+    significance <- sigtab_taxon["significance"]
+
+    #Creates directory with taxon name
+    dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
+    existingDirCheck(path = dir_taxon)
+
+    #Select counts for ASV of interest
+    asv_counts <- normalized_counts[asv, ]
     
+    #Calculate relative abundance as a percentage for each sample
+    relative_abundance <- asv_counts * 100 / colSums(normalized_counts)
+
+    #Convert relative abundance to a data frame
+    relative_abundance <- data.frame(
+      sample_id = names(relative_abundance),
+      rel_ab = as.numeric(relative_abundance)
+    )
+
+    #Merge relative abundance with sample metadata
+    relative_abundance <- merge(relative_abundance, as(sample_data(ps), "data.frame"), by = "sample_id")
+
+    # relative_abundance[[timeVariable]] <- as.numeric(as.character(relative_abundance[[timeVariable]])) * 7
+    relative_abundance[[varToCompare]] <- as.character(relative_abundance[[varToCompare]])
+    relative_abundance$week <- timePoint
+
+    # # Compute mean relative abundance by week and diet
+    # means_df <- relative_abundance %>%
+    #   group_by(week, diet) %>%
+    #   summarise(mean_abundance = mean(rel_ab)) %>%
+    #   group_by(week) %>%
+    #   summarise(upper_limit = max(mean_abundance), lower_limit = min(mean_abundance))
+
+
+    #Before merging sigtab, ensure timeVariable is numeric and *7
+    # sigtab_taxon[[timeVariable]] <- as.numeric(as.character(sigtab_taxon[[timeVariable]])) * 7
+
+    # #Merge sigtab_taxon with means_df
+    # means_df <- merge(sigtab_taxon, means_df, by = timeVariable)
+
+    # print(means_df)
+
+    #Saving groups variables as list of levels for varToCompare
+    groups <- levels(sample_data(ps)[[varToCompare]])
+    
+
+
+    p <- ggplot(data = relative_abundance, aes(x = !!sym(varToCompare), y = rel_ab, color = !!sym(varToCompare)), group = !!sym(varToCompare)) +
+
+      geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) +
+
+      # Error bars
+      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                   aes(color = !!sym(varToCompare)),
+                   width = 0.5, size = 1,
+                   alpha = 0.5,
+                   position = "identity")+
+
+      #Mean lines
+      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                   aes(ymin = ..y.., ymax = ..y.., group = !!sym(varToCompare)),
+                   color = "black", linewidth = 0.5, width = 1,
+                   position = "identity")+
+
+
+      labs(title = paste(taxa ,taxonName, "\nat last timepoint", sep = " "), y = "Relative abundance (%)", color = "Diet", x = "") +
+      scale_color_manual(values = customColors)+
+      scale_x_discrete(labels = c("50 ppm\nDSS","500 ppm\nDSS"))+
+
+      #Add stat bar
+      geom_signif(comparisons = list(c(groups[1],groups[2])),
+                  annotations = ifelse(displayPvalue, paste("p = ", format(p_value, digits = 2, scientific = TRUE)), significance),
+                  tip_length = 0.02,
+                  y_position =  max(relative_abundance$rel_ab),
+                  size = 1.2,  # Make the bar wider
+                  color = "black") +
+
+      # #Add vertical line segments for significance at each timepoint
+      # geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable)+1.6,
+      #                                   y = lower_limit, yend = upper_limit),
+      #              color = "black", linetype = "dashed", ) +
+      #
+      # #Complete with short horizontal segments to make the bar look nicer
+      # geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
+      #                                   y = upper_limit, yend = upper_limit),
+      #              color = "black", linetype = "dashed", ) +
+      #
+      # geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
+      #                                   y = lower_limit, yend = lower_limit),
+      #              color = "black", linetype = "dashed", ) +
+      #
+      # # Add significance text at each timepoint
+      # geom_text(data = means_df, aes(x = !!sym(timeVariable)+1.6,
+      #                                y = (upper_limit + lower_limit) / 2,
+      #                                label = significance),
+      #           color = "black", size = 5, vjust = 0.5) +
+
+
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+        axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+        axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+        axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+        axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+        legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+        legend.text = element_text(size = 12),  # Adjust legend font size
+        panel.grid.major = element_blank(),  # Add major grid lines
+        panel.grid.minor = element_blank(),  # Remove minor grid lines
+        axis.line = element_line(color = "black", size = 1),
+        panel.background = element_blank()) # Include axis lines  # Include axis bar
+    
+    # Add sample IDs as text labels if displaySample is TRUE
+    if (displaySampleID) {
+      p <- p+geom_text(aes(label = sample_id), position = position_jitter(width = 0.1, height = 0), size = 3, vjust = -0.5)
+    }
+    
+    if(isFALSE(is.null(additionnalAes))){
+      p <- p + additionnalAes
+    }
+    
+    ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
+
+    #Write as excel file the significance table specific to an ASV
+    write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
+
+    #Write as excel file the relative abundance data specific  to an ASV
+    write.xlsx(relative_abundance, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.xlsx", sep = ""))
+
+  }
+  
+  if(LDA){
+    
+    # Apply rlog transformation to the count data
+    rlog_data <- rlog(deseq, blind = TRUE)
+    
+    # Extract the log-transformed counts for the significant features
+    lda_data <- assay(rlog_data)[asvList, ]
+    
+    # Combine the data with the group labels (e.g., condition)
+    lda_input <- merge(t(lda_data), sample_data(ps)[,varToCompare], by = "row.names")
+    row.names(lda_input) <- lda_input$Row.names
+    lda_input <- lda_input[-1]
+  
+    
+    train_control <- trainControl(method = "cv", number = 10)
+    # Train the LDA model using caret (this returns a train object)
+    lda_model <- train(as.formula(paste(varToCompare, "~ .")),
+                       data = lda_input,
+                       method = "lda",
+                       trControl = train_control)  # ensure you have defined train_control
+    
+    # Extract ASV-level LDA coefficients (effect sizes)
+    lda_effects <- data.frame(
+      ASV = rownames(lda_model$finalModel$scaling),
+      LDA_Score = lda_model$finalModel$scaling[,1],  # Use first discriminant
+      taxa = paste0(substring(tax_table(ps)[rownames(lda_model$finalModel$scaling),"Genus"], 1, 1), ". ",
+                                    tax_table(ps)[rownames(lda_model$finalModel$scaling),"Species"])
+    )
+    
+    lda_summary <- lda_effects %>%
+      group_by(taxa) %>%
+      summarise(mean_LDA = mean(LDA_Score)) %>%
+      mutate(Group = ifelse(mean_LDA > 0, levels(sample_data(ps)[[varToCompare]])[2], levels(sample_data(ps)[[varToCompare]])[1]))  # Separate step for clarity
+    
+    print(lda_summary)
+    
+    # Plot species-level mean LDA scores
+    p <- ggplot(lda_summary, aes(x = reorder(taxa, mean_LDA), y = mean_LDA, fill = Group)) +
+      geom_col() +
+      coord_flip() +
+      geom_hline(yintercept = 0, color = "black") +
+      scale_fill_manual(values = customColors) +
+      labs(x = "", y = "LDA Score") +
+      theme_minimal() +
+      theme(legend.position = "top",
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            axis.title.x = element_text(face = "bold"),
+            axis.text.x = element_text(face = "bold"),
+            axis.text.y = element_text(face = "bold.italic")
+            )
+    
+    ggsave(plot = p, filename = paste0(dir, "/lda.png"), dpi = 300, bg = "white", width = 4, height = 6)
+  }
+}
+
+#Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint, works with design "~ factor", and is done separately for each week
+relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, returnSigAsvs = FALSE, customColors, path){
+  
+  #Creates directory for taxonomic level
+  dir <- paste(path, taxa, sep = "")
+  existingDirCheck(path = dir)
+  
+  #Create empty sigtabCombined dataframe to merge sigtabs together
+  sigtabCombined <- data.frame()
+  
+  #Create empty normalized_counts list to store normalized_counts matrices
+  nrm_counts_all <- list()
+  
+  #Iterate through timepoints
+  for(timePoint in levels(sample_data(ps)[[timeVariable]])){
+    
+    #Creating phyloseq objects for each timepoint
+    ps_subset <- prune_samples(sample_data(ps)[[timeVariable]] == timePoint, ps)
+    
+    #Simple deseq object only accounting for the differences in varToCompare
+    deseq_subset <- phyloseq_to_deseq2(ps_subset, as.formula(paste("~", varToCompare))) 
+    
+    #Performing the deseq analysis
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    
+    #Get normalized counts from DESeq2 object
+    normalized_counts <- counts(deseq_subset, normalized = FALSE)
+    
+    #Add the single normalized count to df to df with all
+    nrm_counts_all <- append(nrm_counts_all, list(normalized_counts))
+    
+    #Save results at single timepoint
+    res <- results(deseq_subset, name = resultsNames(deseq_subset)[2])
+    
+    #Save significance table
+    sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res),], "matrix"))
+    
+    #Add timeVariable column to the sigtab
+    sigtab[[timeVariable]] <- timePoint
+    
+    #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
+    sigtab["asv"] <- rownames(sigtab)
+    
+    #Replacing NA padj by 1 (they correspond to this anyways)
+    sigtab$padj[is.na(sigtab$padj)] <- 1
+    
+    #Add column that adds symbols for the significance 
+    # Define significance levels
+    sigtab$significance <- cut(sigtab$padj,
+                               breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                               labels = c("***", "**", "*", "NS"))
+    
+    #Append timepoint-specific dataframe to combined dataframe
+    sigtabCombined <- rbind(sigtabCombined, sigtab)
+    
+  }
+  
+  #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtabCombined <- sigtabCombined[!is.na(sigtabCombined[[taxa]]),]
+  
+  #Find asvs that have at least one significant value at some timepoint
+  asvList <- unique(sigtabCombined[(sigtabCombined$padj)<threshold,"asv"])
+  
+  #Loop along ASVs (single taxons analyzed)
+  for(i in seq_along(asvList)){
+    
+    #Save asv value
+    asv = asvList[i]
+    
+    #Save speciesName for dir creation and for graph title
+    if(taxa == "Species"){
+      taxonName <- paste(unique(sigtab[sigtab$asv == asv, "Genus"]),unique(sigtab[sigtab$asv == asv, "Species"]), paste("(", asv, ")", sep =""), sep = " ")
+    }else{
+      taxonName <- unique(sigtab[sigtab$asv == asv, taxa])
+    }
+    
+    #Sigtab specific to the taxon analyzed
+    sigtab_taxon <- sigtabCombined[sigtabCombined$asv == asv,]
+    
+    #Add the 16s sequence to the sigtab specific to ASV of interest (only for species, higher taxonomical levels have multiple ASVs associated with them)
+    if(taxa == "Species"){
+      sigtab_taxon$dna_sequence <- as.character(refseq(ps)[asv])
+    }
+    
+    #Creates directory with taxon name
+    dir_taxon <- paste(dir, "/", i, "-",taxonName, sep = "")
+    existingDirCheck(path = dir_taxon)
+    
+    #Creates empty relative_abundance dataframe
+    relative_abundance <- data.frame()
+    
+    #Iterate through timepoints and create an overall matrix of relative abundances
+    for(j in seq_along(levels(sample_data(ps)[[timeVariable]]))){
+      
+      #Save timepoint value
+      timePoint = levels(sample_data(ps)[[timeVariable]])[j]
+      
+      #Select counts for ASV of interest and at timepoint i
+      nrm_counts <- nrm_counts_all[[j]]
+      asv_counts <- nrm_counts[asv, ]
+      
+      #Calculate relative abundance as a percentage for each sample
+      rel_ab <- asv_counts * 100 / colSums(nrm_counts)
+      
+      #Transform to dataframe and add timeVariable column
+      rel_ab <- as.data.frame(rel_ab)
+      
+      #Append df to df with all
+      relative_abundance <- rbind(relative_abundance, rel_ab)
+      
+    }
+    
+    #Add sample_id column for merge
+    relative_abundance$sample_id <- rownames(relative_abundance)
+    
+    #Merge relative abundance with sample metadata
+    relative_abundance <- merge(relative_abundance, as(sample_data(ps), "data.frame"), by = "sample_id")
+    
+    relative_abundance[[timeVariable]] <- as.numeric(as.character(relative_abundance[[timeVariable]])) * 7
+    relative_abundance[[varToCompare]] <- as.character(relative_abundance[[varToCompare]])
+    
+    #Rearrange df in increasing order for timepoints
+    relative_abundance <- relative_abundance %>%
+      arrange(!!sym(varToCompare)) %>%
+      arrange(!!sym(timeVariable))
+    
+    # Compute mean relative abundance by week and diet
+    means_df <- relative_abundance %>%
+      group_by(week, diet) %>%
+      summarise(mean_abundance = mean(rel_ab)) %>%
+      group_by(week) %>%
+      summarise(upper_limit = max(mean_abundance), lower_limit = min(mean_abundance))
+    
+    #Before merging sigtab, ensure timeVariable is numeric and *7
+    sigtab_taxon[[timeVariable]] <- as.numeric(as.character(sigtab_taxon[[timeVariable]])) * 7
+    
+    #Merge sigtab_taxon with means_df
+    means_df <- merge(sigtab_taxon, means_df, by = timeVariable)
+    
+    p <- ggplot(data = relative_abundance, aes(x = !!sym(timeVariable), y = rel_ab, color = !!sym(varToCompare)), group = !!sym(varToCompare)) +
+      
+      geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
+      
+      # Error bars
+      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                   aes(color = !!sym(varToCompare)),
+                   width = 5, size = 1,
+                   alpha = 0.5,
+                   position = "identity")+
+      
+      #Mean lines
+      stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
+                   aes(ymin = ..y.., ymax = ..y.., group = !!sym(varToCompare)),
+                   color = "black", linewidth = 0.5, width = 0.5,
+                   position = "identity")+
+      
+      #Connecting mean points with lines
+      stat_summary(fun = mean, geom = "line", size = 1.2) +  # Connecting means with lines
+      
+      
+      
+      labs(title = taxonName, y = "Relative abundance (%)", color = "Diet", x = "Time (days)") +
+      scale_color_manual(values = customColors)+
+      
+      #Add vertical line segments for significance at each timepoint
+      geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable)+1.6,
+                                        y = lower_limit, yend = upper_limit),
+                   color = "black", linetype = "dashed", ) +
+      
+      #Complete with short horizontal segments to make the bar look nicer
+      geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
+                                        y = upper_limit, yend = upper_limit),
+                   color = "black", linetype = "dashed", ) +
+      
+      geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
+                                        y = lower_limit, yend = lower_limit),
+                   color = "black", linetype = "dashed", ) +
+      
+      # Add significance text at each timepoint
+      geom_text(data = means_df, aes(x = !!sym(timeVariable)+1.6, 
+                                     y = (upper_limit + lower_limit) / 2, 
+                                     label = significance),
+                color = "black", size = 5, vjust = 0.5) +
+      
+      
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+        axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+        axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+        axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+        axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+        legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+        legend.text = element_text(size = 12),  # Adjust legend font size
+        panel.grid.major = element_blank(),  # Add major grid lines
+        panel.grid.minor = element_blank(),  # Remove minor grid lines
+        axis.line = element_line(color = "black", size = 1),
+        panel.background = element_blank()) # Include axis lines  # Include axis bar
+    ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = 6, width = 6, bg = 'white')
+    
+    #Write as excel file the significance table specific to an ASV
+    write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
+    
+    #Write as excel file the relative abundance data specific  to an ASV
+    write.xlsx(relative_abundance, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.xlsx", sep = ""))
+    
+    #Returns list of significant asvs
+    if(returnSigAsvs){
+      return(asvList)
+    }
+    
+  }
 }

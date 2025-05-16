@@ -254,14 +254,13 @@
 
 
 
-
-#Function to calculate standard error with optional scaling
-# mean_cl_normal <- function(x, mult = 1.96) {
-#   mean_val <- mean(x)
-#   se_val <- sd(x) / sqrt(length(x))
-#   data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
-# }
-
+# Custom function to calculate standard error with optional scaling
+mean_cl_normal <- function(x, mult = 2.201) {
+  mean_val <- mean(x)
+  se_val <- sd(x) / sqrt(length(x))
+  ymin_val <- pmax(mean_val - mult * se_val, 0)
+  data.frame(y = mean_val, ymin = ymin_val, ymax = mean_val + mult * se_val)
+}
 
 #function that is combination of functions above, startDateCol is position at which date cols start appearing
 weightDataManipulation<- function(df,groupInfoCols, fromDay0){
@@ -385,11 +384,18 @@ dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays, negat
 
 
 #function for data manipulation of the dissection measures (body weight, liver, spleen and colon length)
-dissectionDataManipulation <- function(df,groupInfoCols){
+dissectionDataManipulation <- function(df,groupInfoCols, numerical = TRUE){
+  
   #getting rid of empty rows (dead mice)
   df <- emptyRow(df)
+  
   #measures cols into numerical variables
-  df <- charToNum(df)
+  if(isFALSE(numerical)){
+    df <- charToNum(df)
+  }
+  
+
+  
   
   #setting the diet column data into a string format so that it can be used into ggplot (if its numeric)
   if(is.numeric(df$diet)){
@@ -412,7 +418,7 @@ dissectionDataManipulation <- function(df,groupInfoCols){
 desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 
 # Define your custom color palette
-custom_colors <- c("#00BFC4","#F8766D")
+custom_colors <- c("darkblue","darkred")
 
 
 
@@ -425,9 +431,9 @@ dssDiseaseIndexPlot <- function(df){
     stat_summary(aes(group = gg_group), fun = "mean", geom = "line", size = 1)+
     stat_summary(aes(color = diet), fun.data = mean_cl_normal, geom="errorbar", width=0.1, size = 1) + #adding SEM error bars
    
-    labs(title = "Disease severity index (DSI) during DSS",
+    labs(title = "Disease activity index (DAI) during DSS exposure",
          x = "Day",
-         y = "DSI",
+         y = "DAI",
          color = "Diet")+
    scale_color_manual(values = custom_colors)+
     guides(shape = 'none')+
@@ -440,7 +446,7 @@ dssDiseaseIndexPlot <- function(df){
       axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
       legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
       legend.text = element_text(size = 12),  # Adjust legend font size
-      panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+      panel.grid.major = element_blank(),  # Add major grid lines
       panel.grid.minor = element_blank(),  # Remove minor grid lines
       axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
     )+
@@ -532,8 +538,10 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, stats = TRUE){
   mean_cl_normal <- function(x, mult = 1) {
     mean_val <- mean(x)
     se_val <- sd(x) / sqrt(length(x))
-    data.frame(y = mean_val, ymin = mean_val - mult * se_val, ymax = mean_val + mult * se_val)
+    ymin_val <- pmax(mean_val - mult * se_val, 0)
+    data.frame(y = mean_val, ymin = ymin_val, ymax = mean_val + mult * se_val)
   }
+  
   
   desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
   
@@ -599,6 +607,9 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, stats = TRUE){
 
 #function for dissection measures box_plot
 dissecBoxplot <- function(df,organ, display_significance_bars, permAnova = FALSE){
+  
+  custom_colors <- c("blue","red","darkblue","darkred")
+  
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
   plotTitle1 <- "weight measures"
@@ -625,36 +636,38 @@ dissecBoxplot <- function(df,organ, display_significance_bars, permAnova = FALSE
     yAxisLabel <- "Colon length (cm)"
     responseVariable <- "colon_length"
   }
+  else if(organ == "colon_nrm"){
+    plotTitle <- "Normalized colon length measures"
+    yAxisLabel <- "Normalized colon length (cm/g)"
+    responseVariable <- "colon_length_nrm"
+  }
   
   # Plot with mean points
-  plot <- df %>%
-    ggplot(aes(x = factor(gg_group, levels = desired_order),  y = !!sym(responseVariable), color = as.character(diet))) +
-    geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
-    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.2, size = 0.7) + #adding SEM error bars
-    labs(title = plotTitle,
-         x = "Treatment",
-         y = yAxisLabel,
-         color = "Diet")+ 
-    scale_shape_manual(name = "Treatment", values = c("DSS" = 1, "Water" = 2)) + 
-    scale_color_discrete(labels = c("50 ppm FeSO4", "500 ppm FeSO4"))+
-    scale_color_manual(values = custom_colors)+
-    scale_x_discrete(labels = c("50 ppm + water", "500 ppm + water", "50 ppm + DSS", "500 ppm + DSS"))+
-    theme_minimal() +  
-    theme(
-      plot.title = element_text(size = 16, face = "bold"),
-      axis.title.x = element_text(size = 14, face = "bold"),
-      axis.title.y = element_text(size = 14, face = "bold"),
-      axis.text.x = element_text(size = 9),
-      axis.text.y = element_text(size = 12),
-      legend.title = element_text(size = 12, face = "bold"),
-      legend.text = element_text(size = 12),
-      panel.grid.major = element_line(color = "gray90", size = 0.5),
-      panel.grid.minor = element_blank(),
-      axis.line = element_line(color = "black", size = 1)
-    ) +
-    ylim(0, max(df[[responseVariable]]))
+  plot <- ggplot(data = df, aes(x = gg_group,  y = !!sym(responseVariable), color = gg_group)) +
+          geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
+          stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
+          stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
+          stat_summary(fun.data="mean_cl_normal", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
+          labs(title = plotTitle,
+               x = "",
+               y = yAxisLabel,
+               color = "")+ 
+          scale_color_manual(values = custom_colors)+
+          scale_x_discrete(labels = c("50 ppm\ncontrol", "500 ppm\ncontrol", "50 ppm\nDSS", "500 ppm\nDSS"))+
+          theme_minimal() +  
+          theme(
+            plot.title = element_text(size = 14, face = "bold"),
+            axis.title.x = element_text(size = 14, face = "bold"),
+            axis.title.y = element_text(size = 14, face = "bold"),
+            axis.text.x = element_text(size = 12),
+            axis.text.y = element_text(size = 12),
+            legend.title = element_text(size = 12, face = "bold"),
+            legend.text = element_text(size = 12),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            axis.line = element_line(color = "black", size = 1)
+          ) +
+          ylim(0, max(df[[responseVariable]]))
   
   #Statistical measurements
   dss50 <- df[df$gg_group == "50 dss",]
