@@ -917,5 +917,79 @@ p <- p+
         axis.text.x = element_text(face = "bold", size = 10))
 p
 ggsave(filename = "abx48_iron_stool_tf_log_transformed.png", height =3, width =3.5 , dpi = 300, bg = "white")
+
+
+
+
+setwd("experiments/ongoing exp/young-abx-exp6/")
+
+# Load metadata to retrieve group information
+meta <- read_xlsx("dissection.xlsx")
+meta <- meta[,c(1:4)]
+meta$ID <- substring(meta$ID, first = 1, last = 5)
+meta <- meta[-17,] # Remove dead mouse
+
+#Tfinal ferrozine assay for liver
+sheets <- read_excel_allsheets("Ferrozine liver and spleen.xlsx") # Find custom function read_excel_allsheets above
+df <- as.data.frame(sheets["Ferrozine LIVER"])
+df <- df[,c(3,14)]
+colnames(df)[1:2] <- c("ID","iron_concentration")
+df <- df[-c(1:3),] 
+df$iron_concentration <- as.numeric(df$iron_concentration)
+df <- merge(df, meta, by ="ID") # Bind metadata information to df
+df$diet <- factor(df$diet, levels = c("50","500"))
+df$treatment <- factor(df$treatment, levels = c("water", "abx"))
+df$gg_group <- factor(paste0(df$diet, ":", df$treatment), levels = c("50:water", "500:water", "50:abx", "500:abx"))
+
+p = ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Total iron in liver", y_axis_title = "µg Fe/g of liver", custom_colors = c("blue","red","darkblue","darkred"), path = NULL)
+p <- p+
+  scale_x_discrete(labels = c("50 ppm","500 ppm"))+
+  labs(y = "µg Fe/g of stool", title = "")+
+  ylim(0,NA)+
+  guides(color = "none")+
+  theme(panel.grid.major = element_blank(),
+        axis.text.y = element_text(face = "bold", size = 12),
+        axis.text.x = element_text(face = "bold", size = 10))
+p
+
+# Levene's Test for homogeneity of variance
+leveneTest(iron_concentration ~ gg_group, data = df)
+
+# Shapiro test per group for normality assumptions
+by(df$iron_concentration, df$gg_group, shapiro.test)
+
+# Pairwise welch t tests
+pairwise.t.test(
+  x = df$iron_concentration,
+  g = df$gg_group,         # factor defining the groups
+  p.adjust.method = "BH",      # adjust for multiple testing (e.g., "bonferroni", "BH", etc.)
+  pool.sd = FALSE              # FALSE = Welch's t-test
+)
+
+df <- as.data.frame(sheets["Ferrozine SPLEEN"])
+df <- df[,c(3,14)]
+colnames(df)[1:2] <- c("ID","iron_concentration")
+df <- df[-c(1:3),] 
+df$iron_concentration <- as.numeric(df$iron_concentration)
+df <- merge(df, meta, by ="ID") # Bind metadata information to df
+df$diet <- factor(df$diet, levels = c("50","500"))
+df$treatment <- factor(df$treatment, levels = c("water", "abx"))
+df$gg_group <- factor(paste0(df$diet, ":", df$treatment), levels = c("50:water", "500:water", "50:abx", "500:abx"))
+
+p = ironBoxplot(df, "iron_concentration", display_significance_bars = F, title = "Total iron in spleen", y_axis_title = "µg Fe/g of liver", custom_colors = c("blue","red","darkblue","darkred"), path = NULL)
+p
+
+# Levene's Test for homogeneity of variance
+leveneTest(iron_concentration ~ gg_group, data = df)
+
+# Shapiro test per group for normality assumptions
+by(df$iron_concentration, df$gg_group, shapiro.test)
+
+#Fit a ANOVA model for the current time point
+anova <- aov(iron_concentration ~ diet * treatment, data = df)
+summary(anova)
+# Perform Tukey's HSD test and store the results in the list
+results <- TukeyHSD(anova)
+print(results)
 }
 
