@@ -277,7 +277,6 @@ weightDataManipulation<- function(df,groupInfoCols, fromDay0){
   }
   
   df <- charToNum(df)
-  
   df <- dateToNum(df)
   df <- ggGrouping(df, colPlacement = (groupInfoCols+1))
   df <- calculate_weight_percentage(df, if(fromDay0 == TRUE){fromDay0 = TRUE}else{fromDay0 = FALSE})
@@ -285,6 +284,15 @@ weightDataManipulation<- function(df,groupInfoCols, fromDay0){
   return(df)
 }
 
+verifyStatsAssumptions <- function(df, group, measure){
+  
+  # Levene's Test for homogeneity of variance
+  print(leveneTest(as.formula(paste(measure, "~", group)), data = df))
+  
+  # Shapiro test per group for normality assumptions
+  by(df[[measure]], df[[group]], shapiro.test)
+  
+}
 
 
 
@@ -394,9 +402,6 @@ dissectionDataManipulation <- function(df,groupInfoCols, numerical = TRUE){
     df <- charToNum(df)
   }
   
-
-  
-  
   #setting the diet column data into a string format so that it can be used into ggplot (if its numeric)
   if(is.numeric(df$diet)){
     df$diet <- as.character(df$diet)
@@ -418,10 +423,24 @@ dissectionDataManipulation <- function(df,groupInfoCols, numerical = TRUE){
 desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 
 # Define your custom color palette
-custom_colors <- c("darkblue","darkred")
+custom_colors_1 <- c("blue","red")
+custom_colors_2 <- c("blue","red","darkblue","darkred")
 
-
-
+# Ensure consistent themes across all graphs
+my_theme <- function() {
+  theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = "black", face = "bold"),
+      axis.title = element_text(size = 14, face = "bold"),
+      axis.line = element_line(color = "black", size = 1),
+      legend.text = element_text(face = "bold"),
+      legend.title = element_text(face = "bold"),
+      legend.position = "right"
+    )
+}
 
 #function for plotting DSS disease index data
 dssDiseaseIndexPlot <- function(df){
@@ -431,29 +450,16 @@ dssDiseaseIndexPlot <- function(df){
     stat_summary(aes(group = gg_group), fun = "mean", geom = "line", size = 1)+
     stat_summary(aes(color = diet), fun.data = mean_cl_normal, geom="errorbar", width=0.1, size = 1) + #adding SEM error bars
    
-    labs(title = "Disease activity index (DAI) during DSS exposure",
+    labs(title = "Disease activity index (DAI)\nduring DSS exposure",
          x = "Day",
          y = "DAI",
-         color = "Diet")+
-   scale_color_manual(values = custom_colors)+
+         color = "Group")+
+   scale_color_manual(values = custom_colors, labels = c("50 ppm + DSS","500 ppm + DSS"))+
     guides(shape = 'none')+
-    theme_minimal()+
-    theme(
-      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-      axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-      legend.text = element_text(size = 12),  # Adjust legend font size
-      panel.grid.major = element_blank(),  # Add major grid lines
-      panel.grid.minor = element_blank(),  # Remove minor grid lines
-      axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-    )+
+    my_theme()+
    ylim(0, max(df$index))
   return(plot)
 }
-
 
 #plotting DSI at final day of DSS period
 dssDsiFinalDay <- function(df){
@@ -532,7 +538,7 @@ dssDsiFinalDay <- function(df){
 }
 
 #plotting the weight measures scatter plot
-weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, stats = TRUE){
+weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
   
   # Custom function to calculate standard error with optional scaling
   mean_cl_normal <- function(x, mult = 1) {
@@ -545,10 +551,12 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, stats = TRUE){
   
   desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
   
+  df$gg_group <- factor(df$gg_group, levels = c("50 water", "500 water", "50 DSS", "500 DSS"))
+  
   plot <- df %>%
-    ggplot(aes(x = time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = diet)) +
+    ggplot(aes(x = time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = if(diet_only) {diet} else {gg_group})) +
     stat_summary(aes(group = if(diet_only) {diet} else {gg_group}, shape = if(diet_only) {NULL} else {treatment}), fun = "mean", geom = "point", size = 3) +
-    stat_summary(fun = "mean", geom = "line", aes(group = gg_group, linetype = ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water")), size = 1) +
+    stat_summary(fun = "mean", geom = "line", aes(group = if(diet_only) {diet} else {gg_group}), size = 1) + # , linetype = ifelse(diet_only, "solid", ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water"))
     stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
     labs(title = "Body weight change over time",
          x = "Time (days)",
@@ -556,59 +564,15 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, stats = TRUE){
          color = "Diet") +
     scale_linetype_manual(name = "Treatment", 
                           values = c("DSS" = "dashed", "Water" = "solid")) +
-    scale_color_manual(values = custom_colors)+
+    scale_color_manual(values = if(diet_only) {custom_colors_1} else {custom_colors_2})+
     guides(shape = 'none')+
-    theme_minimal() +
-    theme(
-      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-      axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-      axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-      axis.text.x = element_text(size = 12),  # Adjust x-axis tick label font size
-      axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-      legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-      legend.text = element_text(size = 12),  # Adjust legend font size
-      panel.grid.major = element_blank(),  # Remove major grid lines
-      panel.grid.minor = element_blank(),  # Remove minor grid lines
-      axis.line = element_line(color = "black", size = 1)  # Include axis lines  # Include axis bars
-    )
-  if(stats){
-    # Initialize an empty list to store Tukey's HSD results for each time point
-    tukey_results <- list()
-    
-    # Loop through each unique time point
-    for (time_point in unique(df$time_numeric)) {
-      # Subset the data for the current time point
-      df_time <- subset(df, time_numeric == time_point)
-      
-      # Fit a simple ANOVA model for the current time point
-      simple_model <- aov(weight_pct_change ~ treatment * diet, data = df_time)
-      
-      # Perform Tukey's HSD test and store the results in the list
-      tukey_results[[as.character(time_point)]] <- TukeyHSD(simple_model)
-    }
-    
-    # Alternatively, print all results
-    for (time_point in names(tukey_results)) {
-      cat("\nTukey's HSD results for Time Point:", time_point, "\n")
-      print(tukey_results[[time_point]])
-    }
-    # #Statistical measurements
-    # dss50 <- df[df$gg_group == "50 DSS",]
-    # dss500 <- df[df$gg_group == "500 DSS",]
-    # water50 <- df[df$gg_group == "50 water",]
-    # water500 <- df[df$gg_group == "500 water",]
-    # model <- aov(weight_pct_change ~ treatment * diet * time_numeric + Error(id/time_numeric), data = df)
-    # print(summary(model))
-    # print(TukeyHSD(model))
-  }
+    my_theme()
+  
   return(plot)
 }
 
-
 #function for dissection measures box_plot
-dissecBoxplot <- function(df,organ, display_significance_bars, permAnova = FALSE){
-  
-  custom_colors <- c("blue","red","darkblue","darkred")
+dissecBoxplot <- function(df, organ, display_significance_bars){
   
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
@@ -620,7 +584,7 @@ dissecBoxplot <- function(df,organ, display_significance_bars, permAnova = FALSE
   
   
   if(organ == "body"){
-    plotTitle <- "Body weight measures at final day of the experiment"
+    plotTitle <- "Body weight measures\nat final day of the experiment"
     yAxisLabel <- "Body weight (g)"
     responseVariable <- "body_weight"
   }else if(organ == "liver"){
@@ -652,68 +616,22 @@ dissecBoxplot <- function(df,organ, display_significance_bars, permAnova = FALSE
                x = "",
                y = yAxisLabel,
                color = "")+ 
-          scale_color_manual(values = custom_colors)+
+          scale_color_manual(values = custom_colors_2)+
           scale_x_discrete(labels = c("50 ppm\ncontrol", "500 ppm\ncontrol", "50 ppm\nDSS", "500 ppm\nDSS"))+
-          theme_minimal() +  
-          theme(
-            plot.title = element_text(size = 14, face = "bold"),
-            axis.title.x = element_text(size = 14, face = "bold"),
-            axis.title.y = element_text(size = 14, face = "bold"),
-            axis.text.x = element_text(size = 12),
-            axis.text.y = element_text(size = 12),
-            legend.title = element_text(size = 12, face = "bold"),
-            legend.text = element_text(size = 12),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            axis.line = element_line(color = "black", size = 1)
-          ) +
-          ylim(0, max(df[[responseVariable]]))
-  
-  #Statistical measurements
-  dss50 <- df[df$gg_group == "50 dss",]
-  dss500 <- df[df$gg_group == "500 dss",]
-  water50 <- df[df$gg_group == "50 water",]
-  water500 <- df[df$gg_group == "500 water",]
-  
-  # Shapiro-Wilk test for normality
-  print(shapiro.test(dss50[[responseVariable]]))
-  print(shapiro.test(dss500[[responseVariable]]))
-  print(shapiro.test(water50[[responseVariable]]))
-  print(shapiro.test(water500[[responseVariable]]))
-  
-  # Levene's test for homogeneity of variance
-  print(leveneTest(df[[responseVariable]] ~ gg_group, data = df))
-  
-  # Perform anova
-  if(permAnova){
-    model <- lmp(df[[responseVariable]] ~ treatment * diet, data = df)
-    print(summary(model))
-  }else{
-    result <- aov(df[[responseVariable]] ~ treatment * diet, data = df)
-    print(summary(result))
-    print(TukeyHSD(result))
-  }
-
-  
-  
-  # print("this is non parametric")
-  # kruskal_test(df[[responseVariable]] ~ treatment * diet, data=df)
-  # post_hoc <- data %>%
-  #   dunn_test(body_weight ~ treatment, p.adjust.method = "bonferroni")
-  # 
-  # print(post_hoc)
+          my_theme()+
+    theme(legend.position = "none")+
+          ylim(0, max(df[[responseVariable]])+1/5*max(df[[responseVariable]]))
   
   
   return(plot)
 }
 
-
 #Function for ior iron measurements, gg_group must be a factor and ordered, diet must be as character
-ironBoxplot <- function(df, measure, display_significance_bars = TRUE, title, y_axis_title, custom_colors, path){
+ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors){
   
   #Plot with mean points
   plot <- df %>%
-    ggplot(aes(x = gg_group,  y = !!sym(measure), color = diet)) +
+    ggplot(aes(x = gg_group,  y = !!sym(measure), color = !!sym(group))) +
     geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), size = 1)+ #adding horizontal bars representing means
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), size = 1)+ 
@@ -724,58 +642,7 @@ ironBoxplot <- function(df, measure, display_significance_bars = TRUE, title, y_
          color = "Diet")+ 
     scale_color_manual(values = custom_colors)+
     ylim(0,max(df[[measure]])+1/4*max(df[[measure]]))+
-    # ylim(0,250)+ #For comparing to Claire Balb/C measurements
-    theme_minimal() +  
-    theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      axis.title.x = element_text(size = 14, face = "bold"),
-      axis.title.y = element_text(size = 14, face = "bold"),
-      axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
-      axis.text.y = element_text(size = 12),
-      legend.title = element_text(size = 12, face = "bold"),
-      legend.text = element_text(size = 12),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      axis.line = element_line(color = "black", size = 1)
-    )
-  
-  #Saving the graph
-  ggsave(plot = plot, filename = paste(path, "/", title, ".png", sep = ""), height = 6, width = 5, dpi = 300, bg = "white")
-  
-  # #Statistical measurements
-  # dss50 <- df[df$gg_group == "50 dss",]
-  # dss500 <- df[df$gg_group == "500 dss",]
-  # water50 <- df[df$gg_group == "50 water",]
-  # water500 <- df[df$gg_group == "500 water",]
-  # 
-  # # Shapiro-Wilk test for normality
-  # print(shapiro.test(dss50[[responseVariable]]))
-  # print(shapiro.test(dss500[[responseVariable]]))
-  # print(shapiro.test(water50[[responseVariable]]))
-  # print(shapiro.test(water500[[responseVariable]]))
-  # 
-  # # Levene's test for homogeneity of variance
-  # print(leveneTest(df[[responseVariable]] ~ gg_group, data = df))
-  # 
-  # # Perform anova
-  # if(permAnova){
-  #   model <- lmp(df[[responseVariable]] ~ treatment * diet, data = df)
-  #   print(summary(model))
-  # }else{
-  #   result <- aov(df[[responseVariable]] ~ treatment * diet, data = df)
-  #   print(summary(result))
-  #   print(TukeyHSD(result))
-  # }
-  
-  
-  
-  # print("this is non parametric")
-  # kruskal_test(df[[responseVariable]] ~ treatment * diet, data=df)
-  # post_hoc <- data %>%
-  #   dunn_test(body_weight ~ treatment, p.adjust.method = "bonferroni")
-  # 
-  # print(post_hoc)
-  
+    my_theme()
   
   return(plot)
 }
