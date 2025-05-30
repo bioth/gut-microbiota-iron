@@ -18,7 +18,7 @@ Running this pipeline cannot be done without the required versions and packages:
 - ggplot2 (version 3.4.4 or later)
 - phyloseq (version 1.46.0 or later)
 
-# 1- Prepare you data folder and your bash environment:
+# 1- Prepare you data folder:
 You data folder should contain a file with your compressed reads, and a folder called metadata which contains the metadata as well as the MiSeqReadSet excel file which contains all the information about the primers and adapters.
 
 <p align="center">
@@ -29,20 +29,19 @@ You data folder should contain a file with your compressed reads, and a folder c
   <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/metadata_folder_format.png?raw=true" height="100" />
 </p>
 
-Now open a bash command line, cd into your data folder, cd into the folder containing the reads, and type the following command:
-DATA_FOLDER=$(pwd)
 
-# 2- Uncompress the files:
-bash uncompress.sh $DATA_FOLDER
+# 2- Remove the primers at the end of the reads (trimming of non-biological bases):
 
-# 3- Remove the primers at the end of the reads (trimming of non-biological bases):
-## First create files listing the forward and reverse primers:
+## First uncompress the fastq files with: 
+bash uncompress.sh
+
+## Secondly create files listing the forward and reverse primers:
 py create_primers_fasta_file.py
 
-## Secondly use cutadapt to remove the primers (it will automatically select reverse and forward primers accordingly): 
-bash cutadapt.sh $DATA_FOLDER
+## Thirdly use cutadapt to remove the primers (it will automatically select reverse and forward primers accordingly): 
+bash cutadapt.sh
 
-# 4- Filtering of the reads using DADA2:
+# 3- Filtering of the reads using DADA2:
 
 ## dada2Tests.r
 
