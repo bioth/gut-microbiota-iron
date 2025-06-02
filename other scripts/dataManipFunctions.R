@@ -426,6 +426,7 @@ desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 custom_colors_1 <- c("blue","red")
 custom_colors_2 <- c("blue","red","darkblue","darkred")
 custom_colors_3 <- c("darkblue","darkred")
+custom_colors_4 <- c("blue","red", "deepskyblue", "brown1")
 
 # Ensure consistent themes across all graphs
 my_theme <- function() {
@@ -539,7 +540,7 @@ dssDsiFinalDay <- function(df){
 }
 
 #plotting the weight measures scatter plot
-weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
+weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE){
   
   # Custom function to calculate standard error with optional scaling
   mean_cl_normal <- function(x, mult = 1) {
@@ -549,10 +550,15 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
     data.frame(y = mean_val, ymin = ymin_val, ymax = mean_val + mult * se_val)
   }
   
+  if(abxExp){
+    df$gg_group <- factor(df$gg_group, levels = c("50 water", "500 water", "50 abx", "500 abx"))
+    legendLabels <- legendLabels <- c("50 ppm Ctrl", "500 ppm Ctrl", "50 ppm Abx", "500 ppm Abx")
+  }else{
+    df$gg_group <- factor(df$gg_group, levels = c("50 water", "500 water", "50 DSS", "500 DSS"))
+    legendLabels <- c("50 ppm Ctrl", "500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS")
+  }
   
-  desired_order <- c("50 water", "500 water", "50 DSS", "500 DSS")
   
-  df$gg_group <- factor(df$gg_group, levels = c("50 water", "500 water", "50 DSS", "500 DSS"))
   
   plot <- df %>%
     ggplot(aes(x = time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = if(diet_only) {diet} else {gg_group})) +
@@ -565,8 +571,8 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
          color = "Diet") +
     scale_linetype_manual(name = "Treatment", 
                           values = c("DSS" = "dashed", "Water" = "solid")) +
-    scale_color_manual(values = if(diet_only) {custom_colors_1} else {custom_colors_2},
-                       labels = if(diet_only) {c("50 ppm", "500 ppm")} else {c("50 ppm Ctrl", "500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS")})+
+    scale_color_manual(values = if(diet_only) {custom_colors_1} else { if(abxExp) {custom_colors_4} else {custom_colors_2}},
+                       labels = if(diet_only) {c("50 ppm", "500 ppm")} else {legendLabels})+
     guides(shape = 'none')+
     my_theme()
   
@@ -574,7 +580,7 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
 }
 
 #function for dissection measures box_plot
-dissecBoxplot <- function(df, organ, display_significance_bars){
+dissecBoxplot <- function(df, organ, display_significance_bars, abxExp = FALSE){
   
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
@@ -608,6 +614,12 @@ dissecBoxplot <- function(df, organ, display_significance_bars){
     responseVariable <- "colon_length_nrm"
   }
   
+  if(abxExp){
+    legendLabels <- legendLabels <- c("50 ppm\nCtrl", "500 ppm\nCtrl", "50 ppm\nAbx", "500 ppm\nAbx")
+  }else{
+    legendLabels <- c("50 ppm\nCtrl", "500 ppm\nCtrl", "50 ppm\nDSS", "500 ppm\nDSS")
+  }
+  
   # Plot with mean points
   plot <- ggplot(data = df, aes(x = gg_group,  y = !!sym(responseVariable), color = gg_group)) +
           geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
@@ -618,8 +630,8 @@ dissecBoxplot <- function(df, organ, display_significance_bars){
                x = "",
                y = yAxisLabel,
                color = "")+ 
-          scale_color_manual(values = custom_colors_2)+
-          scale_x_discrete(labels = c("50 ppm\nCtrl", "500 ppm\nCtrl", "50 ppm\nDSS", "500 ppm\nDSS"))+
+          scale_color_manual(values = if(abxExp) {custom_colors_4} else {custom_colors_2})+
+          scale_x_discrete(labels = legendLabels)+
           my_theme()+
     theme(legend.position = "none")+
           ylim(0, max(df[[responseVariable]])+1/5*max(df[[responseVariable]]))
@@ -633,7 +645,7 @@ ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors){
   
   #Plot with mean points
   plot <- df %>%
-    ggplot(aes(x = gg_group,  y = !!sym(measure), color = !!sym(group))) +
+    ggplot(aes(x = !!sym(group),  y = !!sym(measure), color = !!sym(group))) +
     geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), size = 1)+ #adding horizontal bars representing means
     stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), size = 1)+ 
