@@ -211,6 +211,52 @@ source("other scripts/dataManipFunctions.R")
   results
 }
 
+# PCR validation of B. pseudolongum and F rodentium in young mice + DSS experiment
+{
+  # Load pcr df
+  df <- read_excel("experiments/finished exp/young-DSS-exp3/pcr_validation/RT-PCR June 2025.xlsx")
+  colnames(df) <- df[3,]
+  colnames(df)[c(1,4,6)] <- c("id","frod","bpse")
+  df <- df[-c(1:3),]
+  
+  # Load metadata and bind information to dataframe
+  meta <- read.csv("experiments/finished exp/young-DSS-exp3/young48_dss_dissection.csv", sep = ";")
+  meta$id <- substring(meta$id, first = 1, last = 5)
+  df <- merge(df, meta, by = "id")
+  df$diet <- factor(df$diet, levels = c("50", "500"))
+  df$treatment <- factor(df$treatment, levels = c("water", "dss"))
+  df$gg_group <- factor(paste0(df$diet, ":", df$treatment), levels = c("50:water", "500:water", "50:dss", "500:dss"))
+  df$`F.rod/16S` <- as.numeric(df$`F.rod/16S`)
+  df$`B.psed/16S` <- as.numeric(df$`B.psed/16S`)
+  
+  p <- ironBoxplot(df, "frod", group = "gg_group", title = "F. rodentium qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("blue","red","darkblue","darkred"))
+  p
+  
+  # Stats
+  verifyStatsAssumptions(df = df, group = "gg_group", measure = "frod") 
+  anova <- aov(frod ~ diet * treatment, data = df) #Fit a ANOVA model
+  summary(anova)
+  results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
+  results
+  
+  verifyStatsAssumptions(df = df[df$treatment == "dss",], group = "diet", measure = "frod") 
+  t.test(frod ~ diet, data = df[df$treatment == "dss",], var.equal = TRUE)
+  
+  p <- ironBoxplot(df, "bpse", group = "gg_group", title = "B. pseudolongum qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("blue","red","darkblue","darkred"))
+  p
+  
+  # Stats
+  verifyStatsAssumptions(df = df, group = "gg_group", measure = "bpse")
+  pairwise.wilcox.test(df$bpse, df$gg_group, p.adjust.method = "BH")
+
+  
+  verifyStatsAssumptions(df = df[df$treatment == "dss",], group = "diet", measure = "bpse") 
+  wilcox.test(bpse ~ diet, data = df[df$treatment == "dss",])
+  
+  
+
+}
+
 
 # Young mice + Abx experiment
 {
@@ -404,6 +450,35 @@ source("other scripts/dataManipFunctions.R")
   results
   
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # All graphs regarding adult mice colitis experiment 
 setwd("experiments/finished exp/adults-all-exp/")
