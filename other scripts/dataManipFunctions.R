@@ -425,6 +425,7 @@ desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 # Define your custom color palette
 custom_colors_1 <- c("blue","red")
 custom_colors_2 <- c("blue","red","darkblue","darkred")
+custom_colors_3 <- c("darkblue","darkred")
 
 # Ensure consistent themes across all graphs
 my_theme <- function() {
@@ -454,7 +455,7 @@ dssDiseaseIndexPlot <- function(df){
          x = "Day",
          y = "DAI",
          color = "Group")+
-   scale_color_manual(values = custom_colors, labels = c("50 ppm + DSS","500 ppm + DSS"))+
+   scale_color_manual(values = custom_colors_3, labels = c("50 ppm DSS","500 ppm DSS"))+
     guides(shape = 'none')+
     my_theme()+
    ylim(0, max(df$index))
@@ -564,7 +565,8 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE){
          color = "Diet") +
     scale_linetype_manual(name = "Treatment", 
                           values = c("DSS" = "dashed", "Water" = "solid")) +
-    scale_color_manual(values = if(diet_only) {custom_colors_1} else {custom_colors_2})+
+    scale_color_manual(values = if(diet_only) {custom_colors_1} else {custom_colors_2},
+                       labels = if(diet_only) {c("50 ppm", "500 ppm")} else {c("50 ppm Ctrl", "500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS")})+
     guides(shape = 'none')+
     my_theme()
   
@@ -617,7 +619,7 @@ dissecBoxplot <- function(df, organ, display_significance_bars){
                y = yAxisLabel,
                color = "")+ 
           scale_color_manual(values = custom_colors_2)+
-          scale_x_discrete(labels = c("50 ppm\ncontrol", "500 ppm\ncontrol", "50 ppm\nDSS", "500 ppm\nDSS"))+
+          scale_x_discrete(labels = c("50 ppm\nCtrl", "500 ppm\nCtrl", "50 ppm\nDSS", "500 ppm\nDSS"))+
           my_theme()+
     theme(legend.position = "none")+
           ylim(0, max(df[[responseVariable]])+1/5*max(df[[responseVariable]]))

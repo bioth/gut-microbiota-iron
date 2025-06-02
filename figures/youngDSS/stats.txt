@@ -1,4 +1,9 @@
 Young + DSS stats:
+Rules applied: anova or t test is data is normally distributed
+accross groups and is homoscedastic.
+
+If data is heteroscedasctic = welch t tests
+If data is not normally distributed = matt witney test/wilcoxon
 
 DAI at last day of DSS:
 
@@ -71,16 +76,14 @@ df[[group]]: 500 dss
 data:  dd[x, ]
 W = 0.86863, p-value = 0.07444
 
-	Pairwise comparisons using t tests with non-pooled SD 
-
-data:  dissec_young$body_weight and dissec_young$gg_group 
-
-          50 water 500 water 50 dss
-500 water 0.043    -         -     
-50 dss    0.837    0.073     -     
-500 dss   0.920    0.043     0.837 
-
-P value adjustment method: BH 
+$`diet:treatment`
+                          diff         lwr      upr     p adj
+500:dss-50:dss     -0.21136364 -1.71533310 1.292606 0.9816995
+50:water-50:dss    -0.26666667 -1.73757782 1.204244 0.9621346
+500:water-50:dss    1.25000000 -0.22091116 2.720911 0.1209016
+50:water-500:dss   -0.05530303 -1.55927250 1.448666 0.9996546
+500:water-500:dss   1.46136364 -0.04260583 2.965333 0.0596035
+500:water-50:water  1.51666667  0.04575551 2.987578 0.0410402
 
 
 
@@ -185,14 +188,16 @@ W = 0.67548, p-value = 0.000227
 
 	Pairwise comparisons using t tests with non-pooled SD 
 
+	Pairwise comparisons using Wilcoxon rank sum exact test 
+
 data:  dissec_young$std_spleen_weigth and dissec_young$gg_group 
 
           50 water 500 water 50 dss
-500 water 0.24     -         -     
-50 dss    0.19     0.43      -     
-500 dss   0.19     0.43      0.88  
+500 water 0.286    -         -     
+50 dss    0.073    0.756     -     
+500 dss   0.073    0.353     0.976 
 
-P value adjustment method: BH 
+P value adjustment method: BH
 
 
 
@@ -237,16 +242,14 @@ df[[group]]: 500 dss
 data:  dd[x, ]
 W = 0.95017, p-value = 0.6461
 
-	Pairwise comparisons using t tests with non-pooled SD 
-
-data:  dissec_young$colon_length and dissec_young$gg_group 
-
-          50 water 500 water 50 dss
-500 water 0.91     -         -     
-50 dss    0.95     0.91      -     
-500 dss   0.95     0.91      0.95  
-
-P value adjustment method: BH 
+$`diet:treatment`
+                          diff        lwr       upr     p adj
+500:dss-50:dss     0.007575758 -0.3993416 0.4144931 0.9999550
+50:water-50:dss    0.025000000 -0.3729730 0.4229730 0.9982906
+500:water-50:dss   0.150000000 -0.2479730 0.5479730 0.7460394
+50:water-500:dss   0.017424242 -0.3894931 0.4243416 0.9994553
+500:water-500:dss  0.142424242 -0.2644931 0.5493416 0.7860781
+500:water-50:water 0.125000000 -0.2729730 0.5229730 0.8353953
 
 
 
@@ -293,6 +296,161 @@ alternative hypothesis: true location shift is not equal to 0
 
 
 Iron concentrations in stools at tfinal:
+
+Levene's Test for Homogeneity of Variance (center = median)
+      Df F value  Pr(>F)  
+group  3  2.7601 0.05362 .
+      43                  
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+df[[group]]: 50:water
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.85651, p-value = 0.04421
+
+--------------------------------------------- 
+df[[group]]: 500:water
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.80297, p-value = 0.01013
+
+--------------------------------------------- 
+df[[group]]: 50:dss
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.91152, p-value = 0.2231
+
+--------------------------------------------- 
+df[[group]]: 500:dss
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.7983, p-value = 0.008935
+
+	Pairwise comparisons using Wilcoxon rank sum exact test 
+
+data:  df$iron_concentration and df$gg_group 
+
+          50:water 500:water 50:dss
+500:water 0.61     -         -     
+50:dss    0.31     0.61      -     
+500:dss   0.61     0.83      0.83  
+
+P value adjustment method: BH 
+
+
+
+
+
+
+
+Iron concentration in liver at tfinal:
+
+Levene's Test for Homogeneity of Variance (center = median)
+      Df F value Pr(>F)
+group  3  0.8985 0.4498
+      43               
+df[[group]]: 50:water
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.80283, p-value = 0.01009
+
+--------------------------------------------------------------------------------------------------------------- 
+df[[group]]: 500:water
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.93149, p-value = 0.3962
+
+--------------------------------------------------------------------------------------------------------------- 
+df[[group]]: 50:dss
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.90544, p-value = 0.1864
+
+--------------------------------------------------------------------------------------------------------------- 
+df[[group]]: 500:dss
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.9598, p-value = 0.7692
+
+	Pairwise comparisons using Wilcoxon rank sum exact test 
+
+data:  df$iron_concentration and df$gg_group 
+
+          50:water 500:water 50:dss
+500:water 0.0037   -         -     
+50:dss    0.2898   8.4e-05   -     
+500:dss   0.0084   0.8801    0.0029
+
+P value adjustment method: BH 
+
+
+
+
+
+Iron concentration in spleen at tfinal:
+
+Levene's Test for Homogeneity of Variance (center = median)
+      Df F value  Pr(>F)  
+group  3   2.446 0.07676 .
+      43                  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+df[[group]]: 50:water
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.90841, p-value = 0.2035
+
+--------------------------------------------------------------------------------------------------------------- 
+df[[group]]: 500:water
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.91947, p-value = 0.2816
+
+--------------------------------------------------------------------------------------------------------------- 
+df[[group]]: 50:dss
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.94052, p-value = 0.5048
+
+--------------------------------------------------------------------------------------------------------------- 
+df[[group]]: 500:dss
+
+	Shapiro-Wilk normality test
+
+data:  dd[x, ]
+W = 0.96563, p-value = 0.8393
+
+$`diet:treatment`
+                        diff         lwr       upr     p adj
+500:dss-50:dss     382.41010  -44.404919  809.2251 0.0933881
+50:water-50:dss    408.26939   -9.163929  825.7027 0.0573128
+500:water-50:dss   714.05098  296.617654 1131.4843 0.0002309
+50:water-500:dss    25.85929 -400.955723  452.6743 0.9984652
+500:water-500:dss  331.64088  -95.174140  758.4559 0.1770868
+500:water-50:water 305.78158 -111.651739  723.2149 0.2199674
 
 
 

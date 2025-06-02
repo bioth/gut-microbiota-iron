@@ -60,12 +60,10 @@ young_dissec_bw
 
 # Statistics
 verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "body_weight")
-pairwise.t.test( # Pairwise welch t tests
-  x = dissec_young$body_weight,
-  g = dissec_young$gg_group,         # factor defining the groups
-  p.adjust.method = "BH",      # adjust for multiple testing (e.g., "bonferroni", "BH", etc.)
-  pool.sd = FALSE              # FALSE = Welch's t-test
-)
+anova <- aov(body_weight ~ diet * treatment, data = dissec_young) #Fit a ANOVA model
+summary(anova)
+results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
+results
 
 #boxplot for std liver weight
 young_dissec_lvr <- dissecBoxplot(dissec_young,"liver") 
@@ -84,12 +82,7 @@ young_dissec_spln
 
 # Statistics
 verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "std_spleen_weigth")
-pairwise.t.test( # Pairwise welch t tests
-  x = dissec_young$std_spleen_weigth,
-  g = dissec_young$gg_group,         # factor defining the groups
-  p.adjust.method = "BH",      # adjust for multiple testing (e.g., "bonferroni", "BH", etc.)
-  pool.sd = FALSE              # FALSE = Welch's t-test
-)
+pairwise.wilcox.test(dissec_young$std_spleen_weigth, dissec_young$gg_group, p.adjust.method = "BH")
 
 #boxplot for colon length (non std)
 young_dissec_cln <- dissecBoxplot(dissec_young,"colon") 
@@ -97,12 +90,10 @@ young_dissec_cln
 
 # Statistics
 verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "colon_length")
-pairwise.t.test( # Pairwise welch t tests
-  x = dissec_young$colon_length,
-  g = dissec_young$gg_group,         # factor defining the groups
-  p.adjust.method = "BH",      # adjust for multiple testing (e.g., "bonferroni", "BH", etc.)
-  pool.sd = FALSE              # FALSE = Welch's t-test
-)
+anova <- aov(colon_length ~ diet * treatment, data = dissec_young) #Fit a ANOVA model
+summary(anova)
+results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
+results
 
 #T35 ferrozine assay for stools
 df <- read_xlsx("young48_dss_ferrozine_t35.xlsx")
@@ -133,49 +124,30 @@ df <- df[4:53,c(3,14:16)]
 colnames(df) <- df[1,]
 colnames(df)[1:2] <- c("id","iron_concentration")
 df <- df[-c(1,26,48),]
-df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
-df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$gg_group <- paste0(df$diet, ":", df$treatment)
+df$gg_group <- factor(df$gg_group, levels = c("50:water","500:water","50:dss","500:dss"))
 df$iron_concentration <- as.numeric(df$iron_concentration)
 
 p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Iron concentration in stools at final day", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red","darkblue", "darkred"))
 p+
-  scale_x_discrete(labels = c("50 ppm\nCtrl","50 ppm\nDSS","500 ppm\nCtrl","500 ppm\nDSS"))+
+  scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
   labs(y = "µg iron per g of liver", title = "")+
   guides(color = "none")
 p
 
-#Fit a ANOVA model for the current time point
-anova <- aov(iron_concentration ~ diet * treatment, data = df)
-summary(anova)
-# Perform Tukey's HSD test and store the results in the list
-results <- TukeyHSD(anova)
-print(results)
+# Stats 
+verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
+pairwise.wilcox.test(df$iron_concentration, df$gg_group, p.adjust.method = "BH")
 
-
-
-read_excel_allsheets <- function(filename, tibble = FALSE) {
-  # I prefer straight data.frames
-  # but if you like tidyverse tibbles (the default with read_excel)
-  # then just pass tibble = TRUE
-  sheets <- readxl::excel_sheets(filename)
-  x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X))
-  if(!tibble) x <- lapply(x, as.data.frame)
-  names(x) <- sheets
-  x
-}
 
 #Tf ferrozine assay for liver
-#They are multiple sheets so we use a custom function
-sheets <- read_excel_allsheets("young48_dss_ferrozine_tF.xlsx")
-
 df <- as.data.frame(sheets["Ferrozine Liver"])
 df <- df[1:51,c(3,6,8,14:18)]
 colnames(df) <- df[2,]
 colnames(df)[1:4] <- c("id","wet_weight","dry_weight","iron_concentration")
 df <- df[-c(1,2,27),]
-df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
-df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
-# df$gg_group <- factor(df$gg_group, levels = c("water+50","water+500","dss+50","dss+500")) #For Claire comparaison with BalbC mice
+df$gg_group <- paste0(df$diet, ":", df$treatment)
+df$gg_group <- factor(df$gg_group, levels = c("50:water","500:water","50:dss","500:dss"))
 df$iron_concentration <- as.numeric(df$iron_concentration)
 df$liver_weight <- as.numeric(df$liver_weight)
 df$wet_weight <- as.numeric(df$wet_weight)
@@ -183,28 +155,23 @@ df$dry_weight <- as.numeric(df$dry_weight)
 df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
 
 
-#To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
-#need to take into account the wet to dry ratio!
+# To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
+# need to take into account the wet to dry ratio! (not so sure about that, need to check again)
 df$total_iron <- df$iron_concentration*df$liver_weight*df$dry_to_wet_ratio
 
-
-p = ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total liver iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Liver iron concentration at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"))
 p <- p+
-  scale_x_discrete(labels = c("50 ppm\nCtrl","50 ppm\nDSS","500 ppm\nCtrl","500 ppm\nDSS"))+
-  labs(y = "µg iron per g of liver", title = "")+
+  scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
+  labs(y = "µg Fe/g dry weight", title = "")+
   guides(color = "none")+
   theme(panel.grid.major = element_blank(),
         axis.text.y = element_text(face = "bold", size = 12),
         axis.text.x = element_text(face = "bold", size = 9))
-ggsave(filename = "D:/icm_poster_2025/iron_liver.png", height =3, width =3 , dpi = 300, bg = "white")
+p
 
-#Fit a ANOVA model for the current time point
-anova <- aov(total_iron ~ diet * treatment, data = df)
-summary(anova)
-# Perform Tukey's HSD test and store the results in the list
-results <- TukeyHSD(anova)
-print(results)
-
+# Stats 
+verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
+pairwise.wilcox.test(df$iron_concentration, df$gg_group, p.adjust.method = "BH")
 
 
 #Tf ferrozine assay for spleen
@@ -213,8 +180,8 @@ df <- df[1:51,c(3,6,8,14:18)]
 colnames(df) <- df[2,]
 colnames(df)[1:4] <- c("id","wet_weight","dry_weight","iron_concentration")
 df <- df[-c(1,2,27),]
-df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
-df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+df$gg_group <- paste0(df$diet, ":", df$treatment)
+df$gg_group <- factor(df$gg_group, levels = c("50:water","500:water","50:dss","500:dss"))
 df$iron_concentration <- as.numeric(df$iron_concentration)
 df$spleen_weight <- as.numeric(df$spleen_weight)
 df$wet_weight <- as.numeric(df$wet_weight)
@@ -226,31 +193,101 @@ df$dry_to_wet_ratio <- df$wet_weight/df$dry_weight
 #need to take into account the wet to dry ratio!
 df$total_iron <- df$iron_concentration*df$spleen_weight*df$dry_to_wet_ratio
 
-p = ironBoxplot(df, "total_iron", display_significance_bars = F, title = "Total spleen iron at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red"), path = "D:/CHUM_git/figures/iron_measures")
+p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Spleen iron concentration at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"))
 p+
-  scale_x_discrete(labels = c("50 ppm\nCtrl","50 ppm\nDSS","500 ppm\nCtrl","500 ppm\nDSS"))+
-  labs(y = "µg iron per g of spleen", title = "")+
+  scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
+  labs(y = "µg Fe/g dry weight", title = "")+
   guides(color = "none")+
   theme(panel.grid.major = element_blank(),
         axis.text.y = element_text(face = "bold", size = 12),
         axis.text.x = element_text(face = "bold", size = 9))
-ggsave(filename = "D:/icm_poster_2025/iron_spleen.png", height =3, width =3 , dpi = 300, bg = "white")
+p
 
-
-#Fit a ANOVA model for the current time point
-anova <- aov(iron_concentration ~ diet * treatment, data = df)
+# Stats 
+verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
+anova <- aov(iron_concentration ~ diet * treatment, data = df) #Fit a ANOVA model
 summary(anova)
-# Perform Tukey's HSD test and store the results in the list
-results <- TukeyHSD(anova)
-print(results)
-
-
-
-
+results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
+results
 }
 
 
+# Young mice + Abx experiment
+{
+setwd("experiments/finished exp/young-abx-exp6/")
 
+# Mice dissection data
+dissec_young <- read_excel("dissection.xlsx")
+dissec_young <- dissec_young[-17,] # Remove empty rows
+colnames(dissec_young)[5:8] <- str_replace(colnames(dissec_young)[5:8], pattern = " ", replacement = "_") # Replace spaces by underscore for variables colnames
+dissec_young <- dissectionDataManipulation(dissec_young,groupInfoCols = 3)
+dissec_young$gg_group <- factor(dissec_young$gg_group, levels = c("50 water","500 water","50 abx","500 abx"))
+dissec_young$colon_length_nrm <- dissec_young$colon_length/dissec_young$body_weight
+
+#boxplot for body weight
+young_dissec_bw <- dissecBoxplot(dissec_young,"body") 
+young_dissec_bw
+
+#boxplot for std liver weight
+young_dissec_lvr <- dissecBoxplot(dissec_young,"liver") 
+young_dissec_lvr
+
+# boxplot for std spleen weight
+young_dissec_spln <- dissecBoxplot(dissec_young,"spleen") 
+young_dissec_spln
+# Statistics for spleen measurements
+df <- young_dissec_spln$data 
+dss50 <- df[df$gg_group == "50 dss",]
+dss500 <- df[df$gg_group == "500 dss",]
+water50 <- df[df$gg_group == "50 water",]
+water500 <- df[df$gg_group == "500 water",]
+
+# Shapiro-Wilk test for normality
+print(shapiro.test(dss50[["std_spleen_weigth"]]))
+print(shapiro.test(dss500[["std_spleen_weigth"]]))
+print(shapiro.test(water50[["std_spleen_weigth"]]))
+print(shapiro.test(water500[["std_spleen_weigth"]])) # Conclusion => most of the data is not normally distributed
+
+df$log_spleen <- log(df$std_spleen_weigth)
+print(shapiro.test(dss50[["log_spleen"]]))
+hist(dss50[["log_spleen"]], breaks = 15)
+dss500 <- dss500[-9,] # Remove super high spleen weight outlier
+print(shapiro.test(dss500[["log_spleen"]]))
+hist(dss500[["log_spleen"]], breaks = 15)
+print(shapiro.test(water50[["log_spleen"]]))
+print(shapiro.test(water500[["log_spleen"]]))
+
+df <- df[df$id != "10966B", ]
+
+# Levene's test for homogeneity of variance
+print(leveneTest(df[["log_spleen"]] ~ gg_group, data = df))
+
+# Perform anova
+result <- aov(df[["log_spleen"]] ~ treatment * diet, data = df)
+model <- lm(log_spleen ~ treatment * diet, data = df)
+result <- anova(model)
+print(result)
+library(emmeans)
+# Compute estimated marginal means (EMMs)
+emm <- emmeans(model, pairwise ~ treatment * diet)
+# Display results
+summary(emm)
+print(TukeyHSD(result))
+
+result <- oneway.test(log_spleen ~ gg_group, data = df, var.equal = FALSE)
+print(result)
+library(rstatix)
+post_hoc <- df %>% games_howell_test(log_spleen ~ gg_group)
+print(post_hoc)
+
+#boxplot for colon length (non std)
+young_dissec_cln <- dissecBoxplot(dissec_young,"colon") 
+young_dissec_cln
+
+# boxplot for colon length normalized for body weight
+young_dissec_cln <- dissecBoxplot(dissec_young,"colon_nrm") 
+young_dissec_cln  
+}
 
 
 
@@ -365,79 +402,7 @@ adult_dissec_cln
 
 
 # All graphs regarding young mice abx experiment 
-setwd("experiments/ongoing exp/young-abx-exp6/")
 
-# Mice dissection data
-dissec_young <- read_excel("dissection.xlsx")
-dissec_young <- dissec_young[-17,] # Remove empty rows
-colnames(dissec_young)[5:8] <- str_replace(colnames(dissec_young)[5:8], pattern = " ", replacement = "_") # Replace spaces by underscore for variables colnames
-dissec_young <- dissectionDataManipulation(dissec_young,groupInfoCols = 3)
-dissec_young$gg_group <- factor(dissec_young$gg_group, levels = c("50 water","500 water","50 abx","500 abx"))
-dissec_young$colon_length_nrm <- dissec_young$colon_length/dissec_young$body_weight
-
-#boxplot for body weight
-young_dissec_bw <- dissecBoxplot(dissec_young,"body") 
-young_dissec_bw
-
-#boxplot for std liver weight
-young_dissec_lvr <- dissecBoxplot(dissec_young,"liver") 
-young_dissec_lvr
-
-# boxplot for std spleen weight
-young_dissec_spln <- dissecBoxplot(dissec_young,"spleen") 
-young_dissec_spln
-# Statistics for spleen measurements
-df <- young_dissec_spln$data 
-dss50 <- df[df$gg_group == "50 dss",]
-dss500 <- df[df$gg_group == "500 dss",]
-water50 <- df[df$gg_group == "50 water",]
-water500 <- df[df$gg_group == "500 water",]
-
-# Shapiro-Wilk test for normality
-print(shapiro.test(dss50[["std_spleen_weigth"]]))
-print(shapiro.test(dss500[["std_spleen_weigth"]]))
-print(shapiro.test(water50[["std_spleen_weigth"]]))
-print(shapiro.test(water500[["std_spleen_weigth"]])) # Conclusion => most of the data is not normally distributed
-
-df$log_spleen <- log(df$std_spleen_weigth)
-print(shapiro.test(dss50[["log_spleen"]]))
-hist(dss50[["log_spleen"]], breaks = 15)
-dss500 <- dss500[-9,] # Remove super high spleen weight outlier
-print(shapiro.test(dss500[["log_spleen"]]))
-hist(dss500[["log_spleen"]], breaks = 15)
-print(shapiro.test(water50[["log_spleen"]]))
-print(shapiro.test(water500[["log_spleen"]]))
-
-df <- df[df$id != "10966B", ]
-
-# Levene's test for homogeneity of variance
-print(leveneTest(df[["log_spleen"]] ~ gg_group, data = df))
-
-# Perform anova
-result <- aov(df[["log_spleen"]] ~ treatment * diet, data = df)
-model <- lm(log_spleen ~ treatment * diet, data = df)
-result <- anova(model)
-print(result)
-library(emmeans)
-# Compute estimated marginal means (EMMs)
-emm <- emmeans(model, pairwise ~ treatment * diet)
-# Display results
-summary(emm)
-print(TukeyHSD(result))
-
-result <- oneway.test(log_spleen ~ gg_group, data = df, var.equal = FALSE)
-print(result)
-library(rstatix)
-post_hoc <- df %>% games_howell_test(log_spleen ~ gg_group)
-print(post_hoc)
-
-#boxplot for colon length (non std)
-young_dissec_cln <- dissecBoxplot(dissec_young,"colon") 
-young_dissec_cln
-
-# boxplot for colon length normalized for body weight
-young_dissec_cln <- dissecBoxplot(dissec_young,"colon_nrm") 
-young_dissec_cln
 
 #Iron content measurements
 #For young48 abx experiment
