@@ -290,18 +290,9 @@ verifyStatsAssumptions <- function(df, group, measure){
   print(leveneTest(as.formula(paste(measure, "~", group)), data = df))
   
   # Shapiro test per group for normality assumptions
-  by(df[[measure]], df[[group]], shapiro.test)
+  print(by(df[[measure]], df[[group]], shapiro.test))
   
 }
-
-
-
-
-
-
-
-
-
 
 #function for manipulating dss follow up sheet data
 dssFollowupManipulation <- function(df, groupInfoCols, dateStart, nbrDays, negativeOnly){
