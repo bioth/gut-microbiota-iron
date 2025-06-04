@@ -200,6 +200,10 @@ length(taxa_sums(ps_claire))
 # Function to produce picrust2 required inputs
 producePicrust2Inputs(ps_samuel, "~/Documents/CHUM_git/Microbiota_17")
 
+# Picrust2 for Claire's data at week 10
+ps_subset <- prune_samples(sample_data(ps_claire)$week == "10", ps_claire)
+producePicrust2Inputs(ps_claire, "~/Documents/CHUM_git/Microbiota_17/claire_picrust/")
+
 #for Samuel's data, put gg_group as factor and define order
 sample_data(ps_samuel)$gg_group <- factor(sample_data(ps_samuel)$gg_group, levels = c("Wt:Vehicle", "Wt:Putrescine", "IL-22ra1-/-:Vehicle", "IL-22ra1-/-:Putrescine"))  # Vehicle as reference
 
