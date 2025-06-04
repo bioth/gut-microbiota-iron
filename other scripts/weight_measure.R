@@ -12,7 +12,7 @@
 
 
 # Setting working directory
-setwd("D:/CHUM_git/gut-microbiota-iron/")
+setwd("~/Documents/CHUM_git/gut-microbiota-iron/")
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
 setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
 
@@ -60,7 +60,7 @@ source("other scripts/dataManipFunctions.R")
   dissec_young$colon_length_nrm <- dissec_young$colon_length/dissec_young$body_weight
   
   #boxplot for body weight
-  young_dissec_bw <- dissecBoxplot(dissec_young,"body") 
+  young_dissec_bw <- dissecBoxplot(dissec_young,"body", stats = TRUE, test_results = c("1","2","3","4")) 
   young_dissec_bw
   
   # Statistics
@@ -71,7 +71,7 @@ source("other scripts/dataManipFunctions.R")
   results
   
   #boxplot for std liver weight
-  young_dissec_lvr <- dissecBoxplot(dissec_young,"liver") 
+  young_dissec_lvr <- dissecBoxplot(dissec_young,"liver",stats = TRUE, test_results = c("1","2","3","4"), upper_margin = 0.02) 
   young_dissec_lvr
   
   # Statistics
@@ -82,7 +82,7 @@ source("other scripts/dataManipFunctions.R")
   results
   
   # boxplot for std spleen weight
-  young_dissec_spln <- dissecBoxplot(dissec_young,"spleen") 
+  young_dissec_spln <- dissecBoxplot(dissec_young,"spleen", stats = TRUE, test_results = c("1","2","3","4"), upper_margin = 0.008) 
   young_dissec_spln
   
   # Statistics

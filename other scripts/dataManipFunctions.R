@@ -517,16 +517,6 @@ dssDsiFinalDay <- function(df){
     ) +
     ylim(0, max(df$index))
   
-  
-
-  # # Perform t-test
-  # print(t.test(index ~ diet, data = data))
-  # 
-  # #perform Kruskal-Wallis test
-  # print(kruskal.test(index ~ diet, data = data))
-  
-
-  
   return(plot)
 }
 
@@ -570,8 +560,9 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE
   return(plot)
 }
 
-#function for dissection measures box_plot
-dissecBoxplot <- function(df, organ, display_significance_bars, abxExp = FALSE){
+#function for dissection measures box_plot, test_results must be a list of 4 numbers indicating the comparisons in the order
+# 50 ctrl vs 500 ctrl... etc
+dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results = NULL, upper_margin = 0){
   
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
@@ -625,9 +616,24 @@ dissecBoxplot <- function(df, organ, display_significance_bars, abxExp = FALSE){
           scale_x_discrete(labels = legendLabels)+
           my_theme()+
     theme(legend.position = "none")+
-          ylim(0, max(df[[responseVariable]])+1/5*max(df[[responseVariable]]))
+          ylim(0, max(df[[responseVariable]])+1/4*max(df[[responseVariable]])+upper_margin)
   
-  
+  if(stats){
+    plot <- plot+
+      geom_signif(
+        comparisons = list(c("50 water", "500 water"),c("50 dss", "500 dss"),
+                           c("50 water", "50 dss"),c("500 water", "500 dss")),
+        annotations = test_results,
+        y_position = max(df[[responseVariable]]), # 
+        tip_length = 0.05,
+        color = "black",
+        size = 0.3,
+        textsize = 5,
+        margin_top = 0.1, # Moves the top according to this value
+        vjust = 0.2,
+        step_increase = 0.3
+      )
+  }
   return(plot)
 }
 
