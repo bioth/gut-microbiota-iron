@@ -8,7 +8,8 @@
   library("car") # for anova too
   library("ggsignif") # adding significance bars to ggplots
   library("readxl") # Read and write excel files
-  library(PMCMRplus) # gamesHowellTest (post hoc test for welch test when variances are unequal)
+  library("PMCMRplus") # gamesHowellTest (post hoc test for welch test when variances are unequal)
+  library("FSA")
 }
 
 
@@ -237,6 +238,10 @@ source("other scripts/dataManipFunctions.R")
   summary(anova)
   results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
   results
+  
+  kruskal.test(iron_concentration ~ gg_group, data = df)
+  dunnTest(iron_concentration ~ gg_group, data = df, method = "bonferroni")
+  
 }
 
 # PCR validation of B. pseudolongum and F rodentium in young mice + DSS experiment
