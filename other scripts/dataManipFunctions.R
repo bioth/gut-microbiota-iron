@@ -142,7 +142,7 @@
   
   # Function to calculate weight percentage change
   calculate_weight_percentage <- function(df, fromDay0) {
-    df$weight_pct_change <- 100  # Initialize PercentageChange column
+    df$weight_pct_change <- 0  # Initialize PercentageChange column
     
     nmice <- length(unique(df$id)) #Count number of mice
     
@@ -157,7 +157,7 @@
           }
         
         # Calculate percentage change and update the weight_pct_change column
-        df$weight_pct_change[i] <- (((current_weight - initial_weights[i-nmice*k]) / initial_weights[i-nmice*k]) * 100)+100
+        df$weight_pct_change[i] <- (((current_weight - initial_weights[i-nmice*k]) / initial_weights[i-nmice*k]) * 100) #+100
       }
     }
     else {
@@ -436,21 +436,48 @@ my_theme <- function() {
 }
 
 #function for plotting DSS disease index data
-dssDiseaseIndexPlot <- function(df){
+dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "ns"){
+  
  plot <- df %>%
     ggplot(aes(x = time_numeric, y = index, color = diet))+
     stat_summary(aes(group = gg_group, shape = treatment),fun ="mean", geom = "point", size = 3)+
     stat_summary(aes(group = gg_group), fun = "mean", geom = "line", size = 1)+
-    stat_summary(aes(color = diet), fun.data = mean_cl_normal, geom="errorbar", width=0.1, size = 1) + #adding SEM error bars
+    stat_summary(aes(color = diet), fun.data = mean_se, geom="errorbar", size = 1, width = 0.3) + #adding SEM error bars
    
     labs(title = "Disease activity index (DAI)\nduring DSS exposure",
          x = "Day",
          y = "DAI",
          color = "Group")+
+   scale_x_continuous(breaks = unique(df$time_numeric))+
    scale_color_manual(values = custom_colors_3, labels = c("50 ppm DSS","500 ppm DSS"))+
     guides(shape = 'none')+
     my_theme()+
    ylim(0, max(df$index))
+ 
+ if (statBarLast) {
+   last_day <- max(df$time_numeric)
+   
+   # Get mean values for each group at the last timepoint
+   df_summary <- df %>%
+     filter(time_numeric == last_day) %>%
+     group_by(diet, treatment) %>%
+     summarise(y = mean(index), .groups = 'drop') %>%
+     mutate(x = last_day)
+   
+   # Determine vertical range
+   y_low <- min(df_summary$y)
+   y_high <- max(df_summary$y)
+   
+   # x-position for the vertical segment and annotation (slightly to the right of last timepoint)
+   x_pos <- last_day + 0.3
+   
+   plot <- plot +
+     # Vertical bar between lowest and highest mean
+     geom_segment(aes(x = x_pos, xend = x_pos, y = y_low, yend = y_high),
+                  color = "black", linewidth = 0.9, inherit.aes = FALSE) +
+     # Add significance annotation on the right side
+     annotate("text", x = x_pos + 0.2, y = (y_low + y_high) / 2, label = signifAnnotation, size = 6)
+ }
   return(plot)
 }
 
@@ -521,15 +548,15 @@ dssDsiFinalDay <- function(df){
 }
 
 #plotting the weight measures scatter plot
-weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE){
+weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE, title = "Default title", nbrDaysStart = 0){
   
   # Custom function to calculate standard error with optional scaling
-  mean_cl_normal <- function(x, mult = 1) {
-    mean_val <- mean(x)
-    se_val <- sd(x) / sqrt(length(x))
-    ymin_val <- pmax(mean_val - mult * se_val, 0)
-    data.frame(y = mean_val, ymin = ymin_val, ymax = mean_val + mult * se_val)
-  }
+  # mean_cl_normal <- function(x, mult = 1) {
+  #   mean_val <- mean(x)
+  #   se_val <- sd(x) / sqrt(length(x))
+  #   ymin_val <- pmax(mean_val - mult * se_val, 0)
+  #   data.frame(y = mean_val, ymin = ymin_val, ymax = mean_val + mult * se_val)
+  # }
   
   if(abxExp){
     df$gg_group <- factor(df$gg_group, levels = c("50 water", "500 water", "50 abx", "500 abx"))
@@ -539,19 +566,16 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE
     legendLabels <- c("50 ppm Ctrl", "500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS")
   }
   
-  
-  
   plot <- df %>%
-    ggplot(aes(x = time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = if(diet_only) {diet} else {gg_group})) +
-    stat_summary(aes(group = if(diet_only) {diet} else {gg_group}, shape = if(diet_only) {NULL} else {treatment}), fun = "mean", geom = "point", size = 3) +
+    ggplot(aes(x = nbrDaysStart+time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = if(diet_only) {diet} else {gg_group})) +
+    stat_summary(aes(group = if(diet_only) {diet} else {gg_group}), fun = "mean", geom = "point", size = 3) +
     stat_summary(fun = "mean", geom = "line", aes(group = if(diet_only) {diet} else {gg_group}), size = 1) + # , linetype = ifelse(diet_only, "solid", ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water"))
-    stat_summary(fun.data="mean_cl_normal", geom="errorbar", color="red", width=0.5, aes(group = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
-    labs(title = "Body weight change over time",
+    stat_summary(fun.data="mean_se", geom="errorbar", width=1, aes(group = if(diet_only) {diet} else {gg_group}, color = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
+    labs(title = title,
          x = "Time (days)",
          y = if(percentage) {"Weight % change"} else {"Weight (g)"},
          color = "Diet") +
-    scale_linetype_manual(name = "Treatment", 
-                          values = c("DSS" = "dashed", "Water" = "solid")) +
+    scale_x_continuous(breaks = seq(0+nbrDaysStart, max(df$time_numeric)+nbrDaysStart, by = 10))+
     scale_color_manual(values = if(diet_only) {custom_colors_1} else { if(abxExp) {custom_colors_4} else {custom_colors_2}},
                        labels = if(diet_only) {c("50 ppm", "500 ppm")} else {legendLabels})+
     guides(shape = 'none')+
@@ -562,7 +586,7 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE
 
 #function for dissection measures box_plot, test_results must be a list of 4 numbers indicating the comparisons in the order
 # 50 ctrl vs 500 ctrl... etc
-dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results = NULL, upper_margin = 0){
+dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results = NULL, text_sizes = c(5,5,5,5), upper_margin = 0, all.ns = FALSE){
   
   #titles for the boxplots and Y axis labels
   nrmString <- "Normalized"
@@ -578,11 +602,11 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
     yAxisLabel <- "Body weight (g)"
     responseVariable <- "body_weight"
   }else if(organ == "liver"){
-    plotTitle <- plotTitle
+    plotTitle <- "Normalized liver weight\nmeasures"
     yAxisLabel <- yAxisLabel
     responseVariable <- "std_liver_weigth"
   }else if(organ == "spleen"){
-    plotTitle <- plotTitle
+    plotTitle <- "Normalized spleen weight\nmeasures"
     yAxisLabel <- yAxisLabel
     responseVariable <- "std_spleen_weigth"
   }else if(organ == "colon"){
@@ -591,7 +615,7 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
     responseVariable <- "colon_length"
   }
   else if(organ == "colon_nrm"){
-    plotTitle <- "Normalized colon length measures"
+    plotTitle <- "Normalized colon length\nmeasures"
     yAxisLabel <- "Normalized colon length (cm/g)"
     responseVariable <- "colon_length_nrm"
   }
@@ -607,7 +631,7 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
           geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
           stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
           stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
-          stat_summary(fun.data="mean_cl_normal", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
+          stat_summary(fun.data="mean_se", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
           labs(title = plotTitle,
                x = "",
                y = yAxisLabel,
@@ -618,42 +642,169 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
     theme(legend.position = "none")+
           ylim(0, max(df[[responseVariable]])+1/4*max(df[[responseVariable]])+upper_margin)
   
-  if(stats){
-    plot <- plot+
-      geom_signif(
-        comparisons = list(c("50 water", "500 water"),c("50 dss", "500 dss"),
-                           c("50 water", "50 dss"),c("500 water", "500 dss")),
-        annotations = test_results,
-        y_position = max(df[[responseVariable]]), # 
-        tip_length = 0.05,
-        color = "black",
-        size = 0.3,
-        textsize = 5,
-        margin_top = 0.1, # Moves the top according to this value
-        vjust = 0.2,
-        step_increase = 0.3
+  # if(stats){
+  #   plot <- plot+
+  #     geom_signif(
+  #       comparisons = list(c("50 water", "500 water"),c("50 dss", "500 dss"),
+  #                          c("50 water", "50 dss"),c("500 water", "500 dss")),
+  #       annotations = test_results,
+  #       y_position = max(df[[responseVariable]]), # 
+  #       tip_length = 0.1,
+  #       color = "black",
+  #       size = 0.8,
+  #       textsize = 5,
+  #       margin_top = 0.1, # Moves the top according to this value
+  #       vjust = 0.2,
+  #       step_increase = 0.3
+  #     )
+  # }
+  
+  if (stats) {
+    
+    if(all.ns){
+      
+        plot <- plot+
+          geom_signif(
+            comparisons = list(c("50 water", "500 dss")),
+            annotations = "n.s.",
+            y_position = max(df[[responseVariable]]), #
+            tip_length = 0,
+            color = "black",
+            size = 0.8,
+            textsize = 4,
+            margin_top = 0.1, # Moves the top according to this value
+            vjust = 0,
+          )
+      
+    }else{
+      
+      comparisons_list <- list(
+        c("50 water", "500 water"),
+        c("50 dss", "500 dss"),
+        c("50 water", "50 dss"),
+        c("500 water", "500 dss")
       )
+      
+      y_positions <- c(
+        max(df[[responseVariable]]),
+        max(df[[responseVariable]]) + 1/12*max(df[[responseVariable]]),
+        max(df[[responseVariable]]) + 2/12*max(df[[responseVariable]]),
+        max(df[[responseVariable]]) + 3/12*max(df[[responseVariable]])
+      )
+      
+      # Apply each geom_signif layer individually
+      for (i in seq_along(comparisons_list)) {
+        plot <- plot +
+          geom_signif(
+            comparisons = list(comparisons_list[[i]]),
+            annotations = test_results[i],
+            y_position = y_positions[i],
+            tip_length = 0.1,
+            color = "black",
+            size = 0.8,
+            textsize = text_sizes[i],
+            margin_top = 0.1,
+            vjust = 0
+          )
+      
+    }
+    
+    }
   }
+  
   return(plot)
 }
 
 #Function for ior iron measurements, gg_group must be a factor and ordered, diet must be as character
-ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors){
+ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
+                        stats = TRUE, test_results = NULL, text_sizes = c(5,5,5,5),
+                        upper_margin = 0, all.ns = FALSE){
   
   #Plot with mean points
   plot <- df %>%
     ggplot(aes(x = !!sym(group),  y = !!sym(measure), color = !!sym(group))) +
     geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), size = 1)+ #adding horizontal bars representing means
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), size = 1)+ 
-    stat_summary(fun.data="mean_cl_normal", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
+    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
+    stat_summary(fun.data="mean_se", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
     labs(title = title,
          y = y_axis_title,
          x = "",
          color = "Diet")+ 
     scale_color_manual(values = custom_colors)+
-    ylim(0,max(df[[measure]])+1/4*max(df[[measure]]))+
-    my_theme()
+    my_theme()+
+    theme(legend.position = "none")+
+    ylim(0,max(df[[measure]])+1/3*max(df[[measure]])+upper_margin)
   
+  if (stats) {
+    
+    # Get factor levels in order
+    groups <- levels(df[[group]])
+    
+    if(all.ns){
+      
+      
+      plot <- plot+
+        geom_signif(
+          comparisons = list(c(groups[1],groups[4])),
+          annotations = "n.s.",
+          y_position = max(df[[measure]]), #
+          tip_length = 0,
+          color = "black",
+          size = 0.8,
+          textsize = 4,
+          margin_top = 0.1, # Moves the top according to this value
+          vjust = 0,
+        )
+      
+    }else{
+      
+      if(length(groups) == 4){
+        # Automatically construct the desired comparisons
+        comparisons_list <- list(
+          c(groups[1], groups[2]),  # "50 water" vs "500 water"
+          c(groups[3], groups[4]),  # "50 dss" vs "500 dss"
+          c(groups[1], groups[3]),  # "50 water" vs "50 dss"
+          c(groups[2], groups[4]))   # "500 water" vs "500 dss"
+          
+          y_positions <- c(
+            max(df[[measure]]),
+            max(df[[measure]]) + 1/12*max(df[[measure]]),
+            max(df[[measure]]) + 2/12*max(df[[measure]]),
+            max(df[[measure]]) + 3/12*max(df[[measure]]))
+          
+          # Apply each geom_signif layer individually
+          for (i in seq_along(comparisons_list)) {
+            plot <- plot +
+              geom_signif(
+                comparisons = list(comparisons_list[[i]]),
+                annotations = test_results[i],
+                y_position = y_positions[i],
+                tip_length = 0.05,
+                color = "black",
+                size = 0.8,
+                textsize = text_sizes[i],
+                margin_top = 0.1,
+                vjust = 0)}
+          }
+          
+          else{
+        
+        plot <- plot+
+          geom_signif(
+            comparisons = list(c(groups[1],groups[2])),
+            annotations = test_results,
+            y_position = max(df[[measure]]), 
+            tip_length = 0,
+            color = "black",
+            size = 0.8,
+            textsize = text_sizes,
+            margin_top = 0.1, # Moves the top according to this value
+            vjust = 0,
+          )
+      }
+      
+    }
+  }
   return(plot)
 }

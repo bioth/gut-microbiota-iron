@@ -8,13 +8,14 @@
   library("car") # for anova too
   library("ggsignif") # adding significance bars to ggplots
   library("readxl") # Read and write excel files
+  library(PMCMRplus) # gamesHowellTest (post hoc test for welch test when variances are unequal)
 }
 
 
 # Setting working directory
 setwd("~/Documents/CHUM_git/gut-microbiota-iron/")
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
-setwd("C:/Users/Thibault/Documents/CHUM_git/gut-microbiota-iron/")
+setwd("D:/CHUM_git/gut-microbiota-iron/")
 
 # Loading functions for data manipulation
 source("other scripts/dataManipFunctions.R")
@@ -22,36 +23,42 @@ source("other scripts/dataManipFunctions.R")
 # Young mice + DSS experiment
 {
   setwd("experiments/finished exp/young-DSS-exp3")
-  young_weight <- read.csv("young48_weight.csv", header = TRUE, sep = ";")
-  young_weight <- young_weight[,-c(6:10)] # Remove repeated weight measures at start of experiment
+  young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
+  young_weight <- young_weight[,-c(6:10,18:ncol(young_weight))] # Remove repeated weight measures at start of experiment + measures after dss
   young_weight <- weightDataManipulation(young_weight, groupInfoCols = 4, fromDay0 = TRUE)
   
   # Scatter plot with weight evolution over time for diet exposure
-  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = TRUE)
+  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = TRUE, title = "Body weight change during diet exposure")
   young_weight_plot
+  ggsave("../../../figures/youngDSS/diet_weight.png",
+         young_weight_plot, bg = "white",height = 5, width =8, dpi = 300)
   
   young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
   young_weight <- young_weight[,-c(5:16)] # Remove weight measures before start of DSS
   young_weight <- weightDataManipulation(young_weight, groupInfoCols = 4, fromDay0 = TRUE)
   
   # Scatter plot with the four different treatments (diet combined with dss or control)
-  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE)
+  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE, title = "Body weight change after DSS exposure", nbrDaysStart = 50)
   young_weight_plot
+  ggsave("../../../figures/youngDSS/dss_weight.png",
+         young_weight_plot, bg = "white",height = 5, width =8, dpi = 300)
   
   # Mice DAI evolution 
+  young_dss_followup <- read.csv("young48_dss_followup.csv", header = TRUE, sep=";")
   young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-05-29",nbrDays = 5, negativeOnly = TRUE)
-  young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup)
+  young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup, statBarLast = TRUE, signifAnnotation = "*")
   young_dssflwup_plot
+  ggsave("../../../figures/youngDSS/dai.png",
+         young_dssflwup_plot, bg = "white",height = 4, width =5, dpi = 300)
   
-  # Statistics for last day of DAI
+# Statistics for last day of DAI
   verifyStatsAssumptions(df = young_dss_followup[young_dss_followup$time_numeric == "5",], group = "gg_group", measure = "index")
   wilcox.test(index ~ gg_group, data = young_dss_followup[young_dss_followup$time_numeric == "5",])
   
   # Mice body weight changes during DSS (scatter plot)
   young_dss_weight <- read.csv("young48_weights_dss.csv", header = TRUE, sep = ";")
   young_dss_weight <- weightDataManipulation(young_dss_weight, groupInfoCols = 4, fromDay0 = TRUE)
-  weightPlot(young_dss_weight, percentage = TRUE, diet_only = TRUE)+
-    ylim(95,105)
+  weightPlot(young_dss_weight, percentage = TRUE, diet_only = TRUE)
   
   # Mice dissection data
   dissec_young <- read.csv("young48_dss_dissection.csv", sep = ";", header = TRUE)
@@ -60,8 +67,12 @@ source("other scripts/dataManipFunctions.R")
   dissec_young$colon_length_nrm <- dissec_young$colon_length/dissec_young$body_weight
   
   #boxplot for body weight
-  young_dissec_bw <- dissecBoxplot(dissec_young,"body", stats = TRUE, test_results = c("1","2","3","4")) 
+  young_dissec_bw <- dissecBoxplot(dissec_young,"body", stats = TRUE,
+                                   test_results = c("*","n.s.","n.s.","p=0.059"),
+                                   text_sizes = c(5,3,3,3), upper_margin = 2) 
   young_dissec_bw
+  ggsave("../../../figures/youngDSS/bw_final.png",
+         young_dissec_bw, bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "body_weight")
@@ -71,8 +82,10 @@ source("other scripts/dataManipFunctions.R")
   results
   
   #boxplot for std liver weight
-  young_dissec_lvr <- dissecBoxplot(dissec_young,"liver",stats = TRUE, test_results = c("1","2","3","4"), upper_margin = 0.02) 
+  young_dissec_lvr <- dissecBoxplot(dissec_young,"liver",stats = TRUE, all.ns = TRUE) 
   young_dissec_lvr
+  ggsave("../../../figures/youngDSS/lvr_final.png",
+         young_dissec_lvr, bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "std_liver_weigth") 
@@ -82,16 +95,20 @@ source("other scripts/dataManipFunctions.R")
   results
   
   # boxplot for std spleen weight
-  young_dissec_spln <- dissecBoxplot(dissec_young,"spleen", stats = TRUE, test_results = c("1","2","3","4"), upper_margin = 0.008) 
+  young_dissec_spln <- dissecBoxplot(dissec_young,"spleen", stats = TRUE, all.ns = TRUE) 
   young_dissec_spln
+  ggsave("../../../figures/youngDSS/spln_final.png",
+         young_dissec_spln, bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "std_spleen_weigth")
   pairwise.wilcox.test(dissec_young$std_spleen_weigth, dissec_young$gg_group, p.adjust.method = "BH")
   
   #boxplot for colon length (non std)
-  young_dissec_cln <- dissecBoxplot(dissec_young,"colon") 
+  young_dissec_cln <- dissecBoxplot(dissec_young,"colon", stats = TRUE, all.ns = TRUE) 
   young_dissec_cln
+  ggsave("../../../figures/youngDSS/cln_final.png",
+         young_dissec_cln, bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "colon_length")
@@ -108,15 +125,19 @@ source("other scripts/dataManipFunctions.R")
   df <- df[-c(1,2,27),]
   df$gg_group <- paste(df$treatment, "+", df$diet, sep = "")
   df$gg_group <- factor(df$gg_group, levels = c("water+50","dss+50","water+500","dss+500"))
+  df$diet <- factor(df$diet, levels = c("50","500"))
   df$gg_group <- df$diet
   df$iron_concentration <- as.numeric(df$iron_concentration)
   
-  p = ironBoxplot(df, "iron_concentration", group = "diet", title = "Iron concentration in stools at day 35", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"))
+  p = ironBoxplot(df, "iron_concentration", group = "diet", title = "Iron concentration in stools at day 35", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red"),
+                  stats = TRUE, test_results = c("***"), text_sizes = c(5))
   p <- p+
   scale_x_discrete(labels = c("50 ppm","500 ppm"))+
-  labs(y = "µg iron per g of stool", title = "Iron in stools at end of diet exposure")+
+  labs(y = "µg iron/g of stool", title = "Feces iron concentration\nat end of diet exposure")+
   guides(color = "none")
   p
+  ggsave("../../../figures/youngDSS/t35_iron.png",
+         p, bg = "white",height = 4, width =4, dpi = 300)
   
   # Stats 
   verifyStatsAssumptions(df, "diet" , "iron_concentration")
@@ -133,12 +154,15 @@ source("other scripts/dataManipFunctions.R")
   df$gg_group <- factor(df$gg_group, levels = c("50:water","500:water","50:dss","500:dss"))
   df$iron_concentration <- as.numeric(df$iron_concentration)
   
-  p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Iron concentration in stools at final day", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red","darkblue", "darkred"))
-  p+
+  p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Feces iron concentration\nat final day", y_axis_title = "yg of iron per g of stools", custom_colors = c("blue","red","darkblue", "darkred"),
+                  stats = TRUE, all.ns = TRUE)
+  p <- p+
   scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
-  labs(y = "µg iron per g of liver", title = "")+
+  labs(y = "µg iron per g of liver")+
   guides(color = "none")
   p
+  ggsave("../../../figures/youngDSS/tFinal_iron.png",
+         p, bg = "white",height = 4, width =4, dpi = 300)
   
   # Stats 
   verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
@@ -158,21 +182,22 @@ source("other scripts/dataManipFunctions.R")
   df$wet_weight <- as.numeric(df$wet_weight)
   df$dry_weight <- as.numeric(df$dry_weight)
   df$dry_to_wet_ratio <- df$dry_weight/df$wet_weight
+  df <- df[-46,]
   
   
   # To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
   # need to take into account the wet to dry ratio! (not so sure about that, need to check again)
   df$total_iron <- df$iron_concentration*df$liver_weight*df$dry_to_wet_ratio
   
-  p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Liver iron concentration at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"))
+  p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Liver iron concentration\nat final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"),
+                  stats = TRUE, test_results = c("**","**","n.s.","n.s."), text_sizes = c(5,5,3,3), upper_margin = 30)
   p <- p+
   scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
-  labs(y = "µg Fe/g dry weight", title = "")+
-  guides(color = "none")+
-  theme(panel.grid.major = element_blank(),
-        axis.text.y = element_text(face = "bold", size = 12),
-        axis.text.x = element_text(face = "bold", size = 9))
+  labs(y = "µg Fe/g dry weight")+
+  guides(color = "none")
   p
+  ggsave("../../../figures/youngDSS/lvr_iron.png",
+         p, bg = "white",height = 4, width =4, dpi = 300)
   
   # Stats 
   verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
@@ -192,20 +217,18 @@ source("other scripts/dataManipFunctions.R")
   df$wet_weight <- as.numeric(df$wet_weight)
   df$dry_weight <- as.numeric(df$dry_weight)
   df$dry_to_wet_ratio <- df$wet_weight/df$dry_weight
-  
+  df <- df[-46,]
   
   #To calculate total iron in organ = iron concentration per g of dry weight*total organ weight
   #need to take into account the wet to dry ratio!
   df$total_iron <- df$iron_concentration*df$spleen_weight*df$dry_to_wet_ratio
   
-  p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Spleen iron concentration at final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"))
+  p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Spleen iron concentration\nat final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"),
+                  stats = TRUE, test_results = c("n.s.","n.s.","p=0.057","n.s."), text_sizes = c(3,3,3,3))
   p+
   scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
-  labs(y = "µg Fe/g dry weight", title = "")+
-  guides(color = "none")+
-  theme(panel.grid.major = element_blank(),
-        axis.text.y = element_text(face = "bold", size = 12),
-        axis.text.x = element_text(face = "bold", size = 9))
+  labs(y = "µg Fe/g dry weight")+
+  guides(color = "none")
   p
   
   # Stats 
@@ -476,6 +499,11 @@ source("other scripts/dataManipFunctions.R")
   
   # Stats
   verifyStatsAssumptions(df = df, group = "gg_group", measure = "iron_concentration")
+  # Assuming variances are unequal
+  
+  
+  
+  
   anova <- aov(iron_concentration ~ diet * treatment, data = df) #Fit a ANOVA model
   summary(anova)
   results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
