@@ -267,7 +267,7 @@ alphaDiversityGgGroup2 <- function(ps, path, gg_group, statPairs = NA, customCol
 }
 
 #requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
-alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE){
+alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE, saveFig = FALSE){
   
   # Empty list for graphs and data
   graphs <- list()
@@ -293,103 +293,23 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE){
     write_xlsx(richness_data, path = paste0(dir_path, "/alpha_diversity_data.xlsx"))
   }
   
-  #Save richness data as csv
-  # write.csv(richness_data, paste(dir_path,"/richness_data.csv", sep = ""), col.names = TRUE, row.names = FALSE)
-  richness_data$gg_group
-  
   # Loop through alpha diversity measures
   for(measure in measures){
-    
-    # p = ggplot(richness_data, aes(x = .data[[time]], y = .data[[measure]], fill = .data[[group]], pattern = .data[["treatment"]])) +
-    #   geom_bar_pattern(stat = "identity", 
-    #                    position = position_dodge(), 
-    #                    color = "black",  # Optional border
-    #                    pattern_density = 0.1,  # Adjust pattern density
-    #                    pattern_spacing = 0.02, # Adjust pattern spacing
-    #                    pattern_fill = "black", # Color of the pattern
-    #                    pattern_color = "black") + # Outline color of the pattern
-    #   scale_pattern_manual(values = c("stripe", "circle")) +  # Choose patterns ("none", "crosshatch")
-    #   theme_minimal()
-    
     p = ggplot(richness_data, aes(x = .data[[time]], y = .data[[measure]], fill = .data[[group]])) + # , pattern = .data[["treatment"]]
       
       geom_boxplot(position = position_dodge(width = 0.8), width = 0.6,
                            color = "black") +
-      # geom_boxplot_pattern(position = position_dodge(width = 0.8), width = 0.6,
-      #                      color = "black",
-      #                      pattern_density = 0.1, pattern_spacing = 0.02,
-      #                      pattern_fill = "black", pattern_color = "black") +
-      
-
-      # # Error bars
-      # stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-      #              color = "black",
-      #              width = 0.2, size = 0.7,
-      #              position = position_dodge(width = 0.8))+
       labs(title = measure, y = measure, fill = "Group") # , pattern = NA
 
     
     # Append graph to graph list
     graphs <- append(graphs, list(p))
-    
-      # geom_boxplot()+
 
-    
-    
-    #Save graph in appropriate folder
-    # ggsave(file = paste(dir_path,"/",measure,".png", sep = ""), plot = p, dpi = 300, bg = "white")
+    # Save graph in appropriate folder
+    if(saveFig){
+      ggsave(file = paste(dir_path,"/",measure,".png", sep = ""), plot = p, dpi = 300, bg = "white")
+      
+    }
   }
-  
-  #Save group names to create loop of pairwise comparaisons while keeping order (levels)
-  # groups <- levels(sample_data(ps)$gg_group)
-  
-  # for (i in 1:(length(groups)-1)) {
-  #   for (j in (i+1):length(groups)) {
-  #     
-  #     #Save pair variable
-  #     pair <- paste(groups[i],"_vs_",groups[j], sep = "")
-  #     
-  #     #Creates path for pairwise comparaisons
-  #     pair_path <- paste(dir_path,"/",pair, sep = "")
-  #     
-  #     #Check if directory exists, creates it if not
-  #     existingDirCheck(pair_path)
-  #     
-  #     #Create subset of richness_data specific to pairwise comparaison
-  #     subset <- richness_data[richness_data$gg_group %in% c(groups[i], groups[j]),]
-  #     
-  #     #Iterate through each alpha diversity value
-  #     for(measure in measures){
-  #       
-  #       p <- ggplot(subset, aes(x = gg_group, y = subset[[measure]], color = gg_group)) +
-  #         geom_boxplot()+
-  #         
-  #         # Error bars
-  #         stat_summary(fun.data = "mean_cl_normal", geom = "errorbar",
-  #                      aes(color = gg_group),
-  #                      width = 0.2, size = 0.7) +
-  #         
-  #         labs(title = paste(pair,measure), y = measure, color = "Group") +
-  #         
-  #         theme_minimal()+
-  #         
-  #         theme(
-  #           plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-  #           axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-  #           axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-  #           axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-  #           legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-  #           legend.text = element_text(size = 12),  # Adjust legend font size
-  #           panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
-  #           panel.grid.minor = element_blank(),  # Remove minor grid lines
-  #           axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-  #       
-  #       
-  #       #Save graph in appropriate folder
-  #       ggsave(file = paste(pair_path,"/",pair,"_",measure,".png", sep = ""), plot = p, dpi = 300, bg = "white")
-  #     }
-  #     
-  #   }}
-  
   return(graphs)
 }

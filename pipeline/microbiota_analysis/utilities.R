@@ -180,3 +180,30 @@ checkIfFactor <- function(var){
 groupSameSpecies <- function(ps){
   ps <- tax_glom(ps, taxrank = "Genus_species")
 }
+
+# Ensure consistent themes across all graphs generated with ggplot2
+my_theme <- function() {
+  theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(size = 16, face = "bold"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = "black", face = "bold"),
+      axis.title = element_text(size = 14, face = "bold"),
+      axis.line = element_line(color = "black", size = 1),
+      legend.text = element_text(face = "bold"),
+      legend.title = element_text(face = "bold"),
+      legend.position = "right"
+    )
+}
+
+# Verifies assumptions of normality and variances for further statistical tests
+verifyStatsAssumptions <- function(df, group, measure){
+  
+  # Levene's Test for homogeneity of variance
+  print(leveneTest(as.formula(paste(measure, "~", group)), data = df))
+  
+  # Shapiro test per group for normality assumptions
+  print(by(df[[measure]], df[[group]], shapiro.test))
+  
+}
