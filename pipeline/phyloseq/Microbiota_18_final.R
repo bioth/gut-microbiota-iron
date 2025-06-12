@@ -29,13 +29,13 @@
 }
 
 # Load custom functions for microbiota analysis
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/utilities.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/beta_diversity_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/correlation_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/relab_analysis_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
 
 # For microbiota 18 (final data)
 #set working directory
@@ -205,7 +205,7 @@ ps_flt_diet <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt)
 ps_flt_dss <- merge_phyloseq(ps_t54_flt, ps_tfinal_flt)
 ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_tfinal_flt)
 
-# Alpha diveristy for diet only
+# Alpha diveristy
 {
   existingDirCheck("../figures/Thibault_final/diet/")
   graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/Thibault_final/diet/", time = "timepoint", group = "diet", writeData = TRUE)
@@ -272,86 +272,6 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "diet", measure = "InvSimpson")
   wilcox.test(InvSimpson ~ diet, data = alpha_d[alpha_d$timepoint == "49",])
   
-  {
-    ps_sub <- prune_samples(sample_data(ps_dss_alpha)$timepoint %in% c("49","54"), ps_dss_alpha)
-    graphs = alphaDiversityTimeSeries2(ps_sub, "../figures/thibault/icm/", time = "timepoint", group = "gg_group2", writeData = FALSE)
-    
-    # Chao1
-    p = graphs[[1]]+
-      scale_fill_manual(values = c("blue","red","darkblue","darkred"),
-                        labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
-      scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
-      scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
-                       expand = c(0, 0.5))+
-      labs(y = "Species Richness")+
-      guides(pattern = "none")+
-      theme_minimal()+
-      theme(
-        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-        axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-        axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
-        axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
-        axis.title.y = element_text(size = 14, face = "bold"),
-        # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-        # legend.text = element_text(size = 12),  # Adjust legend font size
-        panel.grid.major = element_blank(),  # Remove major grid lines
-        panel.grid.minor = element_blank(),  # Remove minor grid lines
-        axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-    ggsave(plot = p, filename = "../figures/Thibault_final/icm_seminar/chao1.png", width = 5, height = 4, dpi = 300, bg = "white")
-    
-    
-    ps_sub <- prune_samples(sample_data(ps_dss_alpha)$timepoint %in% c("final"), ps_dss_alpha)
-    graphs = alphaDiversityTimeSeries2(ps_sub, "../figures/thibault/icm/", time = "timepoint", group = "gg_group2", writeData = TRUE)
-    
-    # Chao1
-    p = graphs[[1]]+
-      scale_fill_manual(values = c("blue","red","darkblue","darkred"),
-                        labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
-      scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
-      scale_x_discrete(labels = c("End of\nrecovery"),
-                       expand = c(0, 0.5))+
-      labs(y = "Species Richness")+
-      guides(pattern = "none")+
-      theme_minimal()+
-      theme(
-        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-        axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-        axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
-        axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
-        axis.title.y = element_text(size = 14, face = "bold"),
-        # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-        # legend.text = element_text(size = 12),  # Adjust legend font size
-        panel.grid.major = element_blank(),  # Remove major grid lines
-        panel.grid.minor = element_blank(),  # Remove minor grid lines
-        axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-    ggsave(plot = p, filename = "../figures/Thibault_final/icm_seminar/chao1_2.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
-    
-    # Inverse simpson
-    p = graphs[[3]]+
-      scale_fill_manual(values = c("blue","red","darkblue","darkred"),
-                        labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
-      scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
-      scale_x_discrete(labels = c("End of\nrecovery"),
-                       expand = c(0, 0.5))+
-      labs(y = "Inverse Simpson")+
-      guides(pattern = "none")+
-      theme_minimal()+
-      theme(
-        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-        axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-        axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
-        axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
-        axis.title.y = element_text(size = 14, face = "bold"),
-        # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-        # legend.text = element_text(size = 12),  # Adjust legend font size
-        panel.grid.major = element_blank(),  # Remove major grid lines
-        panel.grid.minor = element_blank(),  # Remove minor grid lines
-        axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-    ggsave(plot = p, filename = "../figures/Thibault_final/icm_seminar/invsim.png", width = 3.5, height = 3.5, dpi = 300, bg = "white")
-    
-    
-  }
-  
   # Alpha diveristy for dss_diet only
   existingDirCheck("../figures/Thibault_final/diet_dss/")
   graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/Thibault_final/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
@@ -367,12 +287,52 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                       labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
-                     expand = c(0, 0.5))+
+                     expand = c(0,0.5))+
     labs(y = "Species Richness", x = "")+
     guides(pattern = "none")+
-    my_theme()
+    ylim(0,1850)+
+    my_theme()+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.7),           # left box in each timepoint
+      xmax = c(1.3),
+      annotations = "n.s.",
+      y_position = c(1500), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For last timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.7),           # left box in each timepoint
+      xmax = c(3.3),
+      annotations = "n.s.",
+      y_position = c(1500), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.7,2.1,1.7,1.9), # left position
+      xmax = c(1.9,2.3,2.1,2.3), # left position
+      annotations = c("n.s.","n.s.","***","***"),
+      y_position = c(1350,1200,1600,1800), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )
   ggsave("../figures/Thibault_final/diet_dss/alpha_diversity/chao1.png",
-         bg = "white",height = 4, width =5, dpi = 300)
+         bg = "white",height = 5, width =7, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "Chao1")
   TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "49",]))
@@ -383,118 +343,131 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "Chao1")
   TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
   
-  
   # Shannon
   graphs[[2]]+
-    scale_fill_manual(values = c("blue","blueviolet","red","darkorange"),
-                      labels = c("50 ppm control","50 ppm DSS","500 ppm control","500 ppm DSS"))+
-    scale_pattern_manual(values = c("circle","stripe"))+
-    scale_x_discrete(labels = c("DSS day 0","DSS day 5", "Final timepoint\n(8 weeks recovery)"))+
-    labs(y = "Shannon Index")+
-    guides(pattern = "none")+
-    theme_minimal()+
-    theme(
-      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-      axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
-      axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
-      axis.title.y = element_text(size = 14, face = "bold"),
-      # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-      # legend.text = element_text(size = 12),  # Adjust legend font size
-      panel.grid.major = element_blank(),  # Remove major grid lines
-      panel.grid.minor = element_blank(),  # Remove minor grid lines
-      axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-  
-  print(shapiro.test(alpha_d[alpha_d$timepoint == 49,"Shannon"])) # Nornality test
-  nrmTest(49, "Shannon", log = TRUE)
-  print(leveneTest(Shannon~diet*treatment, data = alpha_d[alpha_d$timepoint == "49",]))
-  hist(alpha_d[alpha_d$timepoint == "49","Shannon"], breaks = 10, main = "Histogram of Diversity Index")
-  model <- glm(Shannon ~ diet * treatment, family = Gamma(link = "log"), data = alpha_d[alpha_d$timepoint == 49,])
-  summary(model)
-  # print(bartlett.test(as.formula(paste(measure,"~ interaction(diet, treatment)")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
-  # anova_model <- aov(as.formula(paste(measure, "~ diet * treatment")), data = alpha_d[alpha_d$timepoint == timepoint,])
-  # print(summary(anova_model))
-  # print(TukeyHSD(anova_model))
-  
-  nrmTest(54, "Shannon")
-  
-  nrmTest("final", "Shannon")
-  print(leveneTest(Shannon~diet*treatment, data = alpha_d[alpha_d$timepoint == "final",]))
-  hist(alpha_d[alpha_d$timepoint == "final","Shannon"], breaks = 10, main = "Histogram of Diversity Index")
-  model <- glm(Shannon ~ diet * treatment, family = Gamma(link = "log"), data = alpha_d[alpha_d$timepoint == "final",])
-  summary(model)
-  
-  
-  # InvSimpson
-  p = graphs[[3]]+
     scale_fill_manual(values = c("blue","red","darkblue","darkred"),
                       labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
-    scale_pattern_manual(values = c("circle","stripe"))+
+    scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
-                     expand = c(0, 0.5))+
-    labs(y = "Inverse Simpson")+
+                     expand = c(0,0.5))+
+    labs(y = "Shannon Index", x = "", title = "Shannon index")+
     guides(pattern = "none")+
-    theme_minimal()+
-    theme(
-      plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-      axis.title.x = element_blank(),  # Adjust x-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),  # Adjust x-axis tick label font size
-      axis.text.y = element_text(size = 12, face = "bold"),  # Adjust y-axis tick label font size
-      axis.title.y = element_text(size = 14, face = "bold"),
-      # legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-      # legend.text = element_text(size = 12),  # Adjust legend font size
-      panel.grid.major = element_blank(),  # Remove major grid lines
-      panel.grid.minor = element_blank(),  # Remove minor grid lines
-      axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
-  ggsave(plot = p, filename = "../figures/Thibault_final/diet_dss/alpha_diversity/invSim.png", width = 6, height = 4, dpi = 300, bg = "white")
+    ylim(0,5)+
+    my_theme()+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.7),           # left box in each timepoint
+      xmax = c(1.3),
+      annotations = "n.s.",
+      y_position = c(4), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For last timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.7),           # left box in each timepoint
+      xmax = c(3.3),
+      annotations = "n.s.",
+      y_position = c(4), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.7,2.1,1.7,1.9), # left position
+      xmax = c(1.9,2.3,2.1,2.3), # left position
+      annotations = c("n.s.","n.s.","*","p=0.08"),
+      y_position = c(4.2,4.2,4.5,4.9), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )
+  ggsave("../figures/Thibault_final/diet_dss/alpha_diversity/shannon.png",
+         bg = "white",height = 5, width =7, dpi = 300)
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "Shannon")
+  pairwise.wilcox.test(alpha_d[alpha_d$timepoint == "49",]$Shannon, alpha_d[alpha_d$timepoint == "49",]$gg_group2, p.adjust.method = "BH")
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "Shannon")
+  TukeyHSD(aov(Shannon ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "54",]))
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "Shannon")
+  TukeyHSD(aov(Shannon ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
+  
+  # InvSimpson
+  graphs[[3]]+
+    scale_fill_manual(values = c("blue","red","darkblue","darkred"),
+                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
+    scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
+    scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
+                     expand = c(0,0.5))+
+    labs(y = "Inverse Simpson Index", x = "", title = "Inverse Simpson index")+
+    guides(pattern = "none")+
+    ylim(0,26)+
+    my_theme()+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.7),           # left box in each timepoint
+      xmax = c(1.3),
+      annotations = "n.s.",
+      y_position = c(14), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+    
+    geom_signif( # For second timepoint
+    # comparisons = list(c(groups[1],groups[4])),
+    xmin = c(1.7,2.1,1.7,1.9), # left position
+    xmax = c(1.9,2.3,2.1,2.3), # left position
+    annotations = c("n.s.","n.s.","***","**"),
+    y_position = c(12,18.5,20.5,23), #
+    tip_length = c(0.02,0.02,0.02,0.02),
+    color = "black",
+    size = 0.5,
+    textsize = 4,
+    margin_top = 0.1, # Moves the top according to this value
+    vjust = 0,
+  )+
+    geom_signif( # For last timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.7,3.1,2.7,2.9),           # left box in each timepoint
+      xmax = c(2.9,3.3,3.1,3.3),
+      annotations = c("n.s.","p=0.063","n.s.","p=0.063"),
+      y_position = c(10.5,16,18.5,20.5), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )
+  ggsave("../figures/Thibault_final/diet_dss/alpha_diversity/InvSimpson.png",
+         bg = "white",height = 5, width =7, dpi = 300)
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "InvSimpson")
+  pairwise.wilcox.test(alpha_d[alpha_d$timepoint == "49",]$InvSimpson, alpha_d[alpha_d$timepoint == "49",]$gg_group2, p.adjust.method = "BH")
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "InvSimpson")
+  pairwise.wilcox.test(alpha_d[alpha_d$timepoint == "54",]$InvSimpson, alpha_d[alpha_d$timepoint == "54",]$gg_group2, p.adjust.method = "BH")
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "InvSimpson")
+  pairwise.wilcox.test(alpha_d[alpha_d$timepoint == "final",]$InvSimpson, alpha_d[alpha_d$timepoint == "final",]$gg_group2, p.adjust.method = "BH")
   
   
-  nrmTest("49", "InvSimpson", log = TRUE)
-  print(leveneTest(InvSimpson~diet*treatment, data = alpha_d[alpha_d$timepoint == "49",]))
-  hist(alpha_d[alpha_d$timepoint == "49","InvSimpson"], breaks = 10, main = "Histogram of Diversity Index")
-  model <- glm(InvSimpson ~ diet * treatment, family = Gamma(link = "log"), data = alpha_d[alpha_d$timepoint == "49",])
-  summary(model)
-  
-  nrmTest("54", "InvSimpson", log = TRUE)
-  alpha_d$logSimpson <- log(alpha_d$InvSimpson)
-  print(bartlett.test(as.formula("logSimpson ~ interaction(diet, treatment)"), data = alpha_d[alpha_d$timepoint == 54,]))
-  print(leveneTest(InvSimpson~diet*treatment, data = alpha_d[alpha_d$timepoint == "54",]))
-  hist(log(alpha_d[alpha_d$timepoint == "54","InvSimpson"]), breaks = 10, main = "Histogram of Diversity Index")
-  anova_model <- aov(as.formula("logSimpson~ diet * treatment"), data = alpha_d[alpha_d$timepoint == 54,])
-  print(summary(anova_model))
-  print(TukeyHSD(anova_model))
-  
-  nrmTest("final", "InvSimpson", log = TRUE)
-  print(bartlett.test(as.formula("logSimpson ~ interaction(diet, treatment)"), data = alpha_d[alpha_d$timepoint == "final",]))
-  anova_model <- aov(as.formula("logSimpson~ diet * treatment"), data = alpha_d[alpha_d$timepoint == "final",])
-  print(summary(anova_model))
-  print(TukeyHSD(anova_model))
-  
-  # Stats
-  alpha_d <- read.xlsx("../figures/thibault/diet_dss/alpha_diversity/alpha_diversity_data.xlsx")
-  alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
-  alpha_d$treatment <- factor(alpha_d$treatment, levels = c("water", "dss"))
-  alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("49", "54", "final"))
-  alpha_d$gg_group2 <- factor(alpha_d$gg_group2, levels = c("50:water","50:dss","500:water","500:dss"))
-  measures <- c("Chao1", "Shannon", "InvSimpson")
-  
-  sink("../figures/thibault/diet_dss/alpha_diversity/alpha_diversity_stats.txt")
-  for(measure in measures){
-    
-    print(paste("Tests for measure", measure))
-    for(timepoint in levels(alpha_d$timepoint)){
-      # hist(alpha_d[alpha_d$timepoint == "final","Chao1"], breaks = 20, main = "Histogram of Diversity Index")
-      print(paste("At", timepoint))
-      print(shapiro.test(alpha_d[alpha_d$timepoint == timepoint,measure])) # Nornality test
-      print(bartlett.test(as.formula(paste(measure,"~ interaction(diet, treatment)")), data = alpha_d[alpha_d$timepoint == timepoint,])) # Homoscedasticity test (if data is normally distributed)
-      anova_model <- aov(as.formula(paste(measure, "~ diet * treatment")), data = alpha_d[alpha_d$timepoint == timepoint,])
-      print(summary(anova_model))
-      print(TukeyHSD(anova_model))
-      
-    }
-    
-  }
-  sink()
 }
 
 
@@ -1658,7 +1631,7 @@ points(nmds, col = as.factor(sample_data$DietGroup), pch = 16)
 
 
 #### Tests for timeline graphs ####
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/chronobiome.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipelinelinux/microbiota_analysis/chronobiome.R")
 
 plot_timeline_2_groups(
   ps_object = ps_flt_diet,
@@ -1670,7 +1643,7 @@ plot_timeline_2_groups(
   average_relab_per_group = TRUE,
   n_phy = 4,
   differential_analysis = FALSE,
-  test = c("Wald", "LRT")[1],
+  test = c("Wald", "LRT")[1],linux
   fdr_threshold = 0.05,
   sig_lab = FALSE,
   fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
