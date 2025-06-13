@@ -437,7 +437,7 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, dim = c(6,6), font, path, additionnalAes = NULL){
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, dim = c(6,6), font, path, additionnalAes = NULL, displayPValue = FALSE){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -453,7 +453,6 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     dist <- phyloseq::distance(ps, method = distMethod)
   }
   
-  
   for(timepoint in levels(sample_data(ps)[[timeVariable]])){
     
     #calculating distance matrix
@@ -467,6 +466,39 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     
     #Checking if dir already exists, otherwise creates it
     existingDirCheck(path = dir)
+    
+    # Statistics
+    if(length(levels(sample_data(ps)[[varToCompare]])) > 2){
+      
+      pairwise_results <- pairwise.adonis2(as.formula(paste("dist_subset ~", varToCompare)), 
+                                           data = data.frame(sample_data(ps_subset)), 
+                                           permutations = 999, 
+                                           p.adjust.m = "BH")  # Adjust p-values for multiple testing
+      
+      # Initialize a data frame to store the results
+      stats_res <- data.frame(comparison = character(), pvalue = numeric(), stringsAsFactors = FALSE)
+      
+      # Loop through pairwise results and extract p-values and comparison names
+      for(i in 2:length(pairwise_results)){
+        
+        # Extract the comparison name
+        comparison_name <- names(pairwise_results)[[i]]
+        
+        # Extract p-value for the current comparison
+        p_value <- pairwise_results[[i]]$`Pr(>F)`[1]  # Assuming the p-value is in the first row of the result
+        
+        # Add the result to the data frame
+        stats_res <- rbind(stats_res, data.frame(comparison = comparison_name, pvalue = p_value))
+      }
+    }else{
+      test.adonis <- adonis2(as.formula(paste("dist_subset ~", varToCompare)), data = data.frame(sample_data(ps_subset)))
+      stats_res <- as.data.frame(test.adonis)
+      print(stats_res)
+      pvalue <- stats_res$`Pr(>F)`[1]
+    }
+    
+    #Save stats as an excel file
+    write.xlsx(stats_res, paste(dir,"/",distMethod,"_","week_",timepoint,".xlsx", sep = ""))
     
     #Save distance method variable as string for titles
     if(distMethod == "bray"){
@@ -494,7 +526,7 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
-      labs(title = paste("PCoA of", distCharacter, "distance matrix at", timepoint, "weeks.", sep = " ")) +
+      labs(title = paste0("PCoA of ", distCharacter, " distance matrix at\n", timepoint, " weeks.")) +
       scale_color_manual(values = customColors)+
       labs(color = "Diet")+
       theme(aspect.ratio = 1) + # Scale the x and y axis the same +
@@ -519,61 +551,19 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
       p <- p + additionnalAes
     }
     
-    # test.adonis <- adonis(as.formula(paste("dist_subset ~", fac1, "*", fac2)), data = data.frame(sample_data(ps_subset)))
-    # test.adonis <- as.data.frame(test.adonis$aov.tab)
-    # print(test.adonis)
-    
-    if(length(levels(sample_data(ps)[[varToCompare]])) > 2){
-      
-      pairwise_results <- pairwise.adonis2(as.formula(paste("dist_subset ~", varToCompare)), 
-                                           data = data.frame(sample_data(ps_subset)), 
-                                           permutations = 999, 
-                                           p.adjust.m = "BH")  # Adjust p-values for multiple testing
-      
-      # Initialize a data frame to store the results
-      stats_res <- data.frame(comparison = character(), pvalue = numeric(), stringsAsFactors = FALSE)
-      
-      # Loop through pairwise results and extract p-values and comparison names
-      for(i in 2:length(pairwise_results)){
-        
-        # Extract the comparison name
-        comparison_name <- names(pairwise_results)[[i]]
-        
-        # Extract p-value for the current comparison
-        p_value <- pairwise_results[[i]]$`Pr(>F)`[1]  # Assuming the p-value is in the first row of the result
-        
-        # Add the result to the data frame
-        stats_res <- rbind(stats_res, data.frame(comparison = comparison_name, pvalue = p_value))
-      }
-    }else{
-      test.adonis <- adonis2(as.formula(paste("dist_subset ~", varToCompare)), data = data.frame(sample_data(ps_subset)))
-      stats_res <- as.data.frame(test.adonis)
-      print(stats_res)
-      
+    # Add the p-value under the legend
+    if(displayPValue){
+      p<- p+annotate("text", 
+               x = Inf, y = -Inf,  # Position at bottom right, under the legend
+               label = paste("p =", round(pvalue, 3)), 
+               hjust = 1, vjust = -0.5, 
+               size = 6, color = "black", 
+               fontface = "bold",
+               family = font)  # Make the entire text bold
     }
-    
-    #Save stats as an excel file
-    write.xlsx(stats_res, paste(dir,"/",distMethod,"_","week_",timepoint,".xlsx", sep = ""))
-
-    
+  
     #Save figure
     ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
-    
-    
-    # cbn <- combn(x=unique(metadata$body.site), m = 2)
-    # p <- c()
-    # 
-    # for(i in 1:ncol(cbn)){
-    #   ps.subs <- subset_samples(ps.rarefied, body.site %in% cbn[,i])
-    #   metadata_sub <- data.frame(sample_data(ps.subs))
-    #   permanova_pairwise <- adonis(phyloseq::distance(ps.subs, method = "bray") ~ body.site, 
-    #                                data = metadata_sub)
-    #   p <- c(p, permanova_pairwise$aov.tab$`Pr(>F)`[1])
-    # }
-    # 
-    # p.adj <- p.adjust(p, method = "BH")
-    # p.table <- cbind.data.frame(t(cbn), p=p, p.adj=p.adj)
-    # p.table
     
   }
 }
@@ -724,7 +714,7 @@ betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formu
 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
 # distMethod can be either hellinger, wunifrac or bray curtis
-betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, font, path, additionnalAes){
+betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, dim = c(6,6), font, path, additionnalAes){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -738,7 +728,7 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
   if(distMethod == "wunifrac"){
     dist <- phyloseq::distance(ps, method = "wunifrac")
   }else if(distMethod == "bray"){
-    dist <- vegdist(t(otu_table(ps)), method = "bray")
+    dist <- vegdist(otu_table(ps), method = "bray")
   } else if(distMethod == "hellinger"){
     dist <- t(decostand(otu_table(ps), method = "hellinger")) # Hellinger must receive relative abundance as values from the otu_table
   }
@@ -746,23 +736,12 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
   # Extract metadata
   metadata <- data.frame(sample_data(ps))
   
-  # # Run RDA using varToCompare and RdaVar as explanatory variables
-  # formula_rda <- as.formula(paste("otu_table ~", varToCompare, "+", RdaVar))
-  
-  #    Option A: Use Euclidean distance on the Hellinger-transformed data
-  # cap_result <- capscale(model_formula, data = metadata, distance = "euclidean")
-  
-  #    Option B (alternative): Use Bray-Curtis distance
-  # cap_result <- capscale(vegdist(otu_table, method = "bray") ~ diet * timepoint, data = metadata) # capscale() expects rows = samples, columns = taxa
   if(distMethod == "hellinger"){
     cap_result <- capscale(as.formula(paste0("dist ~", formula)), data = metadata, distance = "euclidean")
   }else{
     cap_result <- capscale(as.formula(paste0("dist ~", formula)), data = metadata)
   }
   
-  print(1)
-  
-  # rda_result <- rda(model_formula, data = metadata)
   # View RDA results
   print(summary(cap_result))
   
@@ -802,13 +781,6 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
     labs(title = "", x = paste0("RDA1 (", var_exp[1], "%)"), y = paste0("PC1 (", var_exp[2], "%)")) +
     scale_color_manual(values = customColors) +
     labs(color = "Group") +
-    # annotate("text", 
-    #          x = Inf, y = -Inf,  # Position at bottom left, under the legend
-    #          label = paste("p =", round(p_value, 3)), 
-    #          hjust = 1, vjust = -0.5, 
-    #          size = 4, color = "black", 
-    #          fontface = "bold",
-    #          family = "Arial")+
     theme(
       plot.title = element_text(size = 16, face = "bold", family = font),
       axis.title.x = element_text(size = 14, face = "bold", family = font),
@@ -830,6 +802,6 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
   write.xlsx(as.data.frame(anova_rda), paste0(path, "/RDA.xlsx"))
   
   # Save plot
-  ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = 4.5, width = 4.5, bg = 'white')
+  ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
   
 }
