@@ -1,7 +1,7 @@
 #Revised version, not doing separate distance calculations and adding path option
 
 #Beta diversity analysis for different timepoints. You must provide a filtered ps object, the timeVariable and the varToCompare (present in sample_data)
-betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, customColors, font, dim = c(6,6), path){
+betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, customColors, font, dim = c(6,6), path, returnFig = FALSE){
   
   #calculating distance matrix
   dist <- phyloseq::distance(ps, method = distMethod)
@@ -37,7 +37,7 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
                          color = varToCompare) + 
       theme_classic() +
       theme(strip.background = element_blank())+
-      stat_ellipse(aes(group = !!sym(varToCompare)),      # Add ellipses grouping points by genotype
+      stat_ellipse(aes(group = !!sym(varToCompare), color = !!sym(varToCompare)), # Add ellipses grouping points by genotype
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
@@ -65,8 +65,13 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
     #Save stats as an excel file
     write.xlsx(test.adonis, paste(dir,"/",distMethod,"_","week_",timepoint,".xlsx", sep = ""))
     
-    #Save figure
-    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+    if(returnFig){
+      return(p)
+    }else{
+      #Save figure
+      ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+    }
+    
     
     
     # cbn <- combn(x=unique(metadata$body.site), m = 2)
