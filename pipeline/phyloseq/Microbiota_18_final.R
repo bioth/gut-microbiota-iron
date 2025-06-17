@@ -1353,7 +1353,7 @@ plot_timeline_2_groups(
   average_relab_per_group = TRUE,
   n_phy = 4,
   differential_analysis = FALSE,
-  test = c("Wald", "LRT")[1],linux
+  test = c("Wald", "LRT")[1],
   fdr_threshold = 0.05,
   sig_lab = FALSE,
   fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
@@ -1375,20 +1375,25 @@ plot_timeline_2_groups(
 # LRT to detect time effects within each group
 # Subset for 50 ppm, and for family level taxa
 ps_subset <- prune_samples(sample_data(ps_flt_diet)$diet == "50", ps_flt_diet)
-ps_taxa <- tax_glom(ps_subset, taxrank = "Family")
-ps_taxa <- tax_glom(ps_flt_diet, taxrank = "Family")
-deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet+week+diet:week)
-deseq_subset <- DESeq(deseq_subset, test="LRT", reduced = ~diet+week)
+ps_taxa <- tax_glom(ps_subset, taxrank = "Phylum")
+deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ week)
+deseq_subset <- DESeq(deseq_subset, test="LRT", reduced = ~1)
+
+
+# deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet+week+diet:week)
+# deseq_subset <- DESeq(deseq_subset, test="LRT", reduced = ~diet+week)
 resultsNames(deseq_subset)
 print(results(deseq_subset))
-res <- results(deseq_subset, contrast = c("week", "3", "8"))
+res <- results(deseq_subset)
 print(res)
-res <- results(deseq_subset, contrast = c("week", "8", "10"))
+res <- results(deseq_subset, contrast = c("week", "3", "8"), test = "Wald")
+print(res)
+res <- results(deseq_subset, contrast = c("week", "8", "10"), test = "Wald")
 print(res)
 
 sigtab <- NULL
 res_sub <- results(deseq_subset, contrast = c("week", , cmp[[2]]))
-res_sub <- subset(res_sub, padj < 0.05) # Keep only significant fematures
+res_sub <- subset(res, padj < 0.05) # Keep only significant fematures
 res_sub <- cbind(as(res_sub, "data.frame"), as(tax_table(ps_taxa)[rownames(res_sub), ], "matrix"))
 res_sub$comparaison <- paste0(cmp[[1]],"_vs_",cmp[[2]])
 sigtab <- bind_rows(sigtab, res_sub) # Append res_sub to final complete sigtab 
@@ -1433,3 +1438,18 @@ if (nrow(significant_features) == 0) {
   df_long$plot_taxa <- df_long$legend_label
   df_long$plot_taxa <- factor(df_long$plot_taxa, levels = unique(df_long$plot_taxa))
 }
+
+
+
+
+
+
+
+# LRT analysis
+# Subset for 50 ppm
+relabTimepoints(ps_flt_diet, deseq_subset, timeVariable = "week", varToCompare = "diet", taxa = "Species", threshold == 0.05, customColors = c("blue","red"), path = "~/Documents/CHUM_git/figures/Thibault_final/lrt_diet/")
+# Subset for 50 ppm, and for family level taxa
+ps_subset <- prune_samples(sample_data(ps_flt_diet)$diet == "50", ps_flt_diet)
+ps_taxa <- tax_glom(ps_subset, taxrank = "Phylum")
+deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ week)
+deseq_subset <- DESeq(deseq_subset, test="LRT", reduced = ~1)
