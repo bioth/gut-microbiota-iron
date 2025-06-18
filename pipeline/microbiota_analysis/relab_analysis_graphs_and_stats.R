@@ -1327,7 +1327,8 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
       labs(title = paste(taxa ,taxonName, "\nat last timepoint", sep = " "), y = "Relative abundance (%)", color = "Diet", x = "") +
       scale_color_manual(values = customColors)+
-      scale_x_discrete(labels = c("50 ppm\nDSS","500 ppm\nDSS"))+
+      # scale_x_discrete(labels = c("50 ppm\nDSS","500 ppm\nDSS"))+
+      scale_x_discrete(labels = c("Vehicle","Putrescine"))+
 
       #Add stat bar
       geom_signif(comparisons = list(c(groups[1],groups[2])),

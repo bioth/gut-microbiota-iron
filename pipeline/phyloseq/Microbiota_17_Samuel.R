@@ -23,20 +23,21 @@
   library(plotly) #To plot 3D pcoas
   library(StackbarExtended) # Thibault C. package
   library(ggh4x)
+  library(caret)
   
 }
 
 
 #Load custom functions for microbiota analysis
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/deseq2_log2fold_change_analysis.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/utilities.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/beta_diversity_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/correlation_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/relab_analysis_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_ext.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/deseq2_log2fold_change_analysis.R")
 
 # For microbiota 17 - specific to Samuel's data, and wt only
 #set working directory
@@ -121,6 +122,61 @@ customColors = list(list('black','#A22004'))
 
 # Differential abundance analysis
 {
+  deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ treatment)
+  deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
+  resultsNames(deseq_samuel)
+  customColors = c('black','#A22004')
+  relabSingleTimepoint(ps_samuel, deseq_samuel, measure = "log2fold", "treatment", timePoint = "diet", taxa = "Species", displayPvalue = TRUE, LDA = TRUE, threshold = 0.05, customColors = customColors, path = "~/Documents/CHUM_git/figures/Samuel_final_wt/differential_abundance/")
+  
+  #At other taxonomic levels
+  taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
+  
+  for(txnLevel in taxonomicLevels){
+    
+    #Creates ps subset for taxonomical level of interest
+    ps_subset <- tax_glom(ps_samuel, taxrank = txnLevel)
+    deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ treatment) 
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "treatment", timePoint = "diet", taxa = txnLevel, displayPvalue = TRUE, LDA = FALSE, threshold = 0.05, customColors = customColors, path = "~/Documents/CHUM_git/figures/Samuel_final_wt/differential_abundance/")
+  }
   
 }
+
+
+# Correlation heatmaps
+{
+  deseq_samuel <- phyloseq_to_deseq2(ps_samuel, ~ treatment)
+  deseq_samuel <- DESeq(deseq_samuel, test="Wald", fitType = "parametric")
+  
+  #Preparing dataframe for correlation
+  variables <- read.xlsx("~/Documents/CHUM_git/figures/old/samuel/correlation/Samuel's Combine Data_Correlation.xlsx")
+  rownames(variables) <- variables$X3
+  variables <- variables[,c(6:11)]
+  colnames(variables) <- c("DAI_end_point","EcNC101_Colonisation_end_point","lcn-2","il-6","tnf-alpha","colon_length")
+  
+  customColors = list('black','#A22004')
+  p <- correlation2Var(ps_samuel, deseq_samuel, measure = "log2fold", "treatment", taxa = "Species",
+                  displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Samuel_final_wt/correlation/",
+                  df = variables, global = TRUE, showIndivCor = TRUE, transformation = "rel_ab",
+                  displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, colorsHmap = c("#820909","#051671"))
+  
+  p+
+    coord_fixed() + # Makes thing squared
+    scale_x_discrete(labels = pretty_string, position = "top") +  # Replace space with newline
+    # scale_x_discrete(labels = pretty_string, position = "top")+
+    scale_y_discrete(limits =  c("Lactobacillus johnsonii","Bifidobacterium pseudolongum","Escherichia-Shigella albertii","Adlercreutzia equolifaciens"),
+                     labels =  c("Lactobacillus johnsonii","Bifidobacterium pseudolongum","Escherichia-Shigella albertii","Adlercreutzia equolifaciens"))+
+    geom_tile(color = "black", lwd = 0.75, linetype = 1) +
+    geom_text(aes(label = significance), color = "black", size = 6) +
+    theme(
+      text = element_text(family = "Times New Roman"),      # Global text settings
+      axis.title.x = element_text(size = 16, face = "bold"),  # Axis titles
+      axis.title.y = element_text(size = 16, face = "bold"),
+      axis.text = element_text(size = 12, face = "bold"),   # Axis text
+      legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
+      axis.text.x = element_text(angle = -45, hjust = 1))
+}
+
+
+
                                            

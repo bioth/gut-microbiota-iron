@@ -550,7 +550,7 @@ correlationTimepoints <- function(ps, measure = "log2fold", timeVariable, varToC
 
 
 
-correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = FALSE, displaySpeciesASVNumber = TRUE){
+correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = FALSE, displaySpeciesASVNumber = TRUE, colorsHmap = c("blue","red")){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -712,7 +712,7 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     # Create the heatmap
     p <- ggplot(cor_melt, aes(x = Variables, y = taxa_name, fill = value)) +
       geom_tile(color = "white") +
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+      scale_fill_gradient2(low = colorsHmap[1], high = colorsHmap[2], mid = "white",
                            midpoint = 0, limit = c(-1, 1), space = "Lab",
                            name = "Correlation") +
       geom_text(aes(label = significance), color = "black") +
