@@ -789,7 +789,6 @@ ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
           }
           
           else{
-        
         plot <- plot+
           geom_signif(
             comparisons = list(c(groups[1],groups[2])),

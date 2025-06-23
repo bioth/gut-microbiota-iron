@@ -90,7 +90,7 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
 
 #Beta diversity analysis for pairwise comparaisons, provide filtered ps object and pairs to compare
 #WARNING: Formula assumes that the id of samples is named "sample_id" and is not flexible contrary to gg_group variable
-betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors, font, displayPValue = TRUE, dim = c(6,6), transform = FALSE, path){
+betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors, font, displayPValue = TRUE, dim = c(6,6), transform = FALSE, path, title = TRUE){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -152,7 +152,6 @@ betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors,
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
-      labs(title = paste("PCoA of", distCharacter, "distance matrix.", sep = " ")) +
       scale_color_manual(values = colorPair)+
       labs(color = "Groups")+
       theme(aspect.ratio = 1)+ #Scale the x and y axis the same 
@@ -179,6 +178,11 @@ betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors,
                  fontface = "bold",
                  family = font)  # Make the entire text bold
       }
+    
+    if(title){
+      p <- p+
+        labs(title = paste("PCoA of", distCharacter, "distance matrix.", sep = " "))
+    }
 
     ggsave(plot = p, filename = paste(dir,"/",distMethod,"_",vs,".png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
     
