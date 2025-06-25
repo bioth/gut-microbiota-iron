@@ -38,15 +38,15 @@
 }
 
 #Load custom functions for microbiota analysis
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/utilities.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/beta_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/correlation_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/relab_analysis_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_extension.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/plot_microbiota_ext.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline_linux/microbiota_analysis/deseq2_log2fold_change_analysis.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/utilities.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/beta_diversity_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/correlation_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/relab_analysis_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_ext.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/deseq2_log2fold_change_analysis.R")
 
 
 #for microbiota 17
@@ -101,7 +101,7 @@ taxa <- taxa[,-1]  # Drop the first column
 }
 
 # Load phylogenetic tree if possible
-tree <- read.tree("~/Documents/CHUM_git/figures/samuel/beta_diversity/phylo_tree/phylogenetic_tree.newick")
+tree <- read.tree("~/Documents/CHUM_git/figures/old/samuel/beta_diversity/phylo_tree/phylogenetic_tree.newick")
 
 #creating phyloseq object
 ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
@@ -228,7 +228,8 @@ alphaDiversityGgGroup2(ps_samuel, path = "~/Documents/CHUM_git/figures/Samuel_fi
 
 #For Claire
 betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "bray", customColors = c('blue','red'), dim = c(5,5), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
-betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), dim = c(5,5), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
+sample_data(ps_claire)$diet <- factor(sample_data(ps_claire)$diet, labels = c("50 ppm","500 ppm"))
+betaDiversityTimepoint(ps_claire, "week", "diet", distMethod = "wunifrac", customColors = c('blue','red'), dim = c(3,3), font = "Arial", "~/Documents/CHUM_git/figures/Claire_final/beta_diversity/")
 
 
 #Samuel beta diversity
@@ -542,14 +543,14 @@ for(txnLevel in taxonomicLevels){
 #Setting a correlation matrix workflow starting with Claire's data
 # This code was the latest developed on feb 11 2025 ### To keep
 #Preparing dataframe for correlation
-variables <- read.xlsx("~/Documents/CHUM_git/figures/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
+variables <- read.xlsx("~/Documents/CHUM_git/figures/old/claire/correlation/Claire_Data for heatmap_All_El_1 2024.xlsx")
 rownames(variables) <- variables$ID
 variables <- variables[,c(6:10)]
 colnames(variables)[1:5] <- gsub(x = colnames(variables)[1:5], pattern = "\\.", replacement = " ")
 
 
 # For species level
-for(timePoint in levels(sample_data(ps_claire)$week)){
+for(timePoint in levels(sample_data(ps_claire)$week)[2:3]){
   # Subset for timePoint
   ps_subset <- prune_samples(sample_data(ps_claire)$week == timePoint, ps_claire)
   #replace tax names in the otu_table so that they are corresponding to the excel file
@@ -574,7 +575,7 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
 
 {
   # Subset for timePoint
-  ps_subset <- prune_samples(sample_data(ps_claire)$week == "14", ps_claire)
+  ps_subset <- prune_samples(sample_data(ps_claire)$week == "10", ps_claire)
   #replace tax names in the otu_table so that they are corresponding to the excel file
   sample_names(ps_subset) <- gsub("_.*", "", sample_names(ps_subset))
   # Deseq analysis
@@ -588,18 +589,22 @@ for(timePoint in levels(sample_data(ps_claire)$week)){
   p <- p+
     # coord_fixed() + # Makes thing squared
     geom_text(aes(label = significance), color = "black", size = 6) +
-    scale_x_discrete(labels = function(x) gsub(" ", "\n", x)) +  # Replace space with newline
+    scale_x_discrete(labels = function(x) gsub(" ", "\n", x), expand = c(0,0)) +  # Replace space with newline
     scale_y_discrete(limits = c("Romboutsia ilealis", "Romboutsia hominis", "Adlercreutzia equolifaciens",
-                                "Faecalibaculum rodentium", "Blautia coccoides"))+
+                                "Faecalibaculum rodentium", "Blautia coccoides"), expand = c(0,0))+
+    labs(x = "", y = "")+
     theme(
       text = element_text(family = "Arial"),      # Global text settings
+      axis.ticks = element_blank(),
       axis.title.x = element_text(size = 16, face = "bold", vjust = -1),  # Axis titles
       axis.title.y = element_text(size = 16, face = "bold"),
       axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5),   # Axis text
       axis.text.y = element_text(size = 12),   # Axis text
-      legend.title = element_text(face = "bold", size = 16, vjust = 3),  # Legend title  # Legend text
+      legend.title = element_text(face = "bold", size = 16, vjust = 3),  # Legend title  # Legend text]
+      legend.key.height = unit(1.25, "cm")
     ) #axis.text.x = element_text(angle = -45, hjust = 1)
   
+  p
   ggsave(filename = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_10/Species/all_groups/cor_hmap_week10.png",
          plot = p, bg = "white", height = 6, width = 8, dpi = 300)
 }
@@ -881,6 +886,7 @@ p
 # First, timepoints and groups must be ordered properly and as factor
 # Put gg_group as factor and define order
 sample_data(ps_claire)$gg_group <- factor(sample_data(ps_claire)$gg_group, levels = c("3:50", "8:50", "10:50", "14:50", "3:500", "8:500", "10:500", "14:500"))  
+sample_data(ps_claire)$diet <- factor(sample_data(ps_claire)$diet, labels = c("50","500"))
 # Enables to rename factor levels (this is more convenient to change the names for each subgraph
 # in the facet_wrap.)
 library(forcats)
@@ -904,7 +910,7 @@ iron_exp_family <- plot_microbiota_timepoints(
   time_variable = "week",
   combined_group = 'gg_group',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  hues = c("Blues", "Greens", "Oranges", "Purples"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
@@ -952,7 +958,7 @@ facet_labels <- c(
 
 # Define custom x-axis labels for each facet
 facet_scales <- list(
-  scale_x_discrete(labels = as.character(c("1", "2", "3", "4", "5", "6", "7", "8", "10"))),
+  scale_x_discrete(labels = as.character(c("1", "2", "3", "4", "5", "6", "7", "8","10"))),
   scale_x_discrete(labels = as.character(1:10)),
   scale_x_discrete(labels = as.character(1:10)),
   scale_x_discrete(labels = as.character(1:10)),
@@ -973,17 +979,18 @@ p <- iron_exp_family$plot +
         plot.title = element_text(size = 20, face = "bold"),  # Main title
         axis.title = element_text(size = 15, face = "bold"),  # Axis titles
         axis.text = element_text(size = 12, face = "bold"),   # Axis text
-        axis.text.x = element_text(angle = 0, hjust = 0.5),
+        axis.text.x = element_text(angle = 0, hjust = 0.5, margin = margin(t = -5)),
+        axis.title.y = element_text(margin = margin(r = -15, unit = "pt")),
         legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
-        ) +
+        axis.ticks.x = element_blank()) +
   # scale_x_discrete(labels = function(x) substr(x, 1, 5))+
   facetted_pos_scales(x = facet_scales)+
-  labs(x = "Sample ID")
+  labs(x = "Mouse ID")
 p
 
 # Saving the plot and the associated stats
 existingDirCheck("../figures/Claire_final/stackbar")
-ggsave(plot = p, filename = "../figures/Claire_final/stackbar/family_stackbar.png", width = 10, height = 6, dpi = 300)
+ggsave(plot = p, filename = "../figures/Claire_final/stackbar/family_stackbar.png", width = 11, height = 5.5, dpi = 300)
 writeStackbarExtendedSigTable(main_table = iron_exp_family$significant_table_main, sub_table = iron_exp_family$significant_table_sub, includeSubTable = TRUE, filepath = "../figures/Claire_final/stackbar/stackbar_stats.xlsx")
 writeStackbarExtendedSigTable(main_table = iron_exp_family$full_table_main, sub_table = iron_exp_family$full_table_sub, includeSubTable = TRUE, filepath = "../figures/Claire_final/stackbar/full_stackbar_stats.xlsx")
 

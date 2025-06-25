@@ -41,19 +41,20 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
-      labs(title = paste("PCoA of", distCharacter, "distance\nmatrix at", timepoint, "weeks.", sep = " ")) +
+      labs(title = "") + #paste("PCoA of", distCharacter, "distance\nmatrix at", timepoint, "weeks.", sep = " ")
+      guides(color = "none")+
       scale_color_manual(values = customColors)+
       labs(color = "Diet")+
       theme(aspect.ratio = 1) + # Scale the x and y axis the same +
       theme(
-        plot.title = element_text(size = 16, face = "bold", family = font),  # Adjust title font size and style
+        plot.title = element_text(size = 14, face = "bold", family = font),  # Adjust title font size and style
         axis.title.x = element_text(size = 14, face = "bold", family = font), # Adjust x-axis label font size and style   
         axis.title.y = element_text(size = 14, face = "bold", family = font), # Adjust y-axis label font size and style
         axis.text.x = element_text(size = 14, face = "bold", family = font),  # Adjust x-axis tick label font size
         axis.text.y = element_text(size = 14, face = "bold", family = font),  # Adjust y-axis tick label font size
         legend.title = element_text(size = 14, face = "bold", family = font),  # Remove legend title
         legend.text = element_text(size = 14, family = font),  # Adjust legend font size
-        panel.grid.major = element_line(color = "gray90", size = 0.5),  # Add major grid lines
+        panel.grid.major = element_blank(),  # Add major grid lines # element_line(color = "gray90", size = 0.5)
         panel.grid.minor = element_blank(),  # Remove minor grid lines
         axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
     

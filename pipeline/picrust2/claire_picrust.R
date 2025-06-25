@@ -24,7 +24,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/other scripts/dataManipFunction
   rownames(metadata) <- metadata$sample_id
   
   # Putting diet as factor
-  metadata$diet <- factor(metadata$diet, levels = c("50", "500"))
+  metadata$diet <- factor(metadata$diet, levels = c("50", "500"), labels = c("50 ppm","500 ppm"))
 }
 
 # Analysis of picrust2 results at 10 weeks / tryptophan metabolism
@@ -102,6 +102,167 @@ wilcox.test(K01667 ~ diet, data = ko_df)
 ironBoxplot(test, measure = "abundance", group = "diet",
             title = "Tryptophan metabolism at 10 weeks",
             y_axis_title = "prediceted abundance", custom_colors = c("blue","red"))
+
+
+
+
+
+
+
+# Analysis of picrust2 overall output at 10 weeks (pathways)
+setwd("~/Documents/CHUM_git/Microbiota_17/claire_picrust/picrust2/picrust2_out_pipeline/")
+ko_df <- read.table("KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotation
+ko_df <- read.table("EC_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotationss
+colnames(ko_df)[2:ncol(ko_df)] <- substring(colnames(ko_df)[2:ncol(ko_df)], 2)
+pattern <- paste(metadata$sample_id, collapse = "|")
+indexes <-  grep(pattern, colnames(ko_df)) 
+ko_df <- ko_df[,c(1,indexes)] # Keep only samples for 10 weeks
+
+# Perform differential abundance analysis
+ko_daa_results_df <- pathway_daa(
+  abundance = ko_df %>% column_to_rownames("function."),
+  metadata = metadata,
+  group = "diet",
+  daa_method = "DESeq2"
+)
+View(ko_daa_results_df)
+
+# Annotate the results
+annotated_ko_results_df <- pathway_annotation(
+  pathway = "KO",
+  daa_results_df = ko_daa_results_df,
+  ko_to_kegg = FALSE
+)
+
+# Filter features with p < 0.05
+feature_with_p_0.05 <- ko_daa_results_df %>%
+  filter(p_adjust < 1e-8)
+
+# Create the heatmap
+pathway_heatmap(
+  abundance = ko_df %>%
+    right_join(
+      annotated_ko_results_df %>% select(all_of(c("feature","description"))),
+      by = c("function." = "feature")
+    ) %>%
+    filter(function. %in% feature_with_p_0.05$feature) %>%
+    select(-"function.") %>%
+    group_by(description) %>%
+    summarise(across(everything(), sum), .groups = "drop") %>%
+    column_to_rownames("description"),
+  metadata = metadata,
+  group = "diet"
+)
+
+
+# Trying with pathways data directly
+pwys_predicted <- read.table("pathways_out/path_abun_unstrat.tsv", sep = "\t", header = TRUE) # Load KO annotations
+colnames(pwys_predicted)[2:ncol(pwys_predicted)] <- substring(colnames(pwys_predicted)[2:ncol(pwys_predicted)], 2)
+pattern <- paste(metadata$sample_id, collapse = "|")
+indexes <-  grep(pattern, colnames(pwys_predicted)) 
+pwys_predicted <- pwys_predicted[,c(1,indexes)] # Keep only samples for 10 weeks
+mapping <- read.xlsx("../../../../picrust2 database/pathway_mapping.xlsx")
+pwys <- merge(pwys_predicted, mapping, by.x = "pathway", by.y = "id") # Retrieve pathway names with mapping with ids
+pwys <- pwys[,-1]
+
+# Perform differential abundance analysis
+pwy_daa_results_df <- pathway_daa(
+  abundance = pwys %>% column_to_rownames("pathway.y"),
+  metadata = metadata,
+  group = "diet",
+  daa_method = "DESeq2"
+)
+
+# Filter features with p < 0.05
+feature_with_p_0.05 <- pwy_daa_results_df %>%
+  filter(p_adjust < 0.01)
+
+# Create the heatmap
+pathway_heatmap(
+  abundance = pwys %>%
+    right_join(
+      feature_with_p_0.05 %>% select(all_of(c("feature"))),
+      by = c("pathway.y" = "feature")
+    ) %>%
+    column_to_rownames("pathway.y"),
+  metadata = metadata,
+  group = "diet",
+  colors = c("blue","red")
+)
+ggsave("~/Documents/CHUM_git/figures/Claire_final/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Samuel's data wild type only
+# Metadata handling
+{
+  #loading metadata of interest
+  metadata <- read.csv("~/Documents/CHUM_git/Microbiota_17/metadata/metadata.csv", sep = ";")
+  metadata <- metadata[metadata$student == "Samuel",]
+  metadata <- metadata[metadata$genotype == "Wt",]
+  
+  # Adding id col as rownames too
+  rownames(metadata) <- metadata$sample_id
+  
+  # Putting diet as factor
+  metadata$treatment <- gsub(".*Putrescine.*", "Putrescine", metadata$treatment)
+  metadata$treatment <- gsub(".*Vehicle.*", "Vehicle", metadata$treatment)
+  metadata$treatment <- factor(metadata$treatment, levels = c("Vehicle", "Putrescine"))
+}
+
+# Trying with pathways data directly
+pwys_predicted <- read.table("../../../picrust2/input/picrust2_out_pipeline/pathways_out/path_abun_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+colnames(pwys_predicted)[2:ncol(pwys_predicted)] <- substring(colnames(pwys_predicted)[2:ncol(pwys_predicted)], 2)
+pattern <- paste(metadata$sample_id, collapse = "|")
+indexes <-  grep(pattern, colnames(pwys_predicted)) 
+pwys_predicted <- pwys_predicted[,c(1,indexes)] # Keep only samples for 10 weeks
+mapping <- read.xlsx("../../../../picrust2 database/pathway_mapping.xlsx")
+pwys <- merge(pwys_predicted, mapping, by.x = "pathway", by.y = "id") # Retrieve pathway names with mapping with ids
+pwys <- pwys[,-1]
+
+# Perform differential abundance analysis
+pwy_daa_results_df <- pathway_daa(
+  abundance = pwys %>% column_to_rownames("pathway.y"),
+  metadata = metadata,
+  group = "treatment",
+  daa_method = "DESeq2"
+)
+
+# Filter features with p < 0.05
+feature_with_p_0.05 <- pwy_daa_results_df %>%
+  filter(p_adjust < 0.01)
+
+# Create the heatmap
+pathway_heatmap(
+  abundance = pwys %>%
+    right_join(
+      feature_with_p_0.05 %>% select(all_of(c("feature"))),
+      by = c("pathway.y" = "feature")
+    ) %>%
+    column_to_rownames("pathway.y"),
+  metadata = metadata,
+  group = "treatment",
+  colors = c('black','#A22004'),
+  custom_theme = theme(strip.text = element_text(color = "white"),
+                       text = element_text(family = "Times New Roman"))
+)
+existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2")
+ggsave("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
 
 
 

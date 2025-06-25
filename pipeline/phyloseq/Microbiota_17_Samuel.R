@@ -176,27 +176,31 @@ customColors = list(list('black','#A22004'))
   p <- correlation2Var(ps_samuel, deseq_samuel, measure = "log2fold", "treatment", taxa = "Species",
                   displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Samuel_final_wt/correlation/",
                   df = variables, global = TRUE, showIndivCor = TRUE, transformation = "rel_ab",
-                  displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, colorsHmap = c("darkblue","darkred"))
+                  displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, colorsHmap = c("#002bff","#ff002b"))
   
-  p <- p+
+  plot <- p+
     coord_fixed() + # Makes thing squared
-    scale_x_discrete(labels = pretty_string, position = "top") +  # Replace space with newline
-    # scale_x_discrete(labels = pretty_string, position = "top")+
+    scale_x_discrete(labels = pretty_string, position = "top", expand = c(0,0)) +  # Replace space with newline
     scale_y_discrete(limits =  c("Escherichia-Shigella albertii","Lactobacillus johnsonii","Bifidobacterium pseudolongum","Adlercreutzia equolifaciens"),
-                     labels =  c("Escherichia-Shigella albertii","Lactobacillus johnsonii","Bifidobacterium pseudolongum","Adlercreutzia equolifaciens"))+
+                     labels =  c("Escherichia-Shigella albertii","Lactobacillus johnsonii","Bifidobacterium pseudolongum","Adlercreutzia equolifaciens"),
+                     expand = c(0,0))+
     geom_tile(color = "black", lwd = 0.75, linetype = 1) +
+    labs(y = "")+
     geom_text(aes(label = significance), color = "black", size = 6) +
     theme(
       text = element_text(family = "Times New Roman"),      # Global text settings
       axis.title.x = element_blank(),  # Axis titles
       axis.title.y = element_text(size = 16, face = "bold"),
       axis.text = element_text(size = 12, face = "bold"),   # Axis text
-      legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
+      legend.title = element_text(face = "bold", size = 14, margin = margin(b = 20)),  # Legend title  # Legend text
       legend.text = element_text(size = 12),
-      axis.text.x = element_text(angle = -45, hjust = 1),
-      axis.text.y = element_text(face = "bold.italic"))
-  p
-  ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/correlation/species_hmap.png", plot = p, bg = "white", height = 7, width = 7, dpi = 300)
+      axis.text.x = element_text(angle = -45, hjust = 1, size = 14),
+      axis.text.y = element_text(face = "bold.italic", size = 14),
+      legend.key.height = unit(1.25, "cm"),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank())
+  plot
+  ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/correlation/species_hmap.png", plot = plot, bg = "white", height = 8, width = 8, dpi = 300)
 }
 
 sample_data(ps_samuel)$treatment <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle","Putrescine"))
@@ -205,7 +209,7 @@ il22_exp_family <- plot_microbiota(
   ps_object = ps_samuel,
   exp_group = 'treatment',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Oranges", "Greens"),
+  hues = c("Blues","Greens", "Purples", "Oranges"),
   differential_analysis = T,
   sig_lab = T,
   fdr_threshold = 0.05,
@@ -214,6 +218,7 @@ il22_exp_family <- plot_microbiota(
   n_phy = 4, # number of taxa to show
   )
 plot <- il22_exp_family$plot
+il22_exp_family$plot
 
 # Replace the sample names by some number as an id
 facet_levels <- unique(plot$data$treatment)
@@ -229,28 +234,23 @@ p <- plot +
   facetted_pos_scales(x = facet_scales) +
   theme(
     text = element_text(family = "Times New Roman"),      # Global text settings
-    strip.text = element_text(size = 14, face = "bold"),  # Facet titles
+    strip.text.x = element_text(size = 14, face = "bold"),
     plot.title = element_text(size = 20, face = "bold"),  # Main title
-    axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+    axis.title = element_text(size = 15, face = "bold", margin = margin(t = 30)),  # Axis titles
     axis.text = element_text(size = 12, face = "bold"),   # Axis text
-    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0),
+    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0, margin = margin(t = -17)),
+    axis.title.y = element_text(margin = margin(r = -15, unit = "pt")),
     legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
-    axis.ticks.x = element_blank()
+    axis.ticks.x = element_blank(),
+    panel.spacing = unit(0.01, "lines")      # Size of item labels
   ) +
-  labs(x = "Sample ID")
+  labs(x = "Mouse ID")
 p
+ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackbar.png", plot = p, bg = "white", height = 6, width = 8, dpi = 300)
 
 
-
-
-
-
-
-
-
-
-
-# For microbiota 17 - specific to Samuel's data, and wt only
+# For microbiota 17 - specific to Samuel's data, and il22 ko only
+{
 #set working directory
 setwd("~/Documents/CHUM_git/Microbiota_17/")
 asv_table <- as.data.frame(fread("asv_table/seqtab.nochim_run_m1.csv", sep = ";"))
@@ -339,6 +339,7 @@ length(taxa_sums(ps_samuel))
   sum(taxa_sums(ps_samuel))
   length(taxa_sums(ps_samuel))
 }
+
 
 #for Samuel's data, put treatment as factor and define order
 sample_data(ps_samuel)$treatment <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle", "Putrescine")) # Vehicle as reference
@@ -447,6 +448,6 @@ p <- plot +
   ) +
   labs(x = "Sample ID")
 p
-
+}
 
                                            
