@@ -2008,6 +2008,12 @@ plot_microbiota_timepoints <- function(ps_object = ps,
     colnames(df_long)[colnames(df_long) == "sum"] <- "value"  
     
     
+    df_test <- df_long %>%
+      group_by("plot_taxa","gg_group") %>%
+      slice(1)
+    
+    View(df_test)
+    
     
     #plot
     p <-

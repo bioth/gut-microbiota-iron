@@ -99,7 +99,9 @@ ggplot(data = df, aes(x = timepoint, y = percentage, fill = gg_group)) +
   geom_point(aes(color = gg_group), position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.8))+
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
-        panel.background = element_blank())
+        panel.background = element_blank())+
+  scale_color_manual(values = c("blue","red","deepskyblue", "brown1"))+
+  scale_fill_manual(values = c("blue","red","deepskyblue", "brown1"))
 
 
 

@@ -584,9 +584,9 @@ for(timePoint in levels(sample_data(ps_claire)$week)[2:3]){
   print(resultsNames(deseq_subset))
   
   # Correlation for all groups, species level
-  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_14/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_14/", df = variables, global = TRUE, showIndivCor = TRUE, transformation = "CLR", displayOnlySig = TRUE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, colorsHmap = c("#d1762d","#639381"))
   p$layers <- p$layers[-2] # Remove the second layer (geom_text)
-  p <- p+
+  plot <- p+
     # coord_fixed() + # Makes thing squared
     geom_text(aes(label = significance), color = "black", size = 6) +
     scale_x_discrete(labels = function(x) gsub(" ", "\n", x), expand = c(0,0)) +  # Replace space with newline
@@ -598,15 +598,15 @@ for(timePoint in levels(sample_data(ps_claire)$week)[2:3]){
       axis.ticks = element_blank(),
       axis.title.x = element_text(size = 16, face = "bold", vjust = -1),  # Axis titles
       axis.title.y = element_text(size = 16, face = "bold"),
-      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5),   # Axis text
+      axis.text.x = element_text(size = 12, angle = 0, hjust = 0.5, face = "bold"),   # Axis text
       axis.text.y = element_text(size = 12),   # Axis text
       legend.title = element_text(face = "bold", size = 16, vjust = 3),  # Legend title  # Legend text]
       legend.key.height = unit(1.25, "cm")
     ) #axis.text.x = element_text(angle = -45, hjust = 1)
   
-  p
+  plot
   ggsave(filename = "~/Documents/CHUM_git/figures/Claire_final/correlation_heatmaps/week_10/Species/all_groups/cor_hmap_week10.png",
-         plot = p, bg = "white", height = 6, width = 8, dpi = 300)
+         plot = plot, bg = "white", height = 6, width = 8, dpi = 300)
 }
 
 
@@ -903,6 +903,8 @@ sample_data(ps_claire)$diet
 sample_data(ps_claire)$gg_group
 sample_data(ps_claire)$week
 
+tax_table(ps_claire)[,"Family"] <- gsub("\\[|\\]", "", tax_table(ps_claire)[,"Family"]) # Get rid of brackets for some Family names
+
 iron_exp_family <- plot_microbiota_timepoints(
   ps_object = ps_claire,
   exp_group = "diet",
@@ -979,18 +981,18 @@ p <- iron_exp_family$plot +
         plot.title = element_text(size = 20, face = "bold"),  # Main title
         axis.title = element_text(size = 15, face = "bold"),  # Axis titles
         axis.text = element_text(size = 12, face = "bold"),   # Axis text
-        axis.text.x = element_text(angle = 0, hjust = 0.5, margin = margin(t = -5)),
+        axis.text.x = element_text(angle = 0, hjust = 0.5, margin = margin(t = -5), size = 7),
         axis.title.y = element_text(margin = margin(r = -15, unit = "pt")),
         legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
         axis.ticks.x = element_blank()) +
   # scale_x_discrete(labels = function(x) substr(x, 1, 5))+
   facetted_pos_scales(x = facet_scales)+
-  labs(x = "Mouse ID")
+  labs(x = "Mouse number")
 p
 
 # Saving the plot and the associated stats
 existingDirCheck("../figures/Claire_final/stackbar")
-ggsave(plot = p, filename = "../figures/Claire_final/stackbar/family_stackbar.png", width = 11, height = 5.5, dpi = 300)
+ggsave(plot = p, filename = "../figures/Claire_final/stackbar/family_stackbar.png", width = 9.5, height = 5.5, dpi = 300)
 writeStackbarExtendedSigTable(main_table = iron_exp_family$significant_table_main, sub_table = iron_exp_family$significant_table_sub, includeSubTable = TRUE, filepath = "../figures/Claire_final/stackbar/stackbar_stats.xlsx")
 writeStackbarExtendedSigTable(main_table = iron_exp_family$full_table_main, sub_table = iron_exp_family$full_table_sub, includeSubTable = TRUE, filepath = "../figures/Claire_final/stackbar/full_stackbar_stats.xlsx")
 

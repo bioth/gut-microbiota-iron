@@ -169,14 +169,15 @@ customColors = list(list('black','#A22004'))
   #Preparing dataframe for correlation
   variables <- read.xlsx("~/Documents/CHUM_git/figures/old/samuel/correlation/Samuel's Combine Data_Correlation.xlsx")
   rownames(variables) <- variables$X3
-  variables <- variables[,c(6:11)]
-  colnames(variables) <- c("DAI_end_point","EcNC101_colonisation","lcn-2","il-6","tnf-α","colon_length")
+  variables <- variables[,c(6:11)] 
+  variables <- variables[,c(2,1,6,3,4,5)] # rearrange col order
+  colnames(variables) <- c("EcNC101 colonisation","Disease activity index end point","Colon length","LCN-2","IL-6","TNF-α")
   
   customColors = list('black','#A22004')
   p <- correlation2Var(ps_samuel, deseq_samuel, measure = "log2fold", "treatment", taxa = "Species",
                   displayPvalue = FALSE, threshold = 0.05, path = "~/Documents/CHUM_git/figures/Samuel_final_wt/correlation/",
                   df = variables, global = TRUE, showIndivCor = TRUE, transformation = "rel_ab",
-                  displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, colorsHmap = c("#002bff","#ff002b"))
+                  displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, colorsHmap = c("#d1762d","#639381"))
   
   plot <- p+
     coord_fixed() + # Makes thing squared
@@ -196,7 +197,8 @@ customColors = list(list('black','#A22004'))
       legend.text = element_text(size = 12),
       axis.text.x = element_text(angle = -45, hjust = 1, size = 14),
       axis.text.y = element_text(face = "bold.italic", size = 14),
-      legend.key.height = unit(1.25, "cm"),
+      legend.key.height = unit(1.15, "cm"),
+      legend.justification = c(0.5, 0),
       axis.ticks.x = element_blank(),
       axis.ticks.y = element_blank())
   plot
@@ -231,22 +233,26 @@ facet_scales <- lapply(seq_along(facet_levels), function(i) {
 
 
 p <- plot + 
+  facet_wrap2(~ treatment, 
+              scales  = "free_x", nrow = 1, ncol = 2,
+              strip = strip_themed(background_x = elem_list_rect(fill = c('black','#A22004'))))+
   facetted_pos_scales(x = facet_scales) +
+  
   theme(
     text = element_text(family = "Times New Roman"),      # Global text settings
-    strip.text.x = element_text(size = 14, face = "bold"),
+    strip.text.x = element_text(size = 14, face = "bold", color = "white"),
     plot.title = element_text(size = 20, face = "bold"),  # Main title
     axis.title = element_text(size = 15, face = "bold", margin = margin(t = 30)),  # Axis titles
     axis.text = element_text(size = 12, face = "bold"),   # Axis text
-    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0, margin = margin(t = -17)),
+    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0, margin = margin(t = -17), size = 9),
     axis.title.y = element_text(margin = margin(r = -15, unit = "pt")),
     legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
     axis.ticks.x = element_blank(),
     panel.spacing = unit(0.01, "lines")      # Size of item labels
   ) +
-  labs(x = "Mouse ID")
+  labs(x = "Mouse number")
 p
-ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackbar.png", plot = p, bg = "white", height = 6, width = 8, dpi = 300)
+ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackbar.png", plot = p, bg = "white", height = 6, width = 7, dpi = 300)
 
 
 # For microbiota 17 - specific to Samuel's data, and il22 ko only

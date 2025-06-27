@@ -26,6 +26,7 @@
   library(pairwiseAdonis)
   library(caret)
   library(ggh4x)
+  library(ggpicrust2)
   
 }
 
@@ -38,6 +39,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/re
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/deseq2_log2fold_change_analysis.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/chronobiome.R")
 
 # For microbiota 19
 #set working directory
@@ -1107,7 +1109,185 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
 
 }
 
+# Picrust2 - last timepoint - abx groups only
+{
+  meta <- metadata[metadata$treatment == "abx" & metadata$timepoint == "final",]
+  meta <- metadata[metadata$timepoint == "35",]
+  
+  # Trying with pathways data directly
+  pwys_predicted <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/pathways_out/path_abun_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(pwys_predicted)[2:ncol(pwys_predicted)] <- substring(colnames(pwys_predicted)[2:ncol(pwys_predicted)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(pwys_predicted)) 
+  pwys_predicted <- pwys_predicted[,c(1,indexes)] # Keep only samples for 10 weeks
+  mapping <- read.xlsx("~/Documents/CHUM_git/picrust2 database/pathway_mapping.xlsx")
+  pwys <- merge(pwys_predicted, mapping, by.x = "pathway", by.y = "id") # Retrieve pathway names with mapping with ids
+  pwys <- pwys[,-1]
+  
+  # Perform differential abundance analysis
+  pwy_daa_results_df <- pathway_daa(
+    abundance = pwys %>% column_to_rownames("pathway.y"),
+    metadata = meta,
+    group = "diet",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- pwy_daa_results_df %>%
+    filter(p_adjust < 0.005)
+  
+  # Create the heatmap
+  pathway_heatmap(
+    abundance = pwys %>%
+      right_join(
+        feature_with_p_0.05 %>% select(all_of(c("feature"))),
+        by = c("pathway.y" = "feature")
+      ) %>%
+      column_to_rownames("pathway.y"),
+    metadata = metadata,
+    group = "diet",
+    colors = c("deepskyblue","brown1"),
+    custom_theme = theme(strip.text = element_text(color = "white"))
+  )
+  existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
+}
 
+# Chronobiome
+{
+  theme_chronobiome <- function() {
+    theme_bw(base_size = 12) +
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(color = "black", face = "bold"),
+        axis.title = element_text(size = 14, face = "bold"),
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 10),
+        panel.spacing = unit(0, "lines"),
+        legend.title = element_text(face = "bold"),
+        strip.text = element_text(face = "bold", color = "white", size = 12)
+      )
+  }
+  
+  sample_data(ps_flt_diet)$diet <- factor(sample_data(ps_flt_diet)$diet, labels = c("50 ppm","500 ppm"))
+  
+  p <- plot_timeline_2_groups(
+    ps_object = ps_flt_diet,
+    exp_group =  "diet", # must be as factor
+    time_group = "week", # must be as factor
+    sample_name = "sample_id",
+    main_level = 'Phylum',
+    sub_level = 'Family',
+    average_relab_per_group = TRUE,
+    n_phy = 4,
+    differential_analysis = FALSE,
+    test = c("Wald", "LRT")[1],
+    fdr_threshold = 0.05,
+    sig_lab = FALSE,
+    fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
+    sfType = c("ratio", "poscounts", "iterate")[1],
+    betaPrior = FALSE,
+    reduced = FALSE,
+    quiet = TRUE,
+    minReplicatesForReplace = 7,
+    modelMatrixType = c("standard", "expanded")[1],
+    useT = FALSE,
+    minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
+    parallel = FALSE,
+    custom_theme = theme_chronobiome()
+  )
+  p+
+    facet_wrap2(~ diet, 
+                scales  = "free_x", nrow = 2, ncol = 1,
+                strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red"))))+
+    labs(x = "Time (weeks)")+
+
+  
+  existingDirCheck("../figures/Thibault_abx/chronobiome")
+  ggsave("../figures/Thibault_abx/chronobiome/diet_chronobiome.png", width = 7, height = 8, dpi = 500, bg = "white")
+  
+  sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
+  
+  p <- plot_timeline_2_groups(
+    ps_object = ps_flt_all,
+    exp_group =  "gg_group2", # must be as factor
+    time_group = "week", # must be as factor
+    sample_name = "sample_id",
+    main_level = 'Phylum',
+    sub_level = 'Family',
+    average_relab_per_group = TRUE,
+    n_phy = 4,
+    differential_analysis = FALSE,
+    test = c("Wald", "LRT")[1],
+    fdr_threshold = 0.05,
+    sig_lab = FALSE,
+    fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
+    sfType = c("ratio", "poscounts", "iterate")[1],
+    betaPrior = FALSE,
+    reduced = FALSE,
+    quiet = TRUE,
+    minReplicatesForReplace = 7,
+    modelMatrixType = c("standard", "expanded")[1],
+    useT = FALSE,
+    minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
+    parallel = FALSE,
+    custom_theme = theme_chronobiome()
+    
+  )
+  p
+  p+
+    facet_wrap2(~ gg_group2, 
+              scales  = "free_x", nrow = 2, ncol = 2,
+              strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red","deepskyblue","brown1"))))+
+    scale_x_continuous(n.breaks = 12)+
+    labs(x = "Time (weeks)")
+
+  
+  ggsave("../figures/Thibault_abx/chronobiome/diet_abx_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
+  
+  
+  # Graphs for a single taxonomic level and their associated sub taxa
+  unique(tax_table(ps_flt_diet)[,"Phylum"]) # Check numbers of unique phyla
+  plot_timeline_taxa(ps_object = ps_flt_diet,
+                     exp_group =  "diet", # must be as factor
+                     time_group = "week", # must be as factor
+                     sample_name = "sample_id",
+                     main_level = 'Phylum',
+                     sub_level = 'Family',
+                     average_relab_per_group = TRUE,
+                     threshold = 0.01,
+                     n_phy = 4,
+                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/test/",
+                     custom_theme = theme_chronobiome(),
+                     additionnalAes = list(facet_wrap2(~ diet, 
+                                                    scales  = "free_x", nrow = 2, ncol = 1,
+                                                    strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red")))),
+                                          labs(x = "Time (weeks)")))
+  
+  
+  
+  sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
+  
+  plot_timeline_taxa(ps_object = ps_flt_all,
+                     exp_group =  "gg_group2", # must be as factor
+                     time_group = "week", # must be as factor
+                     sample_name = "sample_id",
+                     main_level = 'Phylum',
+                     sub_level = 'Family',
+                     average_relab_per_group = TRUE,
+                     threshold = 0.01,
+                     n_phy = 4,
+                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/test2/",
+                     dim = c(9,7),
+                     custom_theme = theme_chronobiome(),
+                     additionnalAes = list(facet_wrap2(~ gg_group2, 
+                                                       scales  = "free_x", nrow = 2, ncol = 2,
+                                                       strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red","deepskyblue","brown1")))),
+                                           labs(x = "Time (weeks)"), scale_x_continuous(n.breaks = 12)))
+}
 
 
 
@@ -1396,34 +1576,8 @@ points(nmds, col = as.factor(sample_data$DietGroup), pch = 16)
 
 
 
-#### Tests for timeline graphs ####
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipelinelinux/microbiota_analysis/chronobiome.R")
 
-plot_timeline_2_groups(
-  ps_object = ps_flt_diet,
-  exp_group =  "diet", # must be as factor
-  time_group = "week", # must be as factor
-  sample_name = "sample_id",
-  main_level = 'Phylum',
-  sub_level = 'Family',
-  average_relab_per_group = TRUE,
-  n_phy = 4,
-  differential_analysis = FALSE,
-  test = c("Wald", "LRT")[1],
-  fdr_threshold = 0.05,
-  sig_lab = FALSE,
-  fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
-  sfType = c("ratio", "poscounts", "iterate")[1],
-  betaPrior = FALSE,
-  reduced = FALSE,
-  quiet = TRUE,
-  minReplicatesForReplace = 7,
-  modelMatrixType = c("standard", "expanded")[1],
-  useT = FALSE,
-  minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
-  parallel = FALSE
-  
-)
+
 
 
 
@@ -1509,3 +1663,11 @@ ps_subset <- prune_samples(sample_data(ps_flt_diet)$diet == "50", ps_flt_diet)
 ps_taxa <- tax_glom(ps_subset, taxrank = "Phylum")
 deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ week)
 deseq_subset <- DESeq(deseq_subset, test="LRT", reduced = ~1)
+
+
+
+
+
+
+library(KEGGREST)
+keggGet("K00001")[[1]]$BRITE

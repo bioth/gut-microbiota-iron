@@ -175,7 +175,7 @@ pwy_daa_results_df <- pathway_daa(
 
 # Filter features with p < 0.05
 feature_with_p_0.05 <- pwy_daa_results_df %>%
-  filter(p_adjust < 0.01)
+  filter(p_adjust < 0.05)
 
 # Create the heatmap
 pathway_heatmap(
@@ -190,6 +190,7 @@ pathway_heatmap(
   colors = c("blue","red")
 )
 ggsave("~/Documents/CHUM_git/figures/Claire_final/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
+write.xlsx(feature_with_p_0.05, "~/Documents/CHUM_git/figures/Claire_final/picrust2/picrust2_results.xlsx")
 
 
 
@@ -226,12 +227,12 @@ ggsave("~/Documents/CHUM_git/figures/Claire_final/picrust2/pwy_hmap.png", bg = "
 }
 
 # Trying with pathways data directly
-pwys_predicted <- read.table("../../../picrust2/input/picrust2_out_pipeline/pathways_out/path_abun_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+pwys_predicted <- read.table("~/Documents/CHUM_git/Microbiota_17/picrust2/input/picrust2_out_pipeline/pathways_out/path_abun_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
 colnames(pwys_predicted)[2:ncol(pwys_predicted)] <- substring(colnames(pwys_predicted)[2:ncol(pwys_predicted)], 2)
 pattern <- paste(metadata$sample_id, collapse = "|")
 indexes <-  grep(pattern, colnames(pwys_predicted)) 
 pwys_predicted <- pwys_predicted[,c(1,indexes)] # Keep only samples for 10 weeks
-mapping <- read.xlsx("../../../../picrust2 database/pathway_mapping.xlsx")
+mapping <- read.xlsx("~/Documents/CHUM_git/picrust2 database/pathway_mapping.xlsx")
 pwys <- merge(pwys_predicted, mapping, by.x = "pathway", by.y = "id") # Retrieve pathway names with mapping with ids
 pwys <- pwys[,-1]
 
@@ -263,6 +264,6 @@ pathway_heatmap(
 )
 existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2")
 ggsave("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
-
+write.xlsx(feature_with_p_0.05, "~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/picrust2_results.xlsx")
 
 
