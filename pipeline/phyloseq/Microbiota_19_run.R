@@ -1182,21 +1182,8 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     main_level = 'Phylum',
     sub_level = 'Family',
     average_relab_per_group = TRUE,
+    smoothing = FALSE,
     n_phy = 4,
-    differential_analysis = FALSE,
-    test = c("Wald", "LRT")[1],
-    fdr_threshold = 0.05,
-    sig_lab = FALSE,
-    fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
-    sfType = c("ratio", "poscounts", "iterate")[1],
-    betaPrior = FALSE,
-    reduced = FALSE,
-    quiet = TRUE,
-    minReplicatesForReplace = 7,
-    modelMatrixType = c("standard", "expanded")[1],
-    useT = FALSE,
-    minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
-    parallel = FALSE,
     custom_theme = theme_chronobiome()
   )
   p+
@@ -1219,23 +1206,9 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     main_level = 'Phylum',
     sub_level = 'Family',
     average_relab_per_group = TRUE,
+    smoothing = TRUE,
     n_phy = 4,
-    differential_analysis = FALSE,
-    test = c("Wald", "LRT")[1],
-    fdr_threshold = 0.05,
-    sig_lab = FALSE,
-    fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
-    sfType = c("ratio", "poscounts", "iterate")[1],
-    betaPrior = FALSE,
-    reduced = FALSE,
-    quiet = TRUE,
-    minReplicatesForReplace = 7,
-    modelMatrixType = c("standard", "expanded")[1],
-    useT = FALSE,
-    minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
-    parallel = FALSE,
     custom_theme = theme_chronobiome()
-    
   )
   p
   p+
@@ -1246,28 +1219,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     labs(x = "Time (weeks)")
 
   
-  ggsave("../figures/Thibault_abx/chronobiome/diet_abx_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
-  
-  
-  # Graphs for a single taxonomic level and their associated sub taxa
-  unique(tax_table(ps_flt_diet)[,"Phylum"]) # Check numbers of unique phyla
-  plot_timeline_taxa(ps_object = ps_flt_diet,
-                     exp_group =  "diet", # must be as factor
-                     time_group = "week", # must be as factor
-                     sample_name = "sample_id",
-                     main_level = 'Phylum',
-                     sub_level = 'Family',
-                     average_relab_per_group = TRUE,
-                     threshold = 0.01,
-                     n_phy = 4,
-                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/test/",
-                     custom_theme = theme_chronobiome(),
-                     additionnalAes = list(facet_wrap2(~ diet, 
-                                                    scales  = "free_x", nrow = 2, ncol = 1,
-                                                    strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red")))),
-                                          labs(x = "Time (weeks)")))
-  
-  
+  ggsave("../figures/Thibault_abx/chronobiome/diet_abx_smoothed_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
   
   sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
   
@@ -1278,9 +1230,10 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
                      main_level = 'Phylum',
                      sub_level = 'Family',
                      average_relab_per_group = TRUE,
-                     threshold = 0.01,
+                     smoothing = TRUE,
+                     threshold = 1,
                      n_phy = 4,
-                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/test2/",
+                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/smoothing/",
                      dim = c(9,7),
                      custom_theme = theme_chronobiome(),
                      additionnalAes = list(facet_wrap2(~ gg_group2, 

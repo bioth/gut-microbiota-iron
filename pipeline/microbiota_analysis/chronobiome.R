@@ -9,24 +9,11 @@ plot_timeline_2_groups <- function(
     main_level = 'Phylum',
     sub_level = 'Family',
     threshold = 1,
+    smoothing = FALSE,
     average_relab_per_group = TRUE,
     n_phy,
     hues = c("Oranges", "Greens", "Blues", "Purples"),
     color_bias = 2,
-    differential_analysis = FALSE,
-    test = c("Wald", "LRT")[1],
-    fdr_threshold = 0.05,
-    sig_lab = FALSE,
-    fitType = c("parametric", "local", "mean", "glmGamPoi")[1],
-    sfType = c("ratio", "poscounts", "iterate")[1],
-    betaPrior = FALSE,
-    reduced = FALSE,
-    quiet = TRUE,
-    minReplicatesForReplace = 7,
-    modelMatrixType = c("standard", "expanded")[1],
-    useT = FALSE,
-    minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
-    parallel = FALSE,
     custom_theme = NULL,
     additionnalAes = NULL
 ){
@@ -190,356 +177,7 @@ plot_timeline_2_groups <- function(
                                     "Others ")
   }
 
-  #### 3. Differential Analysis (Optional) ####
-  significant_features_sub <- NULL
-  significant_features_main <- NULL
-  
-  if (differential_analysis) {
-    # -- Two-group (if only 2 groups and not using multiple comparisons) --
-    if (!mult_comp && length(unique(meta[[exp_group]])) == 2) {
-      # Sub-level analysis
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
-      if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
-        fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
-      }
-      diagdds <- phyloseq_to_deseq2(fam_glom, formula(paste("~", exp_group)))
-      if (test == "Wald") {
-        diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                      betaPrior = betaPrior, quiet = quiet,
-                      minReplicatesForReplace = minReplicatesForReplace,
-                      modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                      parallel = parallel)
-      } else {
-        diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                      betaPrior = betaPrior, reduced = formula(reduced), quiet = quiet,
-                      minReplicatesForReplace = minReplicatesForReplace,
-                      modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                      parallel = parallel)
-      }
-      res <- results(diag)
-      significant_features <- subset(res, padj < fdr_threshold)
-      if (nrow(significant_features) == 0) {
-        message("No significant feature detected at ", sub_level, " level.")
-      } else {
-        significant_features <- as.data.frame(cbind(significant_features,
-                                                    tax_table(fam_glom)[rownames(tax_table(fam_glom)) %in%
-                                                                          rownames(significant_features), ]))
-        significant_features_sub <- significant_features
-        df_long$differential_abundance <- FALSE
-        df_long$differential_abundance[df_long$plot_taxa %in% significant_features[, sub_level]] <- TRUE
-        significant_features$stars <- ""
-        if (sig_lab == TRUE) {
-          significant_features$stars <- symnum(significant_features$padj,
-                                               symbols = c("***", "**", "*", ""),
-                                               cutpoints = c(0, .001, .01, .05, 1),
-                                               corr = FALSE)
-          star_vec <- significant_features$stars[match(df_long$plot_taxa, significant_features[, sub_level])]
-          star_vec[is.na(star_vec)] <- ""
-          df_long$plot_taxa <- paste0(df_long$plot_taxa, " ", star_vec)
-        }
-        df_long$legend_label <- ifelse(df_long$differential_abundance,
-                                       paste0("<b>", df_long$plot_taxa, "</b>"),
-                                       as.character(df_long$plot_taxa))
-        df_long$plot_taxa <- df_long$legend_label
-        df_long$plot_taxa <- factor(df_long$plot_taxa, levels = unique(df_long$plot_taxa))
-      }
-      
-      # Main-level analysis
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
-      if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
-        main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
-      }
-      diagdds_main <- phyloseq_to_deseq2(main_glom, formula(paste("~", exp_group)))
-      if (test == "Wald") {
-        diag_main <- DESeq(diagdds_main, test = test, fitType = fitType, sfType = sfType,
-                           betaPrior = betaPrior, quiet = quiet,
-                           minReplicatesForReplace = minReplicatesForReplace,
-                           modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                           parallel = parallel)
-      } else {
-        diag_main <- DESeq(diagdds_main, test = test, fitType = fitType, sfType = sfType,
-                           betaPrior = betaPrior, reduced = formula(reduced), quiet = quiet,
-                           minReplicatesForReplace = minReplicatesForReplace,
-                           modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                           parallel = parallel)
-      }
-      res_main <- results(diag_main)
-      significant_features_main <- subset(res_main, padj < fdr_threshold)
-      if (nrow(significant_features_main) == 0) {
-        message("No significant feature detected at ", main_level, " level.")
-      } else {
-        significant_features_main <- as.data.frame(cbind(significant_features_main,
-                                                         tax_table(main_glom)[rownames(tax_table(main_glom)) %in%
-                                                                                rownames(significant_features_main), ]))
-        df_long$differential_abundance_main <- FALSE
-        df_long$differential_abundance_main[df_long[, main_level] %in% significant_features_main[, main_level]] <- TRUE
-        df_long$legend_label_main <- df_long[, main_level]
-        significant_features_main$stars <- ""
-        if (sig_lab == TRUE) {
-          significant_features_main$stars <- symnum(significant_features_main$padj,
-                                                    symbols = c("***", "**", "*", ""),
-                                                    cutpoints = c(0, .001, .01, .05, 1),
-                                                    corr = FALSE)
-          star_vec_main <- significant_features_main$stars[match(df_long[, main_level],
-                                                                 significant_features_main[, main_level])]
-          star_vec_main[is.na(star_vec_main)] <- ""
-          df_long[, main_level] <- paste0(df_long[, main_level], " ", star_vec_main)
-          significant_features_main <- significant_features_main[, -ncol(significant_features_main)]
-        }
-        df_long[, main_level] <- ifelse(df_long$differential_abundance_main,
-                                        paste0("<b>", df_long[, main_level], "</b>"),
-                                        as.character(df_long[, main_level]))
-        df_long[, main_level] <- factor(df_long[, main_level], levels = unique(df_long[, main_level]))
-      }
-    }
-    
-    # -- Multiple Comparisons Differential Analysis (if mult_comp is TRUE) --
-    if (mult_comp) {
-      # Sub-level multiple comparisons
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
-      if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
-        fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
-      }
-      if (twoFactor) {
-        diagdds <- phyloseq_to_deseq2(fam_glom, formula(paste("~", fac1, "+", fac2, "+", fac1, ":", fac2)))
-        colData(diagdds)[[fac1]] <- relevel(colData(diagdds)[[fac1]], ref = refFac1)
-        colData(diagdds)[[fac2]] <- relevel(colData(diagdds)[[fac2]], ref = refFac2)
-      } else {
-        diagdds <- phyloseq_to_deseq2(fam_glom, formula(paste("~", exp_group)))
-      }
-      if (test == "Wald") {
-        diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                      betaPrior = betaPrior, quiet = quiet,
-                      minReplicatesForReplace = minReplicatesForReplace,
-                      modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                      parallel = parallel)
-      } else {
-        diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                      betaPrior = betaPrior, reduced = formula(reduced), quiet = quiet,
-                      minReplicatesForReplace = minReplicatesForReplace,
-                      modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                      parallel = parallel)
-      }
-      comparisons <- combn(levels(meta[[exp_group]]), 2, simplify = FALSE)
-      if (!is.null(selected_comparisons)) {
-        comparisons <- Filter(function(cmp) {
-          any(sapply(selected_comparisons, function(sel) all(sel == cmp)))
-        }, comparisons)
-      }
-      comparison_names <- sapply(comparisons, function(cmp) paste(cmp, collapse = "_vs_"))
-      results_list <- list()
-      if (twoFactor) {
-        res_subset1 <- results(diag, contrast = list(c(resultsNames(diag)[3])))
-        res_subset2 <- results(diag, contrast = list(c(resultsNames(diag)[3], resultsNames(diag)[4])))
-        res_subset3 <- results(diag, contrast = list(c(resultsNames(diag)[2])))
-        res_subset4 <- results(diag, contrast = list(c(resultsNames(diag)[2], resultsNames(diag)[4])))
-        results_list <- append(results_list, list(res_subset1, res_subset2, res_subset3, res_subset4))
-      } else {
-        results_list <- lapply(comparisons, function(cmp) {
-          contrast_vec <- c(exp_group, cmp[1], cmp[2])
-          tryCatch({
-            res <- results(diag, contrast = contrast_vec)
-            return(res)
-          }, error = function(e) {
-            message("Failed to compute results for comparison: ", paste(cmp, collapse = " vs "),
-                    "\nError: ", e$message)
-            return(NULL)
-          })
-        })
-      }
-      results_list <- setNames(results_list, comparison_names)
-      significant_features_sub <- list()
-      for (i in seq_along(results_list)) {
-        res <- results_list[[i]]
-        comparison_name <- names(results_list)[i]
-        significant_features <- subset(res, padj < fdr_threshold)
-        if (nrow(significant_features) == 0) {
-          message("No significant feature detected for comparison ", comparison_name,
-                  " at the ", sub_level, " level.")
-        } else {
-          significant_features <- cbind(significant_features,
-                                        tax_table(fam_glom)[rownames(tax_table(fam_glom)) %in%
-                                                              rownames(significant_features), , drop = FALSE])
-          significant_features <- as.data.frame(significant_features)
-          significant_features_sub[[comparison_name]] <- significant_features
-        }
-      }
-      
-      # Main-level multiple comparisons
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
-      if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
-        main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
-      }
-      if (twoFactor) {
-        diagdds <- phyloseq_to_deseq2(main_glom, formula(paste("~", fac1, "+", fac2, "+", fac1, ":", fac2)))
-        colData(diagdds)[[fac1]] <- relevel(colData(diagdds)[[fac1]], ref = refFac1)
-        colData(diagdds)[[fac2]] <- relevel(colData(diagdds)[[fac2]], ref = refFac2)
-      } else {
-        diagdds <- phyloseq_to_deseq2(main_glom, formula(paste("~", exp_group)))
-      }
-      if (test == "Wald") {
-        diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                      betaPrior = betaPrior, quiet = quiet,
-                      minReplicatesForReplace = minReplicatesForReplace,
-                      modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                      parallel = parallel)
-      } else {
-        diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                      betaPrior = betaPrior, reduced = formula(reduced), quiet = quiet,
-                      minReplicatesForReplace = minReplicatesForReplace,
-                      modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                      parallel = parallel)
-      }
-      comparisons <- combn(levels(meta[[exp_group]]), 2, simplify = FALSE)
-      if (!is.null(selected_comparisons)) {
-        comparisons <- Filter(function(cmp) {
-          any(sapply(selected_comparisons, function(sel) all(sel == cmp)))
-        }, comparisons)
-      }
-      comparison_names <- sapply(comparisons, function(cmp) paste(cmp, collapse = "_vs_"))
-      results_list <- list()
-      if (twoFactor) {
-        res_subset1 <- results(diag, contrast = list(c(resultsNames(diag)[3])))
-        res_subset2 <- results(diag, contrast = list(c(resultsNames(diag)[3], resultsNames(diag)[4])))
-        res_subset3 <- results(diag, contrast = list(c(resultsNames(diag)[2])))
-        res_subset4 <- results(diag, contrast = list(c(resultsNames(diag)[2], resultsNames(diag)[4])))
-        results_list <- append(results_list, list(res_subset1, res_subset2, res_subset3, res_subset4))
-      } else {
-        results_list <- lapply(comparisons, function(cmp) {
-          contrast_vec <- c(exp_group, cmp[1], cmp[2])
-          tryCatch({
-            res <- results(diag, contrast = contrast_vec)
-            return(res)
-          }, error = function(e) {
-            message("Failed to compute results for comparison: ", paste(cmp, collapse = " vs "),
-                    "\nError: ", e$message)
-            return(NULL)
-          })
-        })
-      }
-      results_list <- setNames(results_list, comparison_names)
-      significant_features_main <- list()
-      for (i in seq_along(results_list)) {
-        res <- results_list[[i]]
-        comparison_name <- names(results_list)[i]
-        significant_features <- subset(res, padj < fdr_threshold)
-        if (nrow(significant_features) == 0) {
-          message("No significant feature detected for comparison ", comparison_name,
-                  " at the ", main_level, " level.")
-        } else {
-          significant_features <- cbind(significant_features,
-                                        tax_table(main_glom)[rownames(tax_table(main_glom)) %in%
-                                                               rownames(significant_features), , drop = FALSE])
-          significant_features <- as.data.frame(significant_features)
-          significant_features_main[[comparison_name]] <- significant_features
-        }
-      }
-    }
-    
-    # -- Timepoints-Specific Differential Analysis --
-    if (timePoints) {
-      ## Sub-level analysis per timepoint
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
-      if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
-        fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
-      }
-      comparisons <- combn(levels(meta[[combined_group]]), 2, simplify = FALSE)
-      if (!is.null(selected_comparisons)) {
-        comparisons <- Filter(function(cmp) {
-          any(sapply(selected_comparisons, function(sel) all(sel == cmp)))
-        }, comparisons)
-      }
-      comparison_names <- sapply(comparisons, function(cmp) paste(cmp, collapse = "_vs_"))
-      results_list <- list()
-      for(i in seq_along(levels(sample_data(ps_object)[[time_variable]]))) {
-        fam_subset <- prune_samples(sample_data(ps_object)[[time_variable]] == 
-                                      levels(sample_data(ps_object)[[time_variable]])[i], fam_glom)
-        diagdds <- phyloseq_to_deseq2(fam_subset, formula(paste("~", exp_group)))
-        if (test == "Wald") {
-          diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                        betaPrior = betaPrior, quiet = quiet,
-                        minReplicatesForReplace = minReplicatesForReplace,
-                        modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                        parallel = parallel)
-        } else {
-          diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                        betaPrior = betaPrior, reduced = formula(reduced), quiet = quiet,
-                        minReplicatesForReplace = minReplicatesForReplace,
-                        modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                        parallel = parallel)
-        }
-        results_list[[comparison_names[i]]] <- results(diag, contrast = list(c(resultsNames(diag)[2])))
-      }
-      significant_features_sub <- list()
-      for (i in seq_along(results_list)) {
-        res <- results_list[[i]]
-        comparison_name <- names(results_list)[i]
-        significant_features <- subset(res, padj < fdr_threshold)
-        if (nrow(significant_features) == 0) {
-          message("No significant feature detected for comparison ", comparison_name,
-                  " at the ", sub_level, " level (timepoint).")
-        } else {
-          significant_features <- cbind(significant_features,
-                                        tax_table(fam_subset)[rownames(tax_table(fam_subset)) %in%
-                                                                rownames(significant_features), , drop = FALSE])
-          significant_features <- as.data.frame(significant_features)
-          significant_features_sub[[comparison_name]] <- significant_features
-        }
-      }
-      
-      ## Main-level analysis per timepoint
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
-      if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
-        main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
-      }
-      comparisons <- combn(levels(meta[[combined_group]]), 2, simplify = FALSE)
-      if (!is.null(selected_comparisons)) {
-        comparisons <- Filter(function(cmp) {
-          any(sapply(selected_comparisons, function(sel) all(sel == cmp)))
-        }, comparisons)
-      }
-      comparison_names <- sapply(comparisons, function(cmp) paste(cmp, collapse = "_vs_"))
-      results_list <- list()
-      for(i in seq_along(levels(sample_data(ps_object)[[time_variable]]))) {
-        main_subset <- prune_samples(sample_data(ps_object)[[time_variable]] == 
-                                       levels(sample_data(ps_object)[[time_variable]])[i], main_glom)
-        diagdds <- phyloseq_to_deseq2(main_subset, formula(paste("~", exp_group)))
-        if (test == "Wald") {
-          diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                        betaPrior = betaPrior, quiet = quiet,
-                        minReplicatesForReplace = minReplicatesForReplace,
-                        modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                        parallel = parallel)
-        } else {
-          diag <- DESeq(diagdds, test = test, fitType = fitType, sfType = sfType,
-                        betaPrior = betaPrior, reduced = formula(reduced), quiet = quiet,
-                        minReplicatesForReplace = minReplicatesForReplace,
-                        modelMatrixType = modelMatrixType, useT = useT, minmu = minmu,
-                        parallel = parallel)
-        }
-        results_list[[comparison_names[i]]] <- results(diag, contrast = list(c(resultsNames(diag)[2])))
-      }
-      significant_features_main <- list()
-      for (i in seq_along(results_list)) {
-        res <- results_list[[i]]
-        comparison_name <- names(results_list)[i]
-        significant_features <- subset(res, padj < fdr_threshold)
-        if (nrow(significant_features) == 0) {
-          message("No significant feature detected for comparison ", comparison_name,
-                  " at the ", main_level, " level (timepoint).")
-        } else {
-          significant_features <- cbind(significant_features,
-                                        tax_table(main_subset)[rownames(tax_table(main_subset)) %in%
-                                                                 rownames(significant_features), , drop = FALSE])
-          significant_features <- as.data.frame(significant_features)
-          significant_features_main[[comparison_name]] <- significant_features
-        }
-      }
-    }
-  }
-  
-  
-  #### 4. Prepare Colors for Plotting ####
+  #### 3. Prepare Colors for Plotting ####
   MyColors <- df_long$MyColors
   names(MyColors) <- df_long$plot_taxa
   MyColors2 <- unique(df_long$MyColors)
@@ -554,7 +192,7 @@ plot_timeline_2_groups <- function(
   main_level_col <- main_level_col[order_index]
   names(main_level_col) <- as.character(vec1)
   
-  #### 5. Plotting ####
+  #### 4. Plotting ####
   if (average_relab_per_group) {
     df_long <- merge(df_long, meta, by = "combined_group") # Merge metadata to retrieve the timepoint and group column
     
@@ -565,38 +203,106 @@ plot_timeline_2_groups <- function(
     df_long$plot_taxa <- factor(df_long$plot_taxa,
                                 levels = unique(df_long$plot_taxa))
     
-    # Build the ggplot
-    p <- ggplot(df_long,
-                aes(x = .data[[time_group]],
-                    y = value,
-                    fill = plot_taxa,
-                    group = plot_taxa,
-                    alpha = .data[[main_level]])) +  # Alpha goes here
-      facet_wrap(as.formula(paste("~", exp_group)), ncol = 1) +
-      geom_area(show.legend = TRUE) +
-      scale_alpha_manual(
-        values = rep(1, length(unique(df_long[[main_level]]))),  # Set to 1 to show legend, or actual transparency values if desired
-        guide = guide_legend(order = 1, override.aes = list(fill = main_level_col)),
-        name = main_level
-      ) +
-      scale_fill_manual(name = sub_level, values = MyColors2) +
-      labs(x = time_group,
-           y = "Relative abundance (%)",
-           fill = sub_level,
-           alpha = main_level) +
-      guides(fill = guide_legend(reverse = FALSE, title = sub_level, order = 2)) +
-      theme_minimal()
-    return(p+custom_theme)
-    
-    if(isFALSE(is.null(additionnalAes))){
-      p <- Reduce("+", c(list(p), additionnalAes))
+    if(smoothing){
+      
+      # Average rel_ab per group and timepoint
+      df_summary <- df_long %>%
+        group_by(.data[[time_group]], plot_taxa, .data[[exp_group]]) %>%
+        summarise(mean_value = mean(value, na.rm = TRUE), .groups = "drop")
+      
+      # Add back other columns that are constant per group (like sub_level, main_level, etc.)
+      metadata_cols <- df_long %>%
+        select(plot_taxa,.data[[main_level]],MyColors) %>%
+        distinct()
+      
+      df_summary <- df_summary %>%
+        left_join(metadata_cols, by = "plot_taxa")
+      colnames(df_summary)[1] <- "time_group"
+      
+      # Keep only what's needed for interpolation
+      interp_core <- df_summary %>%
+        select(time_group, plot_taxa, !!sym(exp_group), mean_value)
+      
+      # Do the interpolation on core data
+      full_time <- seq(min(interp_core$time_group),
+                       max(interp_core$time_group),
+                       length.out = 10)
+      
+      df_interp <- interp_core %>%
+        group_by(plot_taxa, !!sym(exp_group)) %>%
+        complete(time_group = full_time) %>%
+        arrange(plot_taxa, !!sym(exp_group), time_group) %>%
+        mutate(mean_value = approx(
+          x = time_group[!is.na(mean_value)],
+          y = mean_value[!is.na(mean_value)],
+          xout = time_group,
+          rule = 2
+        )$y) %>%
+        ungroup()
+      
+      # Join metadata back in
+      df_interp <- df_interp %>%
+        left_join(distinct(df_summary, plot_taxa, !!sym(main_level), MyColors), by = "plot_taxa")
+        
+        # Build the ggplot
+        p <- ggplot(df_interp,
+                    aes(x = time_group,
+                        y = mean_value,
+                        fill = plot_taxa,
+                        group = plot_taxa)) +  # Alpha goes here
+          facet_wrap(as.formula(paste("~", exp_group)), ncol = 1)+
+          geom_stream(type = "proportional", bw = 0.9)+
+          scale_fill_manual(name = sub_level, values = MyColors2)+
+          labs(x = time_group,
+               y = "Relative abundance (%)",
+               fill = sub_level)+
+          guides(fill = guide_legend(reverse = FALSE, title = sub_level))+
+          theme_minimal()
+        
+        if(isFALSE(is.null(additionnalAes))){
+          p <- Reduce("+", c(list(p), additionnalAes))}
+          
+          plot <- p+custom_theme
+          return(plot)
+          # ggsave(plot = plot, filename = paste0(path, "/", main_level, "/", main_taxon, "_", sub_level, "_abundance.png"), width = dim[1], height = dim[2], dpi = 300, bg = "white")
+      
+    }else{
+      
+      # Build the ggplot
+      p <- ggplot(df_long,
+                  aes(x = .data[[time_group]],
+                      y = value,
+                      fill = plot_taxa,
+                      group = plot_taxa,
+                      alpha = .data[[main_level]])) +  # Alpha goes here
+        facet_wrap(as.formula(paste("~", exp_group)), ncol = 1) +
+        geom_area(show.legend = TRUE) +
+        scale_alpha_manual(
+          values = rep(1, length(unique(df_long[[main_level]]))),  # Set to 1 to show legend, or actual transparency values if desired
+          guide = guide_legend(order = 1, override.aes = list(fill = main_level_col)),
+          name = main_level
+        ) +
+        scale_fill_manual(name = sub_level, values = MyColors2) +
+        labs(x = time_group,
+             y = "Relative abundance (%)",
+             fill = sub_level,
+             alpha = main_level) +
+        guides(fill = guide_legend(reverse = FALSE, title = sub_level, order = 2)) +
+        theme_minimal()
+      
+      if(isFALSE(is.null(additionnalAes))){
+        p <- Reduce("+", c(list(p), additionnalAes))
+      }
+      
+      return(p+custom_theme)
+      
     }
+    
   }
 }
 
 
 # Function that creates a timeline for gut microbiota relative abundance composition - specific to a main_level taxa and its assoicated sub_level taxons, multiple graphs
-
 plot_timeline_taxa <- function(
     ps_object,
     exp_group, # must be as factor
@@ -606,6 +312,7 @@ plot_timeline_taxa <- function(
     sub_level = 'Family',
     threshold = 1,
     average_relab_per_group = TRUE,
+    smoothing = FALSE,
     n_phy,
     hues = c("Oranges", "Greens", "Blues", "Purples"),
     color_bias = 2,
@@ -806,25 +513,68 @@ plot_timeline_taxa <- function(
     df_long$plot_taxa <- factor(df_long$plot_taxa,
                                 levels = unique(df_long$plot_taxa))
     
+    # Average rel_ab per group and timepoint
+    df_summary <- df_long %>%
+    group_by(.data[[time_group]], plot_taxa, .data[[exp_group]]) %>%
+      summarise(mean_value = mean(value, na.rm = TRUE), .groups = "drop")
+    
+    # Add back other columns that are constant per group (like sub_level, main_level, etc.)
+    metadata_cols <- df_long %>%
+      select(plot_taxa,.data[[main_level]],MyColors) %>%
+      distinct()
+    
+    df_summary <- df_summary %>%
+      left_join(metadata_cols, by = "plot_taxa")
+    colnames(df_summary)[1] <- "time_group"
+    
+    # Keep only what's needed for interpolation
+    interp_core <- df_summary %>%
+      select(time_group, plot_taxa, !!sym(exp_group), mean_value)
+    
+    # Do the interpolation on core data
+    full_time <- seq(min(interp_core$time_group),
+                     max(interp_core$time_group),
+                     length.out = 20)
+    
+    df_interp <- interp_core %>%
+      group_by(plot_taxa, !!sym(exp_group)) %>%
+      complete(time_group = full_time) %>%
+      arrange(plot_taxa, !!sym(exp_group), time_group) %>%
+      mutate(mean_value = approx(
+        x = time_group[!is.na(mean_value)],
+        y = mean_value[!is.na(mean_value)],
+        xout = time_group,
+        rule = 2
+      )$y) %>%
+      ungroup()
+    
+    # Join metadata back in
+    df_interp <- df_interp %>%
+      left_join(distinct(df_summary, plot_taxa, !!sym(main_level), MyColors), by = "plot_taxa")
+    
     # Create plot for each main taxa lvl
-    for(main_taxon in levels(df_long[[main_level]])){
+    for(main_taxon in levels(df_interp[[main_level]])){
       
       # Subset df for taxon of interest
-      df_sub <- df_long[df_long[[main_level]] == main_taxon,]
+      df_sub <- df_interp[df_interp[[main_level]] == main_taxon,]
       
       # Build the ggplot
       p <- ggplot(df_sub,
-                  aes(x = .data[[time_group]],
-                      y = value,
+                  aes(x = time_group,
+                      y = mean_value,
                       fill = plot_taxa,
                       group = plot_taxa)) +  # Alpha goes here
-        facet_wrap(as.formula(paste("~", exp_group)), ncol = 1) +
-        # geom_area(show.legend = TRUE)+
-        geom_stream(type = "ridge", bw=1)+
-        # stat_smooth(
-        #   geom = 'area', method = 'loess', span = 1/3,
-        #   alpha = 1/2) + 
-        # geom_smooth(method = "loess", se = FALSE, span = 0.4, show.legend = TRUE) +
+        facet_wrap(as.formula(paste("~", exp_group)), ncol = 1)
+      
+      if(smoothing){
+        p <- p+
+          geom_stream(type = "ridge", bw = 0.9)
+      }else{
+        p <- p+
+          geom_area(show.legend = TRUE)
+      }
+      
+      p <- p+
         scale_fill_manual(name = sub_level, values = MyColors2) +
         labs(x = time_group,
              y = "Relative abundance (%)",
@@ -832,6 +582,7 @@ plot_timeline_taxa <- function(
              title = paste(main_level, main_taxon)) +
         guides(fill = guide_legend(reverse = FALSE, title = sub_level)) +
         theme_minimal()
+        
       
       if(isFALSE(is.null(additionnalAes))){
         p <- Reduce("+", c(list(p), additionnalAes))
