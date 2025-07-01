@@ -1201,6 +1201,104 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_hmap.png", bg = "white", height = 6, width = 10, dpi = 300)
 }
 
+# Picrust2 - end of abx exposure - 50 ctrl vs 50 abx // 500 ctrl vs 500 abx  - ko data
+{
+  meta <- metadata[metadata$diet == "50" & metadata$timepoint == "56",]
+  meta <- metadata[metadata$diet == "500" & metadata$timepoint == "56",]
+  
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "treatment",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_adjust < 0.001)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta <- meta[,-1] # get rid of id col in metadata
+  meta$treatment <- factor(meta$treatment, levels = c("water","abx"), labels = c("50 ppm Ctrl", "50 ppm Abx"))
+  meta$treatment <- factor(meta$treatment, levels = c("water","abx"), labels = c("500 ppm Ctrl", "500 ppm Abx"))
+  
+  
+  custom_col_cat <- terrain.colors(11)
+  custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat2, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("blue","deepskyblue"), custom_col_cat2, hierarchy = "2")
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("red","brown1"), custom_col_cat2, hierarchy = "2")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  
+}
+
+# Picrust2 - end of abx exposure - 50 abx vs 500 abx
+{
+  meta <- metadata[metadata$treatment == "abx" & metadata$timepoint == "56",]
+  
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  keep <- rowSums(ko_ab > 0) >= (0.2 * ncol(ko_ab)) # Keep pathways present in at least 20% of samples
+  ko_ab <- ko_ab[keep, ]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "diet",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_adjust < 0.05)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta <- meta[,-1] # get rid of id col in metadata
+  meta$treatment <- factor(meta$treatment, levels = c("water","abx"), labels = c("50 ppm Ctrl", "50 ppm Abx"))
+  meta$treatment <- factor(meta$treatment, levels = c("water","abx"), labels = c("500 ppm Ctrl", "500 ppm Abx"))
+  
+  
+  custom_col_cat <- terrain.colors(11)
+  custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat2, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("blue","deepskyblue"), custom_col_cat2, hierarchy = "2")
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("red","brown1"), custom_col_cat2, hierarchy = "2")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  
+}
+
 # Chronobiome
 {
   theme_chronobiome <- function() {
