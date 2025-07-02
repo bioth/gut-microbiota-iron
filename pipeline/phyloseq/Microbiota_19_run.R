@@ -87,8 +87,16 @@ rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
 
 # Load taxonomical assignments
 taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
+
+{
+  na_indices <- which(is.na(taxa[,"Species"]))
+  taxa <- cbind(taxa, ifelse(is.na(taxa[,"Species"]), paste0("Unclassified", seq_along(na_indices)),paste(taxa[,"Genus"], taxa[,"Species"])))
+  colnames(taxa)[8] <- "Genus_species"
+  
+}
 
 # Load phylogenetic tree if possible
 tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
@@ -194,7 +202,6 @@ ps_abx <- merge_phyloseq(ps_t56, ps_tfinal)
 ps_flt_diet <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt)
 ps_flt_abx <- merge_phyloseq(ps_t56_flt, ps_tfinal_flt)
 ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_tfinal_flt)
-
 
 # Generate picrust2 input
 {
@@ -689,6 +696,53 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
       relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath) 
     }
   }
+  
+  
+  # Additionnal run for checking multiple species for timepoint t35
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == 35, ps_flt_diet)
+  ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset)
+  print(length(taxa_sums(ps_subset)))
+  
+  #Simple deseq object only accounting for the differences in diet
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
+  print(resultsNames(deseq_subset))
+  
+  res <- results(deseq_subset, name = resultsNames(deseq_subset)[2])
+  sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res),], "matrix")) # Save significance table
+  sigtab["padj"][is.na(sigtab["padj"])] <- 1 # Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab <- sigtab[!is.na(sigtab[["Species"]]),] # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[(sigtab["padj"])<0.05,]
+  taxons = unique(sigtab$Species)
+  taxons = c("rodentium","johnsonii")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/asv_msa/")
+  for(txn in taxons){
+    asvList <- rownames(sigtab[sigtab$Species == txn,])
+    refseqs <- refseq(ps_subset)[asvList]
+    # writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/relative_abundance_diet/timepoint_35/asv_sequences_",txn,".fasta"))
+    writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/asv_msa/asv_sequences_",txn,".fasta"))
+  }
+  
+  # Tests to see what happens if we group ASV representing the same species together
+  ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == 35, ps_flt_diet)
+  ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset)
+  print(length(taxa_sums(ps_subset)))
+  View(tax_table(ps_subset))
+  ps_subset <- tax_glom(ps_subset, taxrank = "Genus_species") # Agglomerate same species
+
+  #Simple deseq object only accounting for the differences in diet
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
+  print(resultsNames(deseq_subset))
+  
+  res <- results(deseq_subset, name = resultsNames(deseq_subset)[2])
+  sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res),], "matrix")) # Save significance table
+  sigtab["padj"][is.na(sigtab["padj"])] <- 1 # Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab <- sigtab[!is.na(sigtab[["Species"]]),] # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[(sigtab["padj"])<0.05,]
+  
 }
 
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups, for t49 t54 and tfinal timepoints
