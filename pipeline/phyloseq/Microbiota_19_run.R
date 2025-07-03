@@ -1634,6 +1634,41 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   rownames(sig)[sig]  # taxa flagged as significantly differentially abundant
 }
 
+# Testing recovery index
+{
+  
+  library(microbiome)
+  # Define baseline centroids
+  baseline <- ps %>%
+    subset_samples(timepoint == "49" & diet == "500") %>%
+    microbiome::transform("compositional")
+  
+  # Calculate centroid vector
+  centroid <- colMeans(microbiome::abundances(baseline))
+  
+  # Define ps_subset which comprise only 50 ppm samples
+  ps_subset <- ps %>%
+    subset_samples(diet == "500" & timepoint %in% c("final"))
+  
+  # Calculate Bray–Curtis distance to baseline
+  ps_comp <- ps_subset %>% microbiome::transform("compositional")
+  ab <- microbiome::abundances(ps_comp)
+  
+  # Pairwise Bray–Curtis from each sample to baseline centroid
+  dist_to_base <- apply(ab, 2, function(samp) vegan::vegdist(rbind(centroid, samp), method = "bray")[1])
+  
+  # Define recovery index = 1 - (BC sample (t49)/max(BC))
+  rec_idx <- 1 - dist_to_base / max(dist_to_base)
+  sample_data(ps_comp)$RecoveryIndex <- rec_idx
+  
+  # Plot recovery index over time
+  df <- as.data.frame(sample_data(ps_comp))
+  
+  ggplot(df, aes(x = timepoint, y = RecoveryIndex, color = treatment)) +
+    geom_boxplot() + geom_jitter(width = .2, alpha = .5) +
+    theme_bw() + ylab("Recovery Index") + xlab("Timepoint")
+}
+
 
 
 
