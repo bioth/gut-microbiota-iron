@@ -207,3 +207,16 @@ verifyStatsAssumptions <- function(df, group, measure){
   print(by(df[[measure]], df[[group]], shapiro.test))
   
 }
+
+# Graph for F/B ratio
+fbRatioGraphTimeSeries <- function(df, group, measure, time, custom_colors, custom_theme = NULL){
+  
+  p <- ggplot(df, aes(x = .data[[time]], y = .data[[measure]], fill = .data[[group]])) +
+    
+    geom_boxplot(position = position_dodge(width = 0.8), width = 0.6,
+                 color = "black") +
+    scale_fill_manual(values = custom_colors)+
+    labs(title = "F/B ratio overtime\n according to diet exposure", y = "F/B ratio", fill = "Group", x = "Time") # , pattern = NA
+  print(p+custom_theme)
+  
+}

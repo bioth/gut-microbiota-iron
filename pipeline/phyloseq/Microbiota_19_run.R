@@ -637,7 +637,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
 {
   # Path where to save graphs
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/relative_abundance_diet/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_diet/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -665,7 +665,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
     relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = TRUE, FDR = TRUE, customColors = customColors, path = newPath)
     
     # log2fold change graph based on deseq2 results
-    #log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
+    # log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
     
   }
   
@@ -705,11 +705,12 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   print(length(taxa_sums(ps_subset)))
   
   #Simple deseq object only accounting for the differences in diet
-  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ Cage + diet) 
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
   print(resultsNames(deseq_subset))
   
-  res <- results(deseq_subset, name = resultsNames(deseq_subset)[2])
+  res <- results(deseq_subset, name = resultsNames(deseq_subset)[3])
+  res <- results(deseq_subset, contrast = c("diet", "50 ppm", "500 ppm"))
   sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res),], "matrix")) # Save significance table
   sigtab["padj"][is.na(sigtab["padj"])] <- 1 # Replacing NA padj by 1 (they correspond to this anyways)
   sigtab <- sigtab[!is.na(sigtab[["Species"]]),] # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
@@ -721,7 +722,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   for(txn in taxons){
     asvList <- rownames(sigtab[sigtab$Species == txn,])
     refseqs <- refseq(ps_subset)[asvList]
-    # writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/relative_abundance_diet/timepoint_35/asv_sequences_",txn,".fasta"))
+    # writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_diet/timepoint_35/asv_sequences_",txn,".fasta"))
     writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/asv_msa/asv_sequences_",txn,".fasta"))
   }
   
@@ -748,7 +749,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups, for t49 t54 and tfinal timepoints
 # Path where to save graphs
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/relative_abundance_abx_diet_all_groups/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_abx_diet_all_groups/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -831,7 +832,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 
 # Relative abundance analysis: finding differential abundant bugs at different taxonomical levels - only abx groups
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/relative_abundance_abx/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_abx/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -839,7 +840,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   customPhylaColors = c("#e6550d","#31a354", "#583093")
   
   #Iterate through timepoints
-  for(timePoint in levels(sample_data(ps_abx_relab_flt)$timepoint)[3]){
+  for(timePoint in levels(sample_data(ps_abx_relab_flt)$timepoint)){
     
     #New path created for each week
     newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
@@ -857,7 +858,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
     
     # For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
     relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", varToCompare = "diet",
-                         timePoint = timePoint, taxa = "Species", threshold = 0.05, FDR = TRUE, blockFactor = FALSE,
+                         timePoint = timePoint, taxa = "Species", threshold = 0.1, FDR = TRUE, blockFactor = FALSE,
                          LDA = TRUE, customColors = customColors, path = newPath, displayPvalue = TRUE, additionnalAes = my_theme(), displaySampleID = FALSE)
     
 
@@ -894,6 +895,24 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
                            dim = c(3.5,3.5), displayPvalue = TRUE) 
     }
   }
+  
+  # Additionnal run for checking multiple species for timepoint t35
+  #Creating phyloseq objects for each timepoint
+  ps_subset <- prune_samples(sample_data(ps_flt_abx)$timepoint == "final" & sample_data(ps_flt_abx)$treatment == "abx", ps_flt_abx)
+  ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset)
+  print(length(taxa_sums(ps_subset)))
+  
+  #Simple deseq object only accounting for the differences in diet
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
+  print(resultsNames(deseq_subset))
+  
+  res <- results(deseq_subset, name = resultsNames(deseq_subset)[2])
+  res <- results(deseq_subset, contrast = c("diet", "50 ppm", "500 ppm"))
+  sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res),], "matrix")) # Save significance table
+  sigtab["padj"][is.na(sigtab["padj"])] <- 1 # Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab <- sigtab[!is.na(sigtab[["Species"]]),] # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[(sigtab["padj"])<0.05,]
 }
 
 # Relative abundance analysis, stackbar extended graphs
@@ -972,8 +991,8 @@ p <- diet_phyla_fam$plot +
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_abx/newTaxAnnotation/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/diet_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1057,8 +1076,8 @@ p <- diet_abx_phyla_fam$plot +
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_abx_stackbar.png", width = 7, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_abx/newTaxAnnotation/stackbar/diet_abx_stackbar.png", width = 7, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = diet_abx_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_abx_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/diet_abx_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1141,8 +1160,8 @@ p <- final_phyla_fam$plot +
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar.png", width = 7, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_abx/newTaxAnnotation/stackbar/final_stackbar.png", width = 7, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = final_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = final_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/final_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1393,8 +1412,8 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     labs(x = "Time (weeks)")+
 
   
-  existingDirCheck("../figures/Thibault_abx/chronobiome")
-  ggsave("../figures/Thibault_abx/chronobiome/diet_chronobiome.png", width = 7, height = 8, dpi = 500, bg = "white")
+  existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/chronobiome")
+  ggsave("../figures/Thibault_abx/newTaxAnnotation/chronobiome/diet_chronobiome.png", width = 7, height = 8, dpi = 500, bg = "white")
   
   sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
   
@@ -1406,7 +1425,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     main_level = 'Phylum',
     sub_level = 'Family',
     average_relab_per_group = TRUE,
-    smoothing = TRUE,
+    smoothing = FALSE,
     n_phy = 4,
     custom_theme = theme_chronobiome()
   )
@@ -1419,7 +1438,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     labs(x = "Time (weeks)")
 
   
-  ggsave("../figures/Thibault_abx/chronobiome/diet_abx_smoothed_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
+  ggsave("../figures/Thibault_abx/newTaxAnnotation/chronobiome/diet_abx_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
   
   sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
   
@@ -1433,7 +1452,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
                      smoothing = TRUE,
                      threshold = 1,
                      n_phy = 4,
-                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/smoothing/",
+                     path = "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/chronobiome/smoothing/",
                      dim = c(9,7),
                      custom_theme = theme_chronobiome(),
                      additionnalAes = list(facet_wrap2(~ gg_group2, 
@@ -1442,7 +1461,178 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
                                            labs(x = "Time (weeks)"), scale_x_continuous(n.breaks = 12)))
 }
 
+# Firmicutes to bacteroidites ratio
+{
+  ps_phyla <- tax_glom(ps, taxrank = "Phylum") # Agglom ps at phylum level
+  ps_phyla <- transformCounts(ps_phyla, transformation = "rel_ab") # Produce relative abundance table and calculate F/B ratio
+  rel_ab <- as.data.frame(otu_table(ps_phyla))
+  rel_ab <- rel_ab[rownames(tax_table(ps_phyla)[tax_table(ps_phyla)[,"Phylum"] %in% c("Bacillota","Bacteroidota"),]),]
+  tax_table(ps_phyla)
+  rownames(rel_ab) <- c("Bacillota","Bacteroidota")
+  rel_ab <- rel_ab %>%
+    tibble::rownames_to_column("phyla") %>%
+    pivot_longer(
+      cols = -phyla,
+      names_to = "sample_id",
+      values_to = "abundance"
+    ) %>%
+    pivot_wider(
+      names_from = phyla,
+      values_from = abundance,
+      names_glue = "{phyla}_abundance"
+    ) %>%
+    mutate(
+      fb_ratio = Bacillota_abundance / Bacteroidota_abundance
+    )
+  
+  fb_ratio_df <- merge(rel_ab, metadata, by = "sample_id") # Bind metadata information
+  fb_ratio_df_diet <- fb_ratio_df[fb_ratio_df$timepoint %in% c("0","35","49"),]
+  fb_ratio_df_diet$diet <- factor(fb_ratio_df_diet$diet, levels = c("50","500"), labels = c("50 ppm","500 ppm"))
+  fb_ratio_df_diet$week <- factor(fb_ratio_df_diet$week, levels = c("3","8", "10"), labels = c("3 weeks","8 weeks","10 weeks"))
+  fbRatioGraphTimeSeries(fb_ratio_df_diet, group = "diet",time = "week", measure = "fb_ratio", custom_colors = c("blue","red"), custom_theme = my_theme())+
+    ylim(0,6)+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.8),           # left box in each timepoint
+      xmax = c(1.2),
+      annotations = "n.s.",
+      y_position = c(3), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )+geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.8),           # left box in each timepoint
+      xmax = c(2.2),
+      annotations = "**",
+      y_position = c(5), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+geom_signif( # For third timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.8),           # left box in each timepoint
+      xmax = c(3.2),
+      annotations = "n.s.",
+      y_position = c(5), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )
+  ggsave("../figures/Thibault_abx/newTaxAnnotation/fb_ratio/fb_ratio_diet.png",
+         bg = "white",height = 4, width =5, dpi = 300)
+  # Stats
+  verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "0",], group = "diet",measure =  "fb_ratio")
+  wilcox.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "0",])
+  
+  verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "35",], group = "diet",measure =  "fb_ratio")
+  wilcox.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "35",])
+  
+  verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "49",], group = "diet",measure =  "fb_ratio")
+  wilcox.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "49",])
+  
+  # For abx_diet groups
+  fb_ratio_df_gg_group2 <- fb_ratio_df[fb_ratio_df$timepoint %in% c("49","56","final"),]
+  fb_ratio_df_gg_group2$gg_group2 <- factor(fb_ratio_df_gg_group2$gg_group2, levels = c("50:water","500:water", "50:abx","500:abx"), labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
+  fb_ratio_df_gg_group2$week <- factor(fb_ratio_df_gg_group2$week, levels = c("10","11", "18"), labels = c("Start of\nAbx exposure","End of\nAbx exposure","End of recovery"))
+  fb_ratio_df_gg_group2 <- fb_ratio_df_gg_group2 %>%
+    mutate(log_FB_ratio = log10(fb_ratio))
+  
+  fbRatioGraphTimeSeries(fb_ratio_df_gg_group2, group = "gg_group2",time = "week", measure = "fb_ratio", custom_colors = c("blue","red","deepskyblue", "brown1"), custom_theme = my_theme())+
+    ylim(0,10)
+    
+  fbRatioGraphTimeSeries(fb_ratio_df_gg_group2, group = "gg_group2",time = "week", measure = "log_FB_ratio", custom_colors = c("blue","red","deepskyblue", "brown1"), custom_theme = my_theme())+
+    ylim(-1,5.5)+
+    labs(y = "log(F/B ratio)", title = "F/B ratio overtime\naccording to Abx exposure ")+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.7),           # left box in each timepoint
+      xmax = c(1.3),
+      annotations = "n.s.",
+      y_position = c(1), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.7,2.1,1.7,1.9), # left position
+      xmax = c(1.9,2.3,2.1,2.3), # left position
+      annotations = c("n.s.","n.s.","*","n.s."),
+      y_position = c(1,4.1,4.6,5.1), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For last timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.7),           # left box in each timepoint
+      xmax = c(3.3),
+      annotations = "n.s.",
+      y_position = c(1), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )
+  ggsave("../figures/Thibault_abx/newTaxAnnotation/fb_ratio/fb_ratio_abx.png",
+         bg = "white",height = 5, width =7, dpi = 300)
+  
+  # Stats
+  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",], group = "gg_group2",measure =  "log_FB_ratio")
+  TukeyHSD(aov(log_FB_ratio ~ gg_group2 , data = fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",]))
+  
+  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "56",], group = "gg_group2",measure =  "log_FB_ratio")
+  pairwise.wilcox.test(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "56",]$log_FB_ratio, fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "56",]$gg_group2, p.adjust.method = "BH")
+  
+  fb_ratio_df_gg_group2_stat <- fb_ratio_df_gg_group2[!fb_ratio_df_gg_group2$log_FB_ratio == Inf,] # Remove infinite outliers 
+  verifyStatsAssumptions(fb_ratio_df_gg_group2_stat[fb_ratio_df_gg_group2_stat$timepoint == "final",], group = "gg_group2",measure =  "log_FB_ratio")
+  pairwise.wilcox.test(fb_ratio_df_gg_group2_stat[fb_ratio_df_gg_group2_stat$timepoint == "final",]$log_FB_ratio, fb_ratio_df_gg_group2_stat[fb_ratio_df_gg_group2_stat$timepoint == "final",]$gg_group2, p.adjust.method = "BH")
+  
+}
 
+# Testing ANCOM
+{
+  library(ANCOMBC)
+  
+  out <- ancombc(
+    data = ps_t35_flt,
+    tax_level = "Species",                  # or "Family", "ASV", etc.
+    formula = "diet+Cage",     # fixed-effects design
+    p_adj_method = "BH",
+    # prv_cut = 0.10,                       # filter taxa present in <10% of samples
+    # lib_cut = 1000,                       # filter samples with <1,000 reads
+    group = "diet",                      # main comparison variable
+    struc_zero = TRUE,
+    neg_lb = TRUE,
+    alpha = 0.05,
+    global = TRUE,
+    n_cl = 2,
+    verbose = TRUE
+  )
+  
+  res <- out$res
+  res_global <- out$res_global
+  sig <- res$diff_abn
+  rownames(sig)[sig]  # taxa flagged as significantly differentially abundant
+}
 
 
 
