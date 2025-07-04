@@ -739,6 +739,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 }
 
 # Relative abundance analysis, stackbar extended graphs
+{
 # For diet only timepoints
 # Define factor that is combination of diet and timepoint for graph visualization
 sample_data(ps_flt_diet)$diet 
@@ -995,7 +996,271 @@ p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_fi
 p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS"))+
   theme(text = element_text(family = "Arial"),
         axis.text.x = element_text(size = 11))
+}
 
+# Firmicutes to bacteroidites ratio
+{
+  ps_phyla <- tax_glom(ps, taxrank = "Phylum") # Agglom ps at phylum level
+  ps_phyla <- transformCounts(ps_phyla, transformation = "rel_ab") # Produce relative abundance table and calculate F/B ratio
+  rel_ab <- as.data.frame(otu_table(ps_phyla))
+  rel_ab <- rel_ab[rownames(tax_table(ps_phyla)[tax_table(ps_phyla)[,"Phylum"] %in% c("Firmicutes","Bacteroidota"),]),]
+  tax_table(ps_phyla)
+  rownames(rel_ab) <- c("Firmicutes","Bacteroidota")
+  rel_ab <- rel_ab %>%
+    tibble::rownames_to_column("phyla") %>%
+    pivot_longer(
+      cols = -phyla,
+      names_to = "sample_id",
+      values_to = "abundance"
+    ) %>%
+    pivot_wider(
+      names_from = phyla,
+      values_from = abundance,
+      names_glue = "{phyla}_abundance"
+    ) %>%
+    mutate(
+      fb_ratio = Firmicutes_abundance / Bacteroidota_abundance
+    )
+  
+  fb_ratio_df <- merge(rel_ab, metadata, by = "sample_id") # Bind metadata information
+  fb_ratio_df_diet <- fb_ratio_df[fb_ratio_df$timepoint %in% c("0","35","49"),]
+  fb_ratio_df_diet$diet <- factor(fb_ratio_df_diet$diet, levels = c("50","500"), labels = c("50 ppm","500 ppm"))
+  fb_ratio_df_diet$week <- factor(fb_ratio_df_diet$week, levels = c("3","8", "10"), labels = c("3 weeks","8 weeks","10 weeks"))
+  fbRatioGraphTimeSeries(fb_ratio_df_diet, group = "diet",time = "week", measure = "fb_ratio", custom_colors = c("blue","red"), custom_theme = my_theme())+
+    ylim(0,10)+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.8),           # left box in each timepoint
+      xmax = c(1.2),
+      annotations = "n.s.",
+      y_position = c(3), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )+geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.8),           # left box in each timepoint
+      xmax = c(2.2),
+      annotations = "n.s.",
+      y_position = c(8), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+geom_signif( # For third timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.8),           # left box in each timepoint
+      xmax = c(3.2),
+      annotations = "n.s.",
+      y_position = c(9), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )
+  ggsave("../figures/Thibault_final/fb_ratio/fb_ratio_diet.png",
+         bg = "white",height = 4, width =5, dpi = 300)
+  # Stats
+  verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "0",], group = "diet",measure =  "fb_ratio")
+  wilcox.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "0",])
+  
+  verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "35",], group = "diet",measure =  "fb_ratio")
+  t.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "35",], var.equal = TRUE)
+  
+  verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "49",], group = "diet",measure =  "fb_ratio")
+  t.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "49",], var.equal = FALSE)
+  
+  # For dss_diet groups
+  fb_ratio_df_gg_group2 <- fb_ratio_df[fb_ratio_df$timepoint %in% c("49","54","final"),]
+  fb_ratio_df_gg_group2$gg_group2 <- factor(fb_ratio_df_gg_group2$gg_group2, levels = c("50:water","500:water", "50:dss","500:dss"), labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+  fb_ratio_df_gg_group2$week <- factor(fb_ratio_df_gg_group2$week, levels = c("10","10.7", "18"), labels = c("DSS Day 0","DSS Day 5","End of recovery"))
+  fb_ratio_df_gg_group2 <- fb_ratio_df_gg_group2 %>%
+    mutate(log_FB_ratio = log10(fb_ratio))
+  
+  fbRatioGraphTimeSeries(fb_ratio_df_gg_group2, group = "gg_group2",time = "week", measure = "fb_ratio", custom_colors = c("blue","red","darkblue", "darkred"), custom_theme = my_theme())+
+    ylim(0,9)+
+    labs(y = "F/B ratio", title = "F/B ratio overtime\naccording to DSS exposure ")+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.7),           # left box in each timepoint
+      xmax = c(1.3),
+      annotations = "n.s.",
+      y_position = c(9), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.7,2.1,1.7,1.9), # left position
+      xmax = c(1.9,2.3,2.1,2.3), # left position
+      annotations = c("n.s.","n.s.","***","***"),
+      y_position = c(7.3,2.5,7.6,6), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For last timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.7,3.1,2.7,2.9),           # left box in each timepoint
+      xmax = c(2.9,3.3,3.1,3.3),
+      annotations = c("n.s.","n.s.","*","n.s."),
+      y_position = c(5.4,6,6.4,6.9), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )
+  ggsave("../figures/Thibault_final/fb_ratio/fb_ratio_dss.png",
+         bg = "white",height = 5, width =7, dpi = 300)
+  
+  # Stats
+  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",], group = "gg_group2",measure =  "fb_ratio")
+  TukeyHSD(aov(log_FB_ratio ~ gg_group2 , data = fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",]))
+  
+  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "54",], group = "gg_group2",measure =  "fb_ratio")
+  pairwise.wilcox.test(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "54",]$fb_ratio, fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "54",]$gg_group2, p.adjust.method = "BH")
+  
+  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "final",], group = "gg_group2",measure =  "fb_ratio")
+  pairwise.wilcox.test(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "final",]$fb_ratio, fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "final",]$gg_group2, p.adjust.method = "BH")
+  
+}
+
+# Testing recovery index
+{
+  library(microbiome)
+  
+  # For 50 ppm
+  # Define baseline centroids
+  baseline <- ps %>%
+    subset_samples(timepoint == "49" & diet == "50") %>%
+    microbiome::transform("compositional")
+  
+  # Calculate centroid vector
+  centroid <- colMeans(t(microbiome::abundances(baseline)))
+  
+  # Define ps_subset which comprise only 50 ppm samples
+  ps_subset <- ps %>%
+    subset_samples(diet == "50" & timepoint %in% c("49","54","final"))
+  
+  # Calculate Bray–Curtis distance to baseline
+  ps_comp <- ps_subset %>% microbiome::transform("compositional")
+  ab <- microbiome::abundances(ps_comp)
+  
+  # Pairwise Bray–Curtis from each sample to baseline centroid
+  dist_to_base <- apply(ab, 2, function(samp) vegan::vegdist(rbind(centroid, samp), method = "bray")[1])
+  
+  # Define recovery index = 1 - (BC sample (t49)/max(BC))
+  rec_idx <- 1 - dist_to_base / max(dist_to_base)
+  sample_data(ps_comp)$RecoveryIndex <- rec_idx
+  df_1 <- as.data.frame(sample_data(ps_comp))
+  
+  
+  # For 500 ppm
+  # Define baseline centroids
+  baseline <- ps %>%
+    subset_samples(timepoint == "49" & diet == "500") %>%
+    microbiome::transform("compositional")
+  
+  # Calculate centroid vector
+  centroid <- colMeans(t(microbiome::abundances(baseline)))
+  
+  # Define ps_subset which comprise only 50 ppm samples
+  ps_subset <- ps %>%
+    subset_samples(diet == "500" & timepoint %in% c("49","54","final"))
+  
+  # Calculate Bray–Curtis distance to baseline
+  ps_comp <- ps_subset %>% microbiome::transform("compositional")
+  ab <- microbiome::abundances(ps_comp)
+  
+  # Pairwise Bray–Curtis from each sample to baseline centroid
+  dist_to_base <- apply(ab, 2, function(samp) vegan::vegdist(rbind(centroid, samp), method = "bray")[1])
+  
+  # Define recovery index = 1 - (BC sample (t49)/max(BC))
+  rec_idx <- 1 - dist_to_base / max(dist_to_base)
+  sample_data(ps_comp)$RecoveryIndex <- rec_idx
+  df_2 <- as.data.frame(sample_data(ps_comp))
+  
+  # Plot recovery index over time
+  df <- rbind(df_1, df_2) # Combine 50/500 data
+  df_plot <- df
+  df_plot$gg_group2 <- factor(df_plot$gg_group2, levels = c("50:water","500:water","50:dss","500:dss"), labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+  df_plot$timepoint <- factor(df_plot$timepoint, labels = c("DSS day 0","DSS day 5","End of recovery"))
+  
+  ggplot(df_plot, aes(x = timepoint, y = RecoveryIndex, fill = gg_group2)) +
+    geom_boxplot(position = position_dodge(width = 0.8), width = 0.6,
+                 color = "black") +
+    scale_fill_manual(values = c("blue","red","darkblue", "darkred"))+
+    labs(title = "Bray-Curtis recovery index over time", y = "Recovery Index", fill = "Group", x = "Time")+ # , pattern = NA
+    my_theme()+
+    ylim(0,1)+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.7),           # left box in each timepoint
+      xmax = c(1.3),
+      annotations = "n.s.",
+      y_position = c(0.8), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.7,2.1,1.7,1.9), # left position
+      xmax = c(1.9,2.3,2.1,2.3), # left position
+      annotations = c("n.s.","n.s.","***","***"),
+      y_position = c(0.8,0.45,0.85,0.9), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+
+    geom_signif( # For last timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.7,3.1,2.7,2.9),           # left box in each timepoint
+      xmax = c(2.9,3.3,3.1,3.3),
+      annotations = c("n.s.","*","*","n.s."),
+      y_position = c(0.8,0.8,0.85,0.9), #
+      tip_length = c(0.02,0.02,0.02,0.02),
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )
+  ggsave("../figures/Thibault_final/recovery_index/recovery_index.png",
+         bg = "white",height = 5, width =7, dpi = 300)
+  
+  # Stats
+  verifyStatsAssumptions(df[df$timepoint == "49",], group = "gg_group2",measure =  "RecoveryIndex")
+  TukeyHSD(aov(RecoveryIndex ~ gg_group2 , data = df[df$timepoint == "49",]))
+  
+  verifyStatsAssumptions(df[df$timepoint == "54",], group = "gg_group2",measure =  "RecoveryIndex")  
+  TukeyHSD(aov(RecoveryIndex ~ gg_group2 , data = df[df$timepoint == "54",]))
+  
+  verifyStatsAssumptions(df[df$timepoint == "final",], group = "gg_group2",measure =  "RecoveryIndex")  
+  TukeyHSD(aov(RecoveryIndex ~ gg_group2 , data = df[df$timepoint == "final",]))
+}
 
 
 
