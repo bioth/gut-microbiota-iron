@@ -100,7 +100,7 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     # Extract the ASV and variable matrices
     asv_matrix <- as.matrix(data_combined[, asvList, drop = FALSE]) # ASVs
     var_matrix <- as.matrix(data_combined[, !colnames(data_combined) %in% asvList, drop = FALSE]) # Non-ASV variables
-  
+    
     # Calculate correlation matrix
     cor_results <- rcorr(as.matrix(data_combined), type = "spearman")
     cor_matrix <- cor_results$r  # Extract correlation coefficients
@@ -131,14 +131,21 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     taxonomy <- as.data.frame(tax_table(ps))
     taxonomy <- taxonomy[asvList,]
     
+    # Fix for single col variables df
+    if(ncol(df) == 1){
+      cor_melt$ASV <- row.names(cor_melt)
+    }
+    
     # Retrieve taxonomic information
     cor_melt <- merge(cor_melt, taxonomy, by.x = "ASV", by.y = "row.names")
-    
+
     if(taxa=="Species"){
       cor_melt$taxa_name <- paste(cor_melt$Genus,cor_melt$Species)
       if(displaySpeciesASVNumber){
         cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
-      }
+      }}else(
+        cor_melt$taxa_name <- cor_melt[,taxa]
+      )
       
     # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
     if(displayOnlySig){
@@ -147,7 +154,7 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
     }
     
     # Create the heatmap
-    p <- ggplot(cor_melt, aes(x = Variables, y = taxa_name, fill = value)) +
+    p <- ggplot(cor_melt, aes(x = ifelse(ncol(df)==1, value,Variables), y = taxa_name, fill = value)) +
       geom_tile(color = "white") +
       scale_fill_gradient2(low = "blue", high = "red", mid = "white",
                            midpoint = 0, limit = c(-1, 1), space = "Lab",
@@ -309,7 +316,6 @@ correlationGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = 
 
   }
   
-}
 }
 
 
@@ -658,7 +664,7 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     
     cor_matrix <- cor_matrix[rownames(cor_matrix) %in% asvList, !colnames(cor_matrix) %in% asvList]
     p_values <- p_adjusted[rownames(p_adjusted) %in% asvList, !colnames(p_adjusted) %in% asvList]
-    
+  
     # If only one sifgnificant ASV, fix or else the code does not work (doesnt work for now)
     if (length(asvList) == 1) {
       cor_matrix <- as.data.frame(cor_matrix)
@@ -667,7 +673,6 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     } else {
       cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
     }
-    
     
     # # Melt correlation and adjusted p-value matrices
     # cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
@@ -708,6 +713,8 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       asvList <- as.character(unique(cor_melt$ASV[cor_melt$significance != ""]))
       cor_melt <- cor_melt[cor_melt$ASV %in% asvList,]
     }
+    View(cor_melt)
+    return(NULL)
     
     # Create the heatmap
     p <- ggplot(cor_melt, aes(x = Variables, y = taxa_name, fill = value)) +
@@ -729,8 +736,7 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       ggsave(plot = p, filename = paste(dir,"/correlation_all_groups.png", sep = ""), dpi = 300, height = 6, width = 10, bg = 'white')
       # Save correlation dataframe with stats and correlation coefficients 
       write_xlsx(cor_melt, path = paste0(dir,"/all_groups_correlation.xlsx"))
-    }
-    
+    }}
     
     if (showIndivCor) {
       
@@ -792,8 +798,7 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       message("Scatterplots saved to: ", dir_indiv)
     }
     
-    
-  }else{ #Produce multiple heatmaps for each group
+  else{ #Produce multiple heatmaps for each group
     
     for(group in levels(sample_data(ps)[[gg_group]])){
       
@@ -872,7 +877,5 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       # Save correlation dataframe with stats and correlation coefficients 
       write_xlsx(cor_melt, path = paste0(dir_group,"/",clean_string(group),"_group_correlation.xlsx"))
     }
-    
-  }
   
-}
+}}

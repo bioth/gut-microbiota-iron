@@ -99,6 +99,7 @@ asv_table <- asv_table[,-1]  # Drop the first column
 
 # Load taxonomical assignments
 taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
 
@@ -530,7 +531,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
 {
   # Path where to save graphs
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/relative_abundance_diet/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/relative_abundance_diet/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -555,7 +556,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
     print(resultsNames(deseq_subset))
     
     #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-    relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = TRUE, FDR = TRUE, customColors = customColors, path = newPath)
+    relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath)
     
     # log2fold change graph based on deseq2 results
     log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
@@ -594,7 +595,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups, for t49 t54 and tfinal timepoints
 # Path where to save graphs
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/relative_abundance_dss_diet_all_groups/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/relative_abundance_dss_diet_all_groups/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -677,7 +678,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 
 # Relative abundance analysis: finding differential abundant bugs at different taxonomical levels - only DSS groups
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/relative_abundance_dss/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/relative_abundance_dss/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -710,7 +711,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
   
   # Iterate through timepoints
-  for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)[3]){
+  for(timePoint in levels(sample_data(ps_dss_relab_flt)$timepoint)){
     
     # New path created for each week
     newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
@@ -1262,6 +1263,64 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   TukeyHSD(aov(RecoveryIndex ~ gg_group2 , data = df[df$timepoint == "final",]))
 }
 
+# Correlations 
+{
+  library(readxl)
+  
+  #Preparing dataframe for correlation
+  # Load iron measurements data
+  df <- as.data.frame(read_xlsx("~/Documents/CHUM_git/gut-microbiota-iron/experiments/finished exp/young-DSS-exp3/young48_dss_ferrozine_t35.xlsx"))
+  df <- df[,c(2,14)]
+  colnames(df) <- df[2,]
+  colnames(df)[1:2] <- c("sample_id","iron_concentration")
+  df <- df[-c(1,2,27),]
+  df$sample_id <- gsub(" ", "_", df$sample_id)
+  rownames(df) <- df$sample_id
+  df <- df[,-1,drop = FALSE]
+  df$iron_concentration <- as.numeric(df$iron_concentration)
+  
+  # Load DSS related results 
+  variables <- read.csv("~/Documents/CHUM_git/gut-microbiota-iron/experiments/finished exp/young-DSS-exp3/young_dss_followup_day5.csv", sep = ",")
+  variables <- variables[-22,]
+  variables$id <- gsub(x = variables$id, replacement = "", pattern = "[A-Z]")
+  variables$id <- paste0(variables$id, "_T35")
+  rownames(variables) <- variables$id
+  variables <- variables[,c(8,9,13)]
+  variables <- merge(df, variables, by = "row.names")
+  rownames(variables) <- variables$Row.names
+  variables <- variables[,-1]
+  
+  ps_subset <- subset_samples(ps_t35, sample_data(ps_t35)$treatment == "dss")
+  ps_subset <- subset_samples(ps_t35_flt, sample_data(ps_t35_flt)$treatment == "dss")
+  ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) > 0, ps_subset)
+  length(taxa_sums(ps_subset))
+
+  # ps_subset <- tax_glom(ps_subset, taxrank = "Family")
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  res <- results(deseq_subset, name = resultsNames(deseq_subset)[2]) #50 vs 500
+  sigtab1 <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res), ], "matrix"))
+  sigtab2 <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res), ], "matrix"))
+  print(resultsNames(deseq_subset))
+    
+  sample_data(ps_subset)$gg_group2
+  #For species level
+  #One heatmap for all groups
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
+  
+  p <- p+
+    # coord_fixed() + # Makes thing squared
+    theme(
+      text = element_text(family = "Arial"),      # Global text settings
+      axis.title.x = element_text(size = 16, face = "bold"),  # Axis titles
+      axis.title.y = element_text(size = 16, face = "bold"),
+      axis.text = element_text(size = 12, face = "bold"),   # Axis text
+      legend.title = element_text(face = "bold", size = 16),  # Legend title  # Legend text
+    ) #axis.text.x = element_text(angle = -45, hjust = 1)
+  
+  ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/species_hmap.png",
+         plot = p, bg = "white", height = 9, width = 8, dpi = 300)
+}
 
 
 
