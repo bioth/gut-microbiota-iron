@@ -556,7 +556,7 @@ correlationTimepoints <- function(ps, measure = "log2fold", timeVariable, varToC
 
 
 
-correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, path, df, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = FALSE, displaySpeciesASVNumber = TRUE, colorsHmap = c("blue","red")){
+correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa = "Species", threshold = 0.01, FDR = TRUE, displayPvalue = FALSE, path, df, global = TRUE, singleVariable = FALSE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = FALSE, displaySpeciesASVNumber = TRUE, colorsHmap = c("blue","red")){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -590,17 +590,23 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
   #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
   sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
   
+  if(FDR){
+    pvalue <- "padj"
+  }else{
+    pvalue <- "pvalue"
+  }
+  
   #Replacing NA padj by 1 (they correspond to this anyways)
-  sigtab$padj[is.na(sigtab$padj)] <- 1
+  sigtab[[pvalue]][is.na(sigtab[[pvalue]])] <- 1
   
   #Add column that adds symbols for the significance
   # Define significance levels
-  sigtab$significance <- as.character(cut(sigtab$padj,
+  sigtab$significance <- as.character(cut(sigtab[[pvalue]],
                                           breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
                                           labels = c("***", "**", "*", "NS")))
   
   #Find asvs that have at least one significant value at some timepoint
-  asvList <- unique(sigtab[(sigtab$padj)<threshold,"asv"])
+  asvList <- unique(sigtab[(sigtab[[pvalue]])<threshold,"asv"])
   
   #Check if ASV list is empty and stop here if it is
   if(is_empty(asvList)){
@@ -635,6 +641,105 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
   
   # Bind dataframe with values for correlation and relative abundance
   data_combined <- merge(counts, df, by = "row.names", sort = FALSE)
+  
+  if(singleVariable){
+    
+    # Set row names and drop the "Row.names" column
+    rownames(data_combined) <- data_combined$Row.names
+    data_combined <- data_combined[,-1]
+    
+    # Extract the ASV and variable matrices
+    asv_matrix <- as.matrix(data_combined[, asvList, drop = FALSE]) # ASVs
+    var_matrix <- as.matrix(data_combined[, !colnames(data_combined) %in% asvList, drop = FALSE]) # Non-ASV variables
+    
+    # Calculate correlation matrix
+    cor_results <- rcorr(as.matrix(data_combined), type = "spearman")
+    cor_matrix <- cor_results$r  # Extract correlation coefficients
+    p_values <- cor_results$P    # Extract p-values
+    
+    # Adjust p-values using FDR
+    p_adjusted <- matrix(
+      p.adjust(as.vector(p_values), method = "fdr"),
+      nrow = nrow(p_values),
+      ncol = ncol(p_values),
+      dimnames = dimnames(p_values))
+    
+    cor_matrix <- cor_matrix[rownames(cor_matrix) %in% asvList, !colnames(cor_matrix) %in% asvList]
+    p_values <- p_adjusted[rownames(p_adjusted) %in% asvList, !colnames(p_adjusted) %in% asvList]
+    
+    # If only one sifgnificant ASV, fix or else the code does not work (doesnt work for now)
+    if (length(asvList) == 1) {
+      cor_matrix <- as.data.frame(cor_matrix)
+      cor_matrix$ASV <- rownames(cor_matrix)
+      cor_melt <- pivot_longer(cor_matrix, cols = -ASV, names_to = "Variables", values_to = "value")
+    } else {
+      cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
+    }
+    
+    # # Melt correlation and adjusted p-value matrices
+    # cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
+    p_melt <- melt(p_values)
+
+    # Combine melted data and filter out NA correlations (if any)
+    cor_melt$p_value <- p_melt$value
+    cor_melt <- cor_melt[!is.na(cor_melt$value), ]  # Remove NA rows
+    cor_melt$significance <- ifelse(cor_melt$p_value < 0.001, "***", 
+                                    ifelse(cor_melt$p_value < 0.01, "**", 
+                                           ifelse(cor_melt$p_value < 0.05, "*", "")))
+    
+    # Add taxa_name and taxa_name_asv variable (for species only)
+    taxonomy <- as.data.frame(tax_table(ps))
+    taxonomy <- taxonomy[asvList,]
+    
+    # Retrieve taxonomic information
+    cor_melt <- merge(cor_melt, taxonomy, by = "row.names")
+    cor_melt$variable <- colnames(df)[1]
+    
+    if(taxa=="Species"){
+      cor_melt$taxa_name <- paste0(cor_melt$Genus,"\n",cor_melt$Species)
+      if(displaySpeciesASVNumber){
+        cor_melt$taxa_name <- paste0(cor_melt$taxa_name, " (", cor_melt$Row.names, ")")
+      }
+      
+      # if(taxa=="Species"){
+      #   cor_melt$taxa_name <- paste(taxonomy[cor_melt$ASV, "Genus"],taxonomy[cor_melt$ASV, "Species"])
+      #   if(displaySpeciesASVNumber){
+      #     cor_melt$taxa_name <- paste(cor_melt$taxa_name, " (", cor_melt$ASV, ")", sep = "")
+      #   }
+      
+    }else{
+      cor_melt$taxa_name <- taxonomy[cor_melt$ASV, taxa]
+    }
+    
+    # Display only ASVs that have at least one significant correlation, by subsetting cor_melt
+    if(displayOnlySig){
+      asvList <- as.character(unique(cor_melt$ASV[cor_melt$significance != ""]))
+      cor_melt <- cor_melt[cor_melt$ASV %in% asvList,]
+    }
+    
+    # Create the heatmap
+    p <- ggplot(cor_melt, aes(y = variable, x = taxa_name, fill = value)) +
+      geom_tile(color = "white") +
+      scale_fill_gradient2(low = colorsHmap[1], high = colorsHmap[2], mid = "white",
+                           midpoint = 0, limit = c(-1, 1), space = "Lab",
+                           name = "Correlation") +
+      geom_text(aes(label = significance), color = "black") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            axis.text.y = element_text(face = "italic"),
+            axis.title.x = element_text(size = 12, face = "bold"),
+            axis.title.y = element_text(size = 12, face = "bold")) +
+      labs(x = taxa, y = "")
+    
+    if(returnMainFig){
+      return(p)
+    }else{
+      ggsave(plot = p, filename = paste(dir,"/correlation_all_groups.png", sep = ""), dpi = 300, height = 6, width = 10, bg = 'white')
+      # Save correlation dataframe with stats and correlation coefficients 
+      write_xlsx(cor_melt, path = paste0(dir,"/all_groups_correlation.xlsx"))
+    }
+    
+  }
   
   if(global){
     
@@ -677,7 +782,6 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
     # # Melt correlation and adjusted p-value matrices
     # cor_melt <- melt(cor_matrix, varnames = c("ASV", "Variables"))
     p_melt <- melt(p_values, varnames = c("ASV", "Variables"))
-    
     # Combine melted data and filter out NA correlations (if any)
     cor_melt$p_value <- p_melt$value
     cor_melt <- cor_melt[!is.na(cor_melt$value), ]  # Remove NA rows
@@ -713,8 +817,6 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       asvList <- as.character(unique(cor_melt$ASV[cor_melt$significance != ""]))
       cor_melt <- cor_melt[cor_melt$ASV %in% asvList,]
     }
-    View(cor_melt)
-    return(NULL)
     
     # Create the heatmap
     p <- ggplot(cor_melt, aes(x = Variables, y = taxa_name, fill = value)) +
@@ -878,4 +980,4 @@ correlation2Var <- function(ps, deseq, measure = "log2fold", varToCompare, taxa 
       write_xlsx(cor_melt, path = paste0(dir_group,"/",clean_string(group),"_group_correlation.xlsx"))
     }
   
-}}
+  }}

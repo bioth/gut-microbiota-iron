@@ -43,6 +43,7 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/de
 #set working directory
 setwd("~/Documents/CHUM_git/Microbiota_18_final/")
 asv_table <- as.data.frame(fread("asv_table/asv_table.csv", sep = ";"))
+asv_table <- as.data.frame(fread("asv_table/asv_table_full_optimization.csv", sep = ";"))
 rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
 asv_table <- asv_table[,-1]  # Drop the first column
 
@@ -100,6 +101,8 @@ asv_table <- asv_table[,-1]  # Drop the first column
 # Load taxonomical assignments
 taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";"))
 taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation3.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation4.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
 
@@ -181,22 +184,22 @@ length(taxa_sums(ps_t0_flt))
 
 ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
 ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
-ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.3 * nsamples(ps_t35_flt)), ps_t35_flt)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.25 * nsamples(ps_t35_flt)), ps_t35_flt)
 length(taxa_sums(ps_t35_flt))
 
 ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
 ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
-ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.3 * nsamples(ps_t49_flt)), ps_t49_flt)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.25 * nsamples(ps_t49_flt)), ps_t49_flt)
 length(taxa_sums(ps_t49_flt))
 
 ps_t54 <- prune_samples(sample_data(ps)$timepoint %in% c("54"), ps)
 ps_t54_flt <- prune_taxa(taxa_sums(ps_t54) > 10, ps_t54)
-ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.3 * nsamples(ps_t54_flt)), ps_t54_flt)
+ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.25 * nsamples(ps_t54_flt)), ps_t54_flt)
 length(taxa_sums(ps_t54_flt))
 
 ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("final"), ps)
 ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
-ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.3 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
+ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.25 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
 length(taxa_sums(ps_tfinal_flt))
 
 # Create phyloseq obejcts that we need for the analysis
@@ -210,11 +213,11 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 
 # Alpha diveristy
 {
-  existingDirCheck("../figures/Thibault_final/diet/")
-  graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/Thibault_final/diet/", time = "timepoint", group = "diet", writeData = TRUE)
+  existingDirCheck("../figures/Thibault_dss/diet/")
+  graphs = alphaDiversityTimeSeries2(ps_diet, "../figures/Thibault_dss/diet/", time = "timepoint", group = "diet", writeData = TRUE)
 
   # Stats
-  alpha_d <- read.xlsx("../figures/Thibault_final/diet/alpha_diversity/alpha_diversity_data.xlsx")
+  alpha_d <- read.xlsx("../figures/Thibault_dss/diet/alpha_diversity/alpha_diversity_data.xlsx")
   alpha_d$diet <- factor(alpha_d$diet, levels = c("50", "500"))
   alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("0", "35", "49"))
   
@@ -224,8 +227,46 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                       labels = c("50 ppm","500 ppm"))+
     scale_x_discrete(labels = c("3 weeks\n(Weaning)","5 weeks", "7 weeks"))+
     labs(y = "Chao1 Index", x = "")+
-    my_theme()
-  ggsave("../figures/Thibault_final/diet/alpha_diversity/chao1.png",
+    my_theme()+
+    ylim(0,1800)+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.8),           # left box in each timepoint
+      xmax = c(1.2),
+      annotations = "n.s.",
+      y_position = c(1500), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )+geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.8),           # left box in each timepoint
+      xmax = c(2.2),
+      annotations = "n.s.",
+      y_position = c(1500), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+geom_signif( # For third timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.8),           # left box in each timepoint
+      xmax = c(3.2),
+      annotations = "p=0.08",
+      y_position = c(1500), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )
+  ggsave("../figures/Thibault_dss/diet/alpha_diversity/chao1.png",
          bg = "white",height = 4, width =5, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "0",], group = "diet", measure = "Chao1")
@@ -243,8 +284,46 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                       labels = c("50 ppm","500 ppm"))+
     scale_x_discrete(labels = c("3 weeks\n(Weaning)","5 weeks", "7 weeks"))+
     labs(y = "Shannon Index", x = "")+
-    my_theme()
-  ggsave("../figures/Thibault_final/diet/alpha_diversity/shannon.png",
+    my_theme()+
+  ylim(0,6)+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.8),           # left box in each timepoint
+      xmax = c(1.2),
+      annotations = "n.s.",
+      y_position = c(5.5), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )+geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.8),           # left box in each timepoint
+      xmax = c(2.2),
+      annotations = "n.s.",
+      y_position = c(5.5), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+geom_signif( # For third timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.8),           # left box in each timepoint
+      xmax = c(3.2),
+      annotations = "n.s.",
+      y_position = c(5.2), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )
+  ggsave("../figures/Thibault_dss/diet/alpha_diversity/shannon.png",
          bg = "white",height = 4, width =5, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "0",], group = "diet", measure = "Shannon")
@@ -262,8 +341,46 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                       labels = c("50 ppm","500 ppm"))+
     scale_x_discrete(labels = c("3 weeks\n(Weaning)","5 weeks", "7 weeks"))+
     labs(y = "Inverse Simpson", x = "")+
-    my_theme()
-  ggsave("../figures/Thibault_final/diet/alpha_diversity/invsimpson.png",
+    my_theme()+
+    ylim(0,45)+
+    geom_signif( # For first timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(0.8),           # left box in each timepoint
+      xmax = c(1.2),
+      annotations = "n.s.",
+      y_position = c(41), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )+geom_signif( # For second timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(1.8),           # left box in each timepoint
+      xmax = c(2.2),
+      annotations = "n.s.",
+      y_position = c(32), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = 0,
+    )+geom_signif( # For third timepoint
+      # comparisons = list(c(groups[1],groups[4])),
+      xmin = c(2.8),           # left box in each timepoint
+      xmax = c(3.2),
+      annotations = "n.s.",
+      y_position = c(20), #
+      tip_length = 0,
+      color = "black",
+      size = 0.5,
+      textsize = 4,
+      margin_top = 0.1, # Moves the top according to this value
+      vjust = -0.1,
+    )
+  ggsave("../figures/Thibault_dss/diet/alpha_diversity/invsimpson.png",
          bg = "white",height = 4, width =5, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "0",], group = "diet", measure = "InvSimpson")
@@ -276,24 +393,24 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   wilcox.test(InvSimpson ~ diet, data = alpha_d[alpha_d$timepoint == "49",])
   
   # Alpha diveristy for dss_diet only
-  existingDirCheck("../figures/Thibault_final/diet_dss/")
-  graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/Thibault_final/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
+  existingDirCheck("../figures/Thibault_dss/diet_dss/")
+  graphs = alphaDiversityTimeSeries2(ps_dss_alpha, "../figures/Thibault_dss/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
   
   # Load data for stats calculations
-  alpha_d <- read.xlsx("../figures/Thibault_final/diet_dss/alpha_diversity/alpha_diversity_data.xlsx")
+  alpha_d <- read.xlsx("../figures/Thibault_dss/diet_dss/alpha_diversity/alpha_diversity_data.xlsx")
   alpha_d$gg_group2 <- factor(alpha_d$gg_group2, levels = c("50:water","500:water","50:dss","500:dss"))
   alpha_d$timepoint <- factor(alpha_d$timepoint, levels = c("49", "54", "final"))
   
   # Chao1
   graphs[[1]]+
     scale_fill_manual(values = c("blue","red","darkblue","darkred"),
-                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
+                      labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
                      expand = c(0,0.5))+
     labs(y = "Species Richness", x = "")+
     guides(pattern = "none")+
-    ylim(0,1850)+
+    ylim(0,2200)+
     my_theme()+
     geom_signif( # For first timepoint
       # comparisons = list(c(groups[1],groups[4])),
@@ -310,11 +427,11 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
     )+
     geom_signif( # For last timepoint
       # comparisons = list(c(groups[1],groups[4])),
-      xmin = c(2.7),           # left box in each timepoint
-      xmax = c(3.3),
-      annotations = "n.s.",
-      y_position = c(1500), #
-      tip_length = 0,
+      xmin = c(2.7,3.1,2.7,2.9),           # left box in each timepoint
+      xmax = c(2.9,3.3,3.1,3.3),
+      annotations = c("n.s.","n.s.","p=0.08","p=0.08"),
+      y_position = c(1500,1100,1750,2000), #
+      tip_length = c(0.02,0.02,0.02,0.02),
       color = "black",
       size = 0.5,
       textsize = 4,
@@ -334,7 +451,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
       margin_top = 0.1, # Moves the top according to this value
       vjust = 0,
     )
-  ggsave("../figures/Thibault_final/diet_dss/alpha_diversity/chao1.png",
+  ggsave("../figures/Thibault_dss/diet_dss/alpha_diversity/chao1.png",
          bg = "white",height = 5, width =7, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "Chao1")
@@ -349,7 +466,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   # Shannon
   graphs[[2]]+
     scale_fill_manual(values = c("blue","red","darkblue","darkred"),
-                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
+                      labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
                      expand = c(0,0.5))+
@@ -372,11 +489,11 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
     )+
     geom_signif( # For last timepoint
       # comparisons = list(c(groups[1],groups[4])),
-      xmin = c(2.7),           # left box in each timepoint
-      xmax = c(3.3),
-      annotations = "n.s.",
-      y_position = c(4), #
-      tip_length = 0,
+      xmin = c(2.7,3.1,2.7,2.9),           # left box in each timepoint
+      xmax = c(2.9,3.3,3.1,3.3),
+      annotations = c("n.s.","p=0.09","n.s.","p=0.09"),
+      y_position = c(4,4,4.5,5), #
+      tip_length = c(0.02,0.02,0.02,0.02),
       color = "black",
       size = 0.5,
       textsize = 4,
@@ -396,7 +513,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
       margin_top = 0.1, # Moves the top according to this value
       vjust = 0,
     )
-  ggsave("../figures/Thibault_final/diet_dss/alpha_diversity/shannon.png",
+  ggsave("../figures/Thibault_dss/diet_dss/alpha_diversity/shannon.png",
          bg = "white",height = 5, width =7, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "Shannon")
@@ -407,17 +524,19 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "Shannon")
   TukeyHSD(aov(Shannon ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
+  pairwise.wilcox.test(alpha_d[alpha_d$timepoint == "final",]$Shannon, alpha_d[alpha_d$timepoint == "final",]$gg_group2, p.adjust.method = "BH")
+  
   
   # InvSimpson
   graphs[[3]]+
     scale_fill_manual(values = c("blue","red","darkblue","darkred"),
-                      labels = c("50 ppm control","500 ppm control","50 ppm DSS","500 ppm DSS"))+
+                      labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("DSS day 0","DSS day 5", "End of\nrecovery"),
                      expand = c(0,0.5))+
     labs(y = "Inverse Simpson Index", x = "", title = "Inverse Simpson index")+
     guides(pattern = "none")+
-    ylim(0,26)+
+    ylim(0,27)+
     my_theme()+
     geom_signif( # For first timepoint
       # comparisons = list(c(groups[1],groups[4])),
@@ -458,7 +577,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
       margin_top = 0.1, # Moves the top according to this value
       vjust = 0,
     )
-  ggsave("../figures/Thibault_final/diet_dss/alpha_diversity/InvSimpson.png",
+  ggsave("../figures/Thibault_dss/diet_dss/alpha_diversity/InvSimpson.png",
          bg = "white",height = 5, width =7, dpi = 300)
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "InvSimpson")
@@ -481,41 +600,41 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "sample_id", timeVariable = "week",
                                  varToCompare =  "diet", distMethod ="bray",
                                  transform = "rel_ab", customColors = c("blue","red"),
-                                 font = "Arial", path = "../figures/Thibault_final/diet/beta_diversity/filtered/", 
-                                 additionnalAes = my_theme(), dim = c(4,5), displayPValue = TRUE)
+                                 font = "Arial", path = "../figures/Thibault_dss/diet/beta_diversity/filtered/", 
+                                 additionnalAes = my_theme()+theme(plot.title = element_text(size = 12)), dim = c(3,4), displayPValue = TRUE)
 
   # For diet + treatment at t54 and tfinal
-  sample_data(ps_flt_dss)$gg_group2 <- factor(sample_data(ps_flt_dss)$gg_group2, labels = c("50 Ctrl","500 Ctrl", "50 DSS", "500 DSS"))
+  sample_data(ps_flt_dss)$gg_group2 <- factor(sample_data(ps_flt_dss)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS"))
   # Bray curtis filtered => not very informative
   betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "sample_id", timeVariable = "timepoint",
                                  varToCompare =  "gg_group2", distMethod ="bray",
                                  customColors = c("blue","red","darkblue","darkred"),
-                                 font = "Arial", path = "../figures/Thibault_final/diet_dss/beta_diversity/filtered/",
-                                 additionnalAes = my_theme())
+                                 font = "Arial", path = "../figures/Thibault_dss/diet_dss/beta_diversity/filtered/",
+                                 additionnalAes = my_theme()+theme(plot.title = element_blank()), dim = c(2.5,4))
 
   # dbRDA method at t54 and for DSS groups
   ps_sub <- prune_samples(sample_data(ps_flt_dss)$timepoint == "54" & sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
-  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm","500 ppm"))
+  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm DSS","500 ppm DSS"))
   betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "sample_id", varToCompare = "diet", formula = "diet",
                                       transform = "none", distMethod = "bray", customColors = c("darkblue","darkred"),
-                                      font = "Arial", path = "../figures/Thibault_final/dss_only/beta_diversity/dbRDA_t54/", dim = c(4,5),
-                                      additionnalAes = my_theme())
+                                      font = "Arial", path = "../figures/Thibault_dss/dss_only/beta_diversity/dbRDA_t54/", dim = c(3,4),
+                                      additionnalAes = my_theme(), displayPValue = TRUE)
   
   # dbRDA method at last timepoint and for DSS groups
   ps_sub <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final" & sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
-  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm","500 ppm"))
+  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm DSS","500 ppm DSS"))
   betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "sample_id", varToCompare = "diet", formula = "diet",
                                       transform = "none", distMethod = "bray", customColors = c("darkblue","darkred"),
-                                      font = "Arial", path = "../figures/Thibault_final/dss_only/beta_diversity/dbRDA_tfinal/", dim = c(4,5),
+                                      font = "Arial", path = "../figures/Thibault_dss/dss_only/beta_diversity/dbRDA_tfinal/", dim = c(3,4),
                                       additionnalAes = 
-                                        my_theme())
+                                        my_theme(), displayPValue = TRUE)
   
   # dbRDA method at last timepoint and for all groups
   ps_sub <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final", ps_flt_dss)
   sample_data(ps_sub)$gg_group2
   betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "sample_id", varToCompare = "gg_group2", formula = "diet+treatment",
                                       transform = "none", distMethod = "bray", customColors = c("blue","red","darkblue","darkred"),
-                                      font = "Arial", path = "../figures/Thibault_final/dss_only/beta_diversity/dbRDA-all-groups/",
+                                      font = "Arial", path = "../figures/Thibault_dss/dss_only/beta_diversity/dbRDA-all-groups/",
                                       additionnalAes = my_theme(), dim = c(4,5))
   
   # dbRDA method at t54 and last timepoint and for DSS groups
@@ -524,14 +643,14 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   sample_data(ps_sub)$gg_group <- factor(sample_data(ps_sub)$gg_group, levels = c("54:50:dss","54:500:dss","final:50:dss" ,"final:500:dss"))
   betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "sample_id", varToCompare = "gg_group", formula = "diet*timepoint",
                                       transform = "none", distMethod = "bray", customColors = c("blue","red","darkblue","darkred"),
-                                      font = "Arial", path = "../figures/Thibault_final/dss_only/beta_diversity/dbRDA_2Last/",
+                                      font = "Arial", path = "../figures/Thibault_dss/dss_only/beta_diversity/dbRDA_2Last/",
                                       additionnalAes = my_theme(), dim = c(4,5))
 }
 
 # Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
 {
   # Path where to save graphs
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/relative_abundance_diet/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_dss/newTaxAnnotation/relative_abundance_diet/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -595,7 +714,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups, for t49 t54 and tfinal timepoints
 # Path where to save graphs
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/relative_abundance_dss_diet_all_groups/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_dss/newTaxAnnotation/relative_abundance_dss_diet_all_groups/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -628,7 +747,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                   list("50:water","50:dss"), list("500:water","500:dss")),
                 path = newPath, single_factor_design = FALSE,
                 dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = TRUE, additionnalAes =
-                  list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nDSS","500 ppm\nDSS")),
+                  list(scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS")),
                        my_theme(),
                        labs(color = "", x=""))) # Include axis lines  # Include axis bar)
   }
@@ -669,7 +788,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                     list("50:water","50:dss"), list("500:water","500:dss")),
                   path = newPath, single_factor_design = FALSE,
                   dim = c(5,5), displayPvalue = FALSE, displaySignificance = TRUE, additionnalAes =
-                    list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nDSS","500 ppm\nDSS")),
+                    list(scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS")),
                          my_theme(),
                          labs(color = "", x="")))  
     }
@@ -678,7 +797,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 
 # Relative abundance analysis: finding differential abundant bugs at different taxonomical levels - only DSS groups
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/relative_abundance_dss/"
+  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_dss/newTaxAnnotation/relative_abundance_dss/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -755,7 +874,7 @@ diet_phyla_fam <- plot_microbiota_timepoints(
   time_variable = "timepoint",
   combined_group = 'gg_group',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  hues = c("Blues","Greens","Purples","Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
@@ -767,7 +886,7 @@ diet_phyla_fam <- plot_microbiota_timepoints(
   n_phy = 4, # number of taxa to show 
   mult_comp = F, # pairwise comparaisons for diff ab analysis
   selected_comparisons = list(c( "50:0",  "500:0"), c( "50:35",  "500:35"), c( "50:49",  "500:49")),
-  showOnlySubLegend = TRUE
+  showOnlySubLegend = FALSE
 )
 
 print(diet_phyla_fam$plot)
@@ -812,13 +931,13 @@ p <- diet_phyla_fam$plot +
   ) +
   facetted_pos_scales(x = facet_scales)+
   scale_x_discrete(labels = function(x) substr(x, 1, 5))+
-  labs(x = "Sample ID")
+  labs(x = "Mouse ID")
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_final/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_final/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
-writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_final/new_filtering/stackbar/diet_stackbar_stats.xlsx")
+existingDirCheck("../figures/Thibault_dss/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_dss/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
+writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_dss/new_filtering/stackbar/diet_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
 pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackbar/diet_stackbar_stats.xlsx")),
@@ -826,7 +945,7 @@ pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/thibault/stackb
             txn_lvl="Phylum", lvl = "main", taxons = diet_phyla_fam$main_names[!grepl("Others", x = diet_phyla_fam$main_names)], group = "gg_group", path)
 
 # pvalues heatmap for the sub lvl stats
-p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_final/new_filtering/stackbar/diet_stackbar_stats.xlsx")),
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/new_filtering/stackbar/diet_stackbar_stats.xlsx")),
                 selected_comparisons = c("50:0_vs_500:0", "50:35_vs_500:35","50:49_vs_500:49"),
                 txn_lvl="Family", lvl = "sub", taxons =  diet_phyla_fam$sub_names, group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
 p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
@@ -853,7 +972,7 @@ diet_dss_phyla_fam <- plot_microbiota_2Fac(
   fac2 = "treatment",
   refFac2 = "water",
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  hues = c("Blues","Greens","Purples","Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
@@ -894,21 +1013,21 @@ p <- diet_dss_phyla_fam$plot +
         legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
   ) +
   scale_x_discrete(labels = function(x) substr(x, 1, 5))+
-  labs(x = "Sample ID")
+  labs(x = "Mouse ID")
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_final/new_filtering/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_final/new_filtering/stackbar/diet_dss_stackbar.png", width = 7, height = 7, dpi = 300)
-writeStackbarExtendedSigTable(main_table = diet_dss_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_dss_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_final/new_filtering/stackbar/diet_dss_stackbar_stats.xlsx")
+existingDirCheck("../figures/Thibault_dss/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_dss/stackbar/diet_dss_stackbar.png", width = 7, height = 7, dpi = 300)
+writeStackbarExtendedSigTable(main_table = diet_dss_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_dss_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_dss/new_filtering/stackbar/diet_dss_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_final/new_filtering/stackbar/diet_dss_stackbar_stats.xlsx")),
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/new_filtering/stackbar/diet_dss_stackbar_stats.xlsx")),
             selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"), displayChangeArrows = TRUE, displayPValues = FALSE,
             txn_lvl="Phylum", lvl = "main", taxons = diet_dss_phyla_fam$main_names[!grepl("Others", x = diet_dss_phyla_fam$main_names)], group = "gg_group2", path)
 
 # pvalues heatmap for the sub lvl stats
-p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_final/new_filtering/stackbar/diet_dss_stackbar_stats.xlsx")),
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/new_filtering/stackbar/diet_dss_stackbar_stats.xlsx")),
                 selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"),
                 txn_lvl="Family", lvl = "sub", taxons =  diet_dss_phyla_fam$sub_names, group = "gg_group2", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
 p+scale_x_discrete(labels = c("50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS", "50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS"))+
@@ -936,7 +1055,7 @@ final_phyla_fam <- plot_microbiota_2Fac(
   fac2 = "diet",
   refFac2 = "50",
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  hues = c("Blues","Greens","Purples","Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
@@ -951,7 +1070,7 @@ final_phyla_fam <- plot_microbiota_2Fac(
                               c("50:dss", "500:dss"),
                               c("50:water", "50:dss"),
                               c("500:water", "500:dss")),
-  showOnlySubLegend = TRUE
+  showOnlySubLegend = FALSE
 )
 
 print(final_phyla_fam$plot)
@@ -977,21 +1096,21 @@ p <- final_phyla_fam$plot +
         legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
   ) +
   scale_x_discrete(labels = function(x) substr(x, 1, 5))+
-  labs(x = "Sample ID")
+  labs(x = "Mouse ID")
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_final/new_filtering/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_final/new_filtering/stackbar/final_stackbar.png", width = 6, height = 6, dpi = 300)
-writeStackbarExtendedSigTable(main_table = final_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = final_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_final/new_filtering/stackbar/final_stackbar_stats.xlsx")
+existingDirCheck("../figures/Thibault_dss/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_dss/stackbar/final_stackbar.png", width = 6, height = 6, dpi = 300)
+writeStackbarExtendedSigTable(main_table = final_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = final_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_dss/new_filtering/stackbar/final_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
-pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_final/new_filtering/stackbar/final_stackbar_stats.xlsx")),
+pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/new_filtering/stackbar/final_stackbar_stats.xlsx")),
             selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"), displayChangeArrows = FALSE, displayPValues = TRUE,
             txn_lvl="Phylum", lvl = "main", taxons = final_phyla_fam$main_names[!grepl("Others", x = final_phyla_fam$main_names)], group = "gg_group2", path)
 
 # pvalues heatmap for the sub lvl stats
-p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_final/new_filtering/stackbar/final_stackbar_stats.xlsx")),
+p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/new_filtering/stackbar/final_stackbar_stats.xlsx")),
                 selected_comparisons = c("50:water_vs_500:water", "50:dss_vs_500:dss","50:water_vs_50:dss","500:water_vs_500:dss"),
                 txn_lvl="Family", lvl = "sub", taxons =  final_phyla_fam$sub_names, group = "gg_group2", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
 p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS"))+
@@ -1057,7 +1176,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
       # comparisons = list(c(groups[1],groups[4])),
       xmin = c(2.8),           # left box in each timepoint
       xmax = c(3.2),
-      annotations = "n.s.",
+      annotations = "p=0.07",
       y_position = c(9), #
       tip_length = 0,
       color = "black",
@@ -1066,7 +1185,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
       margin_top = 0.1, # Moves the top according to this value
       vjust = -0.1,
     )
-  ggsave("../figures/Thibault_final/fb_ratio/fb_ratio_diet.png",
+  ggsave("../figures/Thibault_dss/fb_ratio/fb_ratio_diet.png",
          bg = "white",height = 4, width =5, dpi = 300)
   # Stats
   verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "0",], group = "diet",measure =  "fb_ratio")
@@ -1106,7 +1225,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
       xmin = c(1.7,2.1,1.7,1.9), # left position
       xmax = c(1.9,2.3,2.1,2.3), # left position
       annotations = c("n.s.","n.s.","***","***"),
-      y_position = c(7.3,2.5,7.6,6), #
+      y_position = c(6.9,1.8,7.5,5.6), #
       tip_length = c(0.02,0.02,0.02,0.02),
       color = "black",
       size = 0.5,
@@ -1127,7 +1246,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
       margin_top = 0.1, # Moves the top according to this value
       vjust = 0,
     )
-  ggsave("../figures/Thibault_final/fb_ratio/fb_ratio_dss.png",
+  ggsave("../figures/Thibault_dss/fb_ratio/fb_ratio_dss.png",
          bg = "white",height = 5, width =7, dpi = 300)
   
   # Stats
@@ -1241,7 +1360,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
       xmin = c(2.7,3.1,2.7,2.9),           # left box in each timepoint
       xmax = c(2.9,3.3,3.1,3.3),
       annotations = c("n.s.","*","*","n.s."),
-      y_position = c(0.8,0.8,0.85,0.9), #
+      y_position = c(0.8,0.6,0.85,0.9), #
       tip_length = c(0.02,0.02,0.02,0.02),
       color = "black",
       size = 0.5,
@@ -1249,7 +1368,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
       margin_top = 0.1, # Moves the top according to this value
       vjust = 0,
     )
-  ggsave("../figures/Thibault_final/recovery_index/recovery_index.png",
+  ggsave("../figures/Thibault_dss/recovery_index/recovery_index.png",
          bg = "white",height = 5, width =7, dpi = 300)
   
   # Stats
@@ -1263,7 +1382,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   TukeyHSD(aov(RecoveryIndex ~ gg_group2 , data = df[df$timepoint == "final",]))
 }
 
-# Correlations 
+# Correlation with iron at t35
 {
   library(readxl)
   
@@ -1278,52 +1397,72 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   rownames(df) <- df$sample_id
   df <- df[,-1,drop = FALSE]
   df$iron_concentration <- as.numeric(df$iron_concentration)
+
+  # ps_subset <- tax_glom(ps_subset, taxrank = "Family")
+  deseq_subset <- phyloseq_to_deseq2(ps_t35_flt, ~ diet) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  res <- results(deseq_subset, name = resultsNames(deseq_subset)[2]) #50 vs 500
+  print(resultsNames(deseq_subset))
   
-  # Load DSS related results 
+  #For species level
+  #One heatmap for all groups
+  p <- correlation2Var(ps_t35_flt, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, FDR = TRUE, "~/Documents/CHUM_git/figures/Thibault_dss/newTaxAnnotation/correlation_heatmaps/", df = df, global = FALSE, singleVariable = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = TRUE)
+  p <- p+
+    labs(title = "Correlation between iron in stools at t35\nand differentially abundant species abundance", y = "", x = "")+
+    coord_fixed() + # Makes thing squared
+    theme(
+      text = element_text(family = "Arial"),      # Global text settings
+      plot.title = element_text(size = 16, face = "bold"),
+      axis.title.x = element_text(size = 12, face = "bold"),  # Axis titles
+      axis.text.y = element_blank(),  # Axis titles
+      axis.text.x = element_text(size = 12, face = "bold",hjust = 0.5, vjust = 0.75),   # Axis text
+      legend.title = element_text(face = "bold", size = 12),  # Legend title  # Legend text
+      axis.ticks = element_blank()
+    ) #axis.text.x = element_text(angle = -45, hjust = 1)
+  p
+  ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_dss/correlation_heatmaps/species_iront35_hmap.png",
+         plot = p, bg = "white", height = 6, width = 6, dpi = 300)
+  
+}
+
+# Correlation with DSS-associated parameters
+{
+  library(readxl)
+  
+  # Load DSS related results
   variables <- read.csv("~/Documents/CHUM_git/gut-microbiota-iron/experiments/finished exp/young-DSS-exp3/young_dss_followup_day5.csv", sep = ",")
   variables <- variables[-22,]
   variables$id <- gsub(x = variables$id, replacement = "", pattern = "[A-Z]")
-  variables$id <- paste0(variables$id, "_T35")
+  variables$id <- paste0(variables$id, "_T54")
   rownames(variables) <- variables$id
   variables <- variables[,c(8,9,13)]
-  variables <- merge(df, variables, by = "row.names")
-  rownames(variables) <- variables$Row.names
-  variables <- variables[,-1]
   
-  ps_subset <- subset_samples(ps_t35, sample_data(ps_t35)$treatment == "dss")
-  ps_subset <- subset_samples(ps_t35_flt, sample_data(ps_t35_flt)$treatment == "dss")
-  ps_subset <- prune_taxa(colSums(otu_table(ps_subset) > 0) > 0, ps_subset)
-  length(taxa_sums(ps_subset))
-
-  # ps_subset <- tax_glom(ps_subset, taxrank = "Family")
+  ps_subset <- prune_samples(sample_data(ps_t54_flt)$treatment == "dss", ps_t54_flt)
+  ps_subset <- tax_glom(ps_subset, taxrank = "Genus")
   deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
   res <- results(deseq_subset, name = resultsNames(deseq_subset)[2]) #50 vs 500
-  sigtab1 <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res), ], "matrix"))
-  sigtab2 <- cbind(as(res, "data.frame"), as(tax_table(ps_subset)[rownames(res), ], "matrix"))
   print(resultsNames(deseq_subset))
-    
-  sample_data(ps_subset)$gg_group2
+  
   #For species level
   #One heatmap for all groups
-  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, "~/Documents/CHUM_git/figures/Thibault_final/newTaxAnnotation/correlation_heatmaps/", df = variables, global = TRUE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
-  
+  p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Genus", displayPvalue = FALSE, threshold = 0.05, FDR = TRUE, "~/Documents/CHUM_git/figures/Thibault_dss/newTaxAnnotation/correlation_heatmaps/", df = variables, global = TRUE, singleVariable = FALSE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
   p <- p+
-    # coord_fixed() + # Makes thing squared
+    labs(title = "Correlation between iron in stools at t35\nand differentially abundant species abundance", y = "", x = "")+
+    coord_fixed() + # Makes thing squared
     theme(
       text = element_text(family = "Arial"),      # Global text settings
-      axis.title.x = element_text(size = 16, face = "bold"),  # Axis titles
-      axis.title.y = element_text(size = 16, face = "bold"),
-      axis.text = element_text(size = 12, face = "bold"),   # Axis text
-      legend.title = element_text(face = "bold", size = 16),  # Legend title  # Legend text
+      plot.title = element_text(size = 16, face = "bold"),
+      axis.title.x = element_text(size = 12, face = "bold"),  # Axis titles
+      axis.text.y = element_blank(),  # Axis titles
+      axis.text.x = element_text(size = 12, face = "bold",hjust = 0.5, vjust = 0.75),   # Axis text
+      legend.title = element_text(face = "bold", size = 12),  # Legend title  # Legend text
+      axis.ticks = element_blank()
     ) #axis.text.x = element_text(angle = -45, hjust = 1)
-  
-  ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final/correlation_heatmaps/species_hmap.png",
-         plot = p, bg = "white", height = 9, width = 8, dpi = 300)
+  p
+  ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_dss/correlation_heatmaps/species_iront35_hmap.png",
+         plot = p, bg = "white", height = 6, width = 6, dpi = 300)
 }
-
-
-
 
 # Prepare picrust2 input for last timepoint
 ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)
@@ -1474,14 +1613,14 @@ producePicrust2Inputs(ps_subset, "~/Documents/CHUM_git/Microbiota_18/t54/")
 betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="bray",
                                transform = "rel_ab", customColors = c("blue","red"),
-                               font = "Arial", path = "../figures/Thibault_final/diet/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/Thibault_dss/diet/beta_diversity/filtered/")
 
 # Beta diversity (for diet + treatment)
 # Bray curtis filtered (good for t54, less interpretable for tfinal)
 betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "gg_group2", distMethod ="bray",
                                customColors = c("blue","red","blue4","red4"),
-                               font = "Arial", path = "../figures/Thibault_final/diet_dss/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/Thibault_dss/diet_dss/beta_diversity/filtered/")
 
 # Beta diversity, for control only at tfinal
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final" & sample_data(ps_flt_dss)$treatment == "water", ps_flt_dss) # Create subset
@@ -1489,7 +1628,7 @@ ps_subset <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final" & sample
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="bray",
                                transform = "rel_ab", customColors = c("blue","red"),
-                               font = "Arial", path = "../figures/Thibault_final/diet/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/Thibault_dss/diet/beta_diversity/filtered/")
 
 # Beta diversity, for dss only at t54 and tfinal
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss) # Create subset
@@ -1497,7 +1636,7 @@ ps_subset <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_ds
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="bray",
                                transform = "rel_ab", customColors = c("darkblue","darkred"),
-                               font = "Arial", path = "../figures/Thibault_final/dss/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/Thibault_dss/dss/beta_diversity/filtered/")
 
 # Beta diversity, for dss only at t54 and tfinal, test with Jaccard index 
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss) # Create subset
@@ -1507,7 +1646,7 @@ length(taxa_sums(ps))
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "diet", distMethod ="jaccard",
                                transform = "none", customColors = c("darkblue","darkred"),
-                               font = "Arial", path = "../figures/Thibault_final/dss/beta_diversity/jaccard/")
+                               font = "Arial", path = "../figures/Thibault_dss/dss/beta_diversity/jaccard/")
 
 # Beta diversity, for 50 only at t54 and tfinal (showing that they remain different)
 ps_subset <- prune_samples(sample_data(ps_dss)$diet == "50", ps_dss) # Create subset
@@ -1515,7 +1654,7 @@ ps_subset <- prune_samples(sample_data(ps_dss)$diet == "50", ps_dss) # Create su
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "treatment", distMethod ="bray",
                                transform = "rel_ab", customColors = c("blue","darkblue"),
-                               font = "Arial", path = "../figures/Thibault_final/diet_50/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/Thibault_dss/diet_50/beta_diversity/filtered/")
 
 # Beta diversity, for 500 only at t54 and tfinal (showing that they remain different)
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$diet == "500", ps_flt_dss) # Create subset
@@ -1523,7 +1662,7 @@ ps_subset <- prune_samples(sample_data(ps_flt_dss)$diet == "500", ps_flt_dss) # 
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",
                                varToCompare =  "treatment", distMethod ="bray",
                                transform = "rel_ab", customColors = c("red","darkred"),
-                               font = "Arial", path = "../figures/Thibault_final/diet_500/beta_diversity/filtered/")
+                               font = "Arial", path = "../figures/Thibault_dss/diet_500/beta_diversity/filtered/")
 
 
 # Now we apply dbRDA for more complex designs with all groups for t54 and tfinal
@@ -1531,12 +1670,12 @@ betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable 
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$timepoint == "54", ps_flt_dss)
 betaDiversityTimepointsGroupedDbRDA(ps = ps_subset, sample_id = "sample_id", varToCompare = "gg_group2",distMethod = "hellinger",
                                     customColors = c("blue","red","blue4","red4"), formula = "treatment * diet + cage", transform = "rel_ab",
-                                    path = "../figures/Thibault_final/diet_dss/dbRDA_t54/", font = "Arial", additionnalAes = NULL)
+                                    path = "../figures/Thibault_dss/diet_dss/dbRDA_t54/", font = "Arial", additionnalAes = NULL)
 
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final", ps_flt_dss)
 betaDiversityTimepointsGroupedDbRDA(ps = ps_subset, sample_id = "sample_id", varToCompare = "gg_group2",distMethod = "hellinger",
                                     customColors = c("blue","red","blue4","red4"), formula = "treatment * diet + cage", transform = "rel_ab",
-                                    path = "../figures/Thibault_final/diet_dss/dbRDA_final/", font = "Arial", additionnalAes = NULL)
+                                    path = "../figures/Thibault_dss/diet_dss/dbRDA_final/", font = "Arial", additionnalAes = NULL)
 
 
 
@@ -1771,7 +1910,7 @@ if (nrow(significant_features) == 0) {
 
 # LRT analysis
 # Subset for 50 ppm
-relabTimepoints(ps_flt_diet, deseq_subset, timeVariable = "week", varToCompare = "diet", taxa = "Species", threshold == 0.05, customColors = c("blue","red"), path = "~/Documents/CHUM_git/figures/Thibault_final/lrt_diet/")
+relabTimepoints(ps_flt_diet, deseq_subset, timeVariable = "week", varToCompare = "diet", taxa = "Species", threshold == 0.05, customColors = c("blue","red"), path = "~/Documents/CHUM_git/figures/Thibault_dss/lrt_diet/")
 # Subset for 50 ppm, and for family level taxa
 ps_subset <- prune_samples(sample_data(ps_flt_diet)$diet == "50", ps_flt_diet)
 ps_taxa <- tax_glom(ps_subset, taxrank = "Phylum")

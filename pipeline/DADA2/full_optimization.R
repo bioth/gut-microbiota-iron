@@ -4,9 +4,6 @@ library(dplyr)
 library(ShortRead)
 library(data.table)
 
-# Update dada2 to latest branch
-devtools::install_github("benjjneb/dada2", ref = "master")
-
 # Function checking if a dir exists and creating it otherwise
 existingDirCheck <- function(path){
   
@@ -203,95 +200,48 @@ existingDirCheck <- function(path){
 # Microbiota 18
 # Setting working directory and selecting loading files of interest
 setwd("~/Documents/CHUM_git/Microbiota_18/trimmed_fastq/")
+setwd("~/Documents/CHUM_git/Microbiota_18/2106590411/")
 
 # Loading metdata
 meta <- read.csv("../../gut-microbiota-iron/experiments/finished exp/young-DSS-exp3/young48_dss_dissection.csv", header = TRUE, sep = ";")
-samples <- substring(meta$id[meta$treatment=="water"], 1, 5)
-
-# Listing files in the current working directory
-list.files()
+meta$id <- substring(meta$id, 1, 5)
+meta$gg_group <- paste(meta$diet,meta$treatment,sep=":")
+samples <- c()
+samples <- append(samples, meta[meta$gg_group == "50:water","id"][1:2])
+samples <- append(samples, meta[meta$gg_group == "500:water","id"][1:2])
+samples <- append(samples, meta[meta$gg_group == "50:dss","id"][1:2])
+samples <- append(samples, meta[meta$gg_group == "500:dss","id"][1:2])
+timepoints <- c("T0","T35","T49","T54","Tfinal")
+samples <- as.vector(outer(samples, timepoints, paste, sep = "_"))
 
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
 r1_fastq <- sort(list.files(pattern="R1_trimmed.fastq", full.names = TRUE)) 
 r2_fastq <- sort(list.files(pattern="R2_trimmed.fastq", full.names = TRUE))
 
+r1_fastq <- sort(list.files(pattern="R1.fastq", full.names = TRUE)) 
+r2_fastq <- sort(list.files(pattern="R2.fastq", full.names = TRUE))
+
 r1_fastq <- r1_fastq[grepl(paste0(paste0(samples, "s*"), collapse = "|"), r1_fastq)]
 r2_fastq <- r2_fastq[grepl(paste0(paste0(samples, "s*"), collapse = "|"), r2_fastq)]
-
-r1_fastq <- r1_fastq[-grepl("d53s*", r1_fastq)]
-r2_fastq <- r2_fastq[-grepl("d53s*", r2_fastq)]
-
-{
-  r1_fastq_dss <- sort(list.files(pattern="T54_R1_trimmed.fastq", full.names = TRUE)) 
-  r2_fastq_dss <- sort(list.files(pattern="T54_R2_trimmed.fastq", full.names = TRUE))
-  plotQualityProfile(r1_fastq_dss, aggregate = TRUE)
-  plotQualityProfile(r2_fastq_dss[28], aggregate = TRUE)
-}
-
-# Subsets to try solving high chimers issue
-{
-  r1_fastq <- r1_fastq[1:6]
-  r2_fastq <- r2_fastq[1:6]
-}
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample_names <- gsub(".*\\.(.*?)_R1_trimmed\\.fastq$", "\\1", basename(r1_fastq))
 
 # Creating a dir for r console output and pictures
-existingDirCheck("~/Documents/CHUM_git/Microbiota_18/r_console_output/")
+existingDirCheck("~/Documents/CHUM_git/full_optimization/r_console_output/")
 
 # Printing aggregate quality profile plot for all of the R1 files
 plotQualityProfile(r1_fastq, aggregate = TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/quality_profileR1.png", height = 6, width = 10)
+ggsave(dpi = 300, filename = "~/Documents/CHUM_git/full_optimization/r_console_output/quality_profileR1.png", height = 6, width = 10)
 
 # Printing aggregate quality profile plot for all of the R2 files
 plotQualityProfile(r2_fastq, aggregate = TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/quality_profileR2.png", height = 6, width = 10)
-
-# Check in details if quality scores are binned (optional)
-{
-phredScoresHist <- function(fq, fileName, savePlot = FALSE){
-  
-  # Extract quality scores and convert to Phred
-  quals <- as(quality(fq), "matrix")
-  phred <- quals
-  
-  # Flatten into a single vector
-  phred_vector <- as.vector(phred)
-  
-  # Plot histogram
-  p <- ggplot(data.frame(phred=phred_vector), aes(x=phred)) +
-    geom_histogram(binwidth=1, fill="skyblue", color="black") +
-    theme_minimal() +
-    labs(title="Phred Quality Score Distribution", x="Phred Score", y="Frequency")
-  
-  print(unique(c(phred)))
-  # Save histogram
-  if(savePlot){
-    ggsave(dpi = 300, filename = paste0("../r_console_output/", fileName, ".png"), height = 6, width = 8, bg = "white")
-  }else{
-    p
-  }
-  
-}
-
-r1_fq <- readFastq(r1_fastq[1])
-phredScoresHist(r1_fq, "phred_scores_R1")
-r2_fq <- readFastq(r2_fastq[1])
-phredScoresHist(r2_fq, "phred_scores_R2")
-}
-
-# Start redirecting output to a file
-run <- stringr::str_replace_all(as.character(Sys.time()), "[ :]", "-")
-dataset <- "Microbiota18"
-run <- paste0("../r_console_output/", run, dataset,".txt")
-sink(run)
-
+ggsave(dpi = 300, filename = "~/Documents/CHUM_git/full_optimization/r_console_output/quality_profileR2.png", height = 6, width = 10)
 
 # Quality filtering of the reads
 # Place filtered files in filtered/ subdirectory
-existingDirCheck("~/Documents/CHUM_git/Microbiota_18/dada2_filtered_and_trimmed/")
-path = "../dada2_filtered_and_trimmed"
+existingDirCheck("~/Documents/CHUM_git/full_optimization/dada2_filtered_and_trimmed/")
+path = "~/Documents/CHUM_git/full_optimization/dada2_filtered_and_trimmed"
 
 filtR1 <- file.path(path, paste0(sample_names, "_R1_filt.fastq.gz"))
 filtR2 <- file.path(path, paste0(sample_names, "_R2_filt.fastq.gz"))
@@ -300,9 +250,14 @@ names(filtR2) <- sample_names
 
 # Each read is 300 bp. R1 - 18 bases primers, 282
 # R2 - 15 bases primer, 285. truncLen=c(270,250)
+# Start redirecting output to a file
+run <- stringr::str_replace_all(as.character(Sys.time()), "[ :]", "-")
+dataset <- "optimization"
+run <- paste0("~/Documents/CHUM_git/full_optimization/r_console_output/", run, dataset,".txt")
+sink(run)
 
-out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(220,200),
-                     maxN=0, maxEE=c(2,5), truncQ=, rm.phix=TRUE,
+out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(270,250),trimLeft = c(18,15),
+                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
                      compress=TRUE, multithread=TRUE, matchIDs=TRUE) # On Windows set multithread=FALSE
 
 #Check how many reads made it out
@@ -314,63 +269,30 @@ print(min(out[,2]/out[,1])*100)
 print("Max:")
 print(max(out[,2]/out[,1])*100)
 
-
-# You can start from this step and load files directly from here
-{
-  #loading filtered files of interest
-  setwd("~/Documents/CHUM_git/Microbiota_18/dada2_filtered_and_trimmed/")
-  
-  #Listing files in the current working directory
-  list.files()
-  
-  #Forward and reverse filtered fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
-  filtR1 <- sort(list.files(pattern="_R1_filt.fastq.gz", full.names = TRUE))
-  filtR2 <- sort(list.files(pattern="_R2_filt.fastq.gz", full.names = TRUE))
-  
-  #Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
-  sample_names <- gsub("^(.*)_R1_filt\\.fastq\\.gz$", "\\1", basename(filtR1))
-}
-
 # Dereplication of the fastq files
 derepR1 <- derepFastq(filtR1)
 derepR2 <- derepFastq(filtR2)
 names(derepR1) <- sample_names
 names(derepR2) <- sample_names
 
-# Save derep files, useful to skip some steps, specifically when running the scripts on the server
-{
-  # Save the dereplicated objects
-  existingDirCheck("../derep_files")
-  saveRDS(derepR1, file = "../derep_files/derepR1.rds")
-  saveRDS(derepR2, file = "../derep_files/derepR2.rds")
-}
-
-set.seed(100) # set seed to ensure that randomized steps are replicatable
-
-
-binnedQs <- c(2,12,24,40)
-binnedQualErrfun <- makeBinnedQualErrfun(binnedQs) # Estimate an error function based on the binned quality scores
-
 # Error rates estimation
-errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
-errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
+errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(errR1, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/error_plotR1_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "~/Documents/CHUM_git/full_optimization/r_console_output/error_plotR1_m1.png", height = 10, width = 10)
 plotErrors(errR2, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/error_plotR2_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "~/Documents/CHUM_git/full_optimization/r_console_output/error_plotR2_m1.png", height = 10, width = 10)
 
 # Running the inference algorithm => based on trimmed/filtered fastq and error rates
-dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
-dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = TRUE, errorEstimationFunction = binnedQualErrfun) # , errorEstimationFunction = loessErrfun_mod4
+dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
 plotErrors(dadaR1, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/dada_plotR1_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "~/Documents/CHUM_git/full_optimization/r_console_output/dada_plotR1_m1.png", height = 10, width = 10)
 plotErrors(dadaR2, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/dada_plotR2_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "~/Documents/CHUM_git/full_optimization/r_console_output/dada_plotR2_m1.png", height = 10, width = 10)
 
 # Merge paired reads 
-mergers <- mergePairs(dadaR1, derepR1, dadaR2, derepR2, verbose=TRUE)
-
-hist(nchar(mergers$sequence), breaks=100)
+mergers <- mergePairs(dadaR1, derepR1, dadaR2, derepR2, verbose=TRUE, maxMismatch = 0, justConcatenate = FALSE)
 
 # Construct sequence table
 seqtab <- makeSequenceTable(mergers)
@@ -384,24 +306,12 @@ table(nchar(getSequences(seqtab)))
 # Removing chimeras
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE,
                                     allowOneOff=FALSE, minFoldParentOverAbundance=8)
-print("Dim of the sequence table with chimeras removed:")
-dim(seqtab.nochim)
 
 # What percentage of chimeras over the total dataset
 print("Percentage of chimeras over the total dataset:")
 1-sum(seqtab.nochim)/sum(seqtab)
 
-colnames(as.data.frame(seqtab))[8]
-colnames(as.data.frame(seqtab.nochim))[6]
-nchar(colnames(seqtab)[6])
-as.data.frame(seqtab)[8]
-as.data.frame(seqtab.nochim)[7]
-
-# Export the data
-asv_table <- seqtab.nochim
-existingDirCheck("../asv_table")
-write.table(asv_table, sep = ";", file = "../asv_table/asv_table_m1.csv", col.names = TRUE)
-
+table(nchar(getSequences(seqtab.nochim)))
 
 # Tracking what reads made it through the pipeline
 getN <- function(x) sum(getUniques(x))
@@ -419,46 +329,5 @@ max(track[,4]/track[,3])*100
 print("Min %:")
 min(track[,4]/track[,3])*100
 
-
-
-# Extracting taxonomical information
-# Loading ASV table previously generated (optional)
-{
-asv_table <- fread("../asv_table/asv_table_m1.csv", sep = ";")
-}
-
-rownames(asv_table) <- asv_table$V1
-asv_table <- asv_table[,-1]
-
-# Transforming asv_table into matrix so that it can be used by dada2 taxonomic assignment algorithm
-asv_table <- as.matrix(asv_table)
-taxa <- assignTaxonomy(asv_table, "../../training_set/silva_nr99_v138.1_wSpecies_train_set.fa.gz", multithread = TRUE)
-taxa.print <- taxa #removing rownames for display
-rownames(taxa.print) <- NULL
-head(taxa.print)
-
-
-# Save taxa matrix so that we can use it later
-existingDirCheck("../taxonomy")
-write.table(taxa, sep = ";", file = "../taxonomy/taxa_annotation_m1.csv", col.names = TRUE)
-
 # Stop writing things in the output file
 sink()
-
-
-# Transforming asv_table into matrix so that it can be used by dada2 taxonomic assignment algorithm
-asv_table <- as.matrix(read.csv("~/Documents/CHUM_git/Microbiota_18/asv_table/asv_table_m1.csv", sep = ";"))
-asv_table <- as.matrix(read.csv("~/Documents/CHUM_git/Microbiota_18_final/asv_table/asv_table.csv", sep = ";"))
-asv_table <- as.matrix(read.csv("~/Documents/CHUM_git/Microbiota_18_final/asv_table/asv_table_full_optimization.csv", sep = ";"))
-
-taxa <- assignTaxonomy(asv_table, "~/Documents/CHUM_git/training_set/silva_nr99_v138.2_toGenus_trainset.fa.gz", multithread = TRUE)
-taxa_w_species <- addSpecies(taxtab = taxa, refFasta = "~/Documents/CHUM_git/training_set/silva_v138.2_assignSpecies.fa.gz")
-
-taxa <- assignTaxonomy(asv_table, "~/Documents/CHUM_git/training_set/silva_nr99_v138.1_train_set.fa.gz", multithread = TRUE)
-taxa_w_species <- addSpecies(taxtab = taxa, refFasta = "~/Documents/CHUM_git/training_set/silva_species_assignment_v138.1.fa.gz")
-
-
-# Save taxa matrix so that we can use it later
-existingDirCheck("~/Documents/CHUM_git/Microbiota_18/taxonomy")
-write.table(taxa_w_species, sep = ";", file = "~/Documents/CHUM_git/Microbiota_18/taxonomy/taxa_annotation3.csv", col.names = TRUE)
-write.table(taxa_w_species, sep = ";", file = "~/Documents/CHUM_git/Microbiota_18_final/taxonomy/taxa_annotation5.csv", col.names = TRUE)

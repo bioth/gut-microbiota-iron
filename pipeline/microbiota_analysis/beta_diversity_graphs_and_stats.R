@@ -719,7 +719,7 @@ betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formu
 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
 # distMethod can be either hellinger, wunifrac or bray curtis
-betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, dim = c(6,6), font, path, additionnalAes){
+betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, distMethod, formula, transform = "none", customColors, dim = c(6,6), font, path, additionnalAes, displayPValue = FALSE){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -801,6 +801,17 @@ betaDiversityTimepointsGroupedDbRDA <- function(ps, sample_id, varToCompare, dis
   
   if(isFALSE(is.null(additionnalAes))){
     p <- p + additionnalAes
+  }
+  
+  # Add the p-value under the legend
+  if(displayPValue){
+    p<- p+annotate("text", 
+                   x = Inf, y = -Inf,  # Position at bottom right, under the legend
+                   label = paste("p =", round(p_value[1], 3)), 
+                   hjust = 1, vjust = -0.5, 
+                   size = 6, color = "black", 
+                   fontface = "bold",
+                   family = font)  # Make the entire text bold
   }
   
   # Save statistical results
