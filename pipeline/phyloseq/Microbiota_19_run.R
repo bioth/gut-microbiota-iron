@@ -88,6 +88,7 @@ rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
 # Load taxonomical assignments
 taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";"))
 taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation3.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
 
@@ -391,8 +392,8 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   wilcox.test(InvSimpson ~ diet, data = alpha_d[alpha_d$timepoint == "49",])
   
   # Alpha diveristy for dss_diet only
-  existingDirCheck("../figures/Thibault_abx/diet_dss/")
-  graphs = alphaDiversityTimeSeries2(ps_abx_alpha, "../figures/Thibault_abx/diet_dss/", time = "timepoint", group = "gg_group2", writeData = TRUE)
+  existingDirCheck("../figures/Thibault_abx/diet_abx/")
+  graphs = alphaDiversityTimeSeries2(ps_abx_alpha, "../figures/Thibault_abx/diet_abx/", time = "timepoint", group = "gg_group2", writeData = TRUE)
   
   # Load data for stats calculations
   alpha_d <- read.xlsx("../figures/Thibault_abx/diet_abx/alpha_diversity/alpha_diversity_data.xlsx")
@@ -402,7 +403,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   # Chao1
   graphs[[1]]+
     scale_fill_manual(values = c("blue","red","deepskyblue", "brown1"),
-                      labels = c("50 ppm control","500 ppm control","50 ppm Abx","500 ppm Abx"))+
+                      labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("Abx day 0","Abx day 7", "End of\nrecovery"),
                      expand = c(0,0.5))+
@@ -467,7 +468,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   # Shannon
   graphs[[2]]+
     scale_fill_manual(values = c("blue","red","deepskyblue", "brown1"),
-                      labels = c("50 ppm control","500 ppm control","50 ppm Abx","500 ppm Abx"))+
+                      labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("Abx day 0","Abx day 7", "End of\nrecovery"),
                      expand = c(0,0.5))+
@@ -529,7 +530,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   # InvSimpson
   graphs[[3]]+
     scale_fill_manual(values = c("blue","red","deepskyblue", "brown1"),
-                      labels = c("50 ppm control","500 ppm control","50 ppm Abx","500 ppm Abx"))+
+                      labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))+
     scale_pattern_manual(values = c("circle","stripe","circle","stripe"))+
     scale_x_discrete(labels = c("Abx day 0","Abx day 7", "End of\nrecovery"),
                      expand = c(0,0.5))+
@@ -591,6 +592,52 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   
 }
 
+# Alpha diveristy - but timeline
+{
+  existingDirCheck("../figures/Thibault_abx/alpha_diversity/")
+  
+  # Week as numeric
+  sample_data(ps)$week  <- as.numeric(as.character(sample_data(ps)$week))
+  sample_data(ps)$gg_group2 
+  sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
+  #Estinate richness measures for dataset
+  richness_data <- estimate_richness(ps, measures = c("Chao1", "Shannon", "InvSimpson"))
+  richness_data <- cbind(as.data.frame(sample_data(ps)), richness_data)
+  custom_colors <- c("blue","red","deepskyblue", "brown1")
+  
+  sample_data(ps)$gg_group3 <- ifelse(
+    sample_data(ps)$week %in% c(3, 8),
+    as.character(sample_data(ps)$diet),
+    as.character(sample_data(ps)$gg_group2)
+  )
+  sample_data(ps)$gg_group3 <- factor(sample_data(ps)$gg_group3, levels = c("50","500","50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
+  custom_colors <- c("blue","red","blue","red","deepskyblue", "brown1")
+  
+  graphs <- alphaDiversityTimeline(ps, time = "week", group = "gg_group2", custom_colors)
+  graphs <- alphaDiversityTimeline(ps, time = "week", group = "gg_group3", custom_colors)
+  
+  # Chao1
+  graphs[[1]]+
+    scale_x_continuous(n.breaks = )+
+    labs(y = "Chao1 Index", x = "Time (weeks)", color = "Group", fill = "")+
+    guides(fill = "none")+
+    ylim(0,NA)
+  
+  # Shannon
+  graphs[[2]]+
+    scale_x_continuous(n.breaks = )+
+    labs(y = "Shannon Index", x = "Time (weeks)", color = "Group", fill = "")+
+    guides(fill = "none")+
+    ylim(0,NA)
+  
+  # Inverse Simpson
+  graphs[[3]]+
+    scale_x_continuous(n.breaks = )+
+    labs(y = "Inverse Simpson", x = "Time (weeks)", color = "Group", fill = "", title = "Inverse Simpson")+
+    guides(fill = "none")+
+    ylim(0,NA)
+}
+
 # Beta diversity
 {
   # For diet timepoints
@@ -600,7 +647,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
                                  varToCompare =  "diet", distMethod ="bray",
                                  transform = "rel_ab", customColors = c("blue","red"),
                                  font = "Arial", path = "../figures/Thibault_abx/diet/beta_diversity/filtered/", 
-                                 additionnalAes = my_theme(), dim = c(4,5), displayPValue = TRUE)
+                                 additionnalAes = my_theme()+theme(plot.title = element_text(size = 12)), dim = c(3,4), displayPValue = TRUE)
   
   # For diet + treatment at t56 and tfinal
   sample_data(ps_flt_abx)$gg_group2 <- factor(sample_data(ps_flt_abx)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl", "50 ppm Abx", "500 ppm Abx"))
@@ -609,16 +656,17 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
                                  varToCompare =  "gg_group2", distMethod ="bray",
                                  customColors = c("blue","red","deepskyblue", "brown1"),
                                  font = "Arial", path = "../figures/Thibault_abx/diet_abx/beta_diversity/filtered/",
-                                 additionnalAes = my_theme())
+                                 additionnalAes = my_theme(), dim = c(2.5,4))
   
   # For abx groups only, t49, t56 and tfinal
   ps_sub <- prune_samples(sample_data(ps_abx_relab_flt)$treatment == "abx", ps_abx_relab_flt)
+  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, levels = c("50","500"), labels = c("50 ppm Abx", "500 ppm Abx"))
   # Bray curtis filtered
   betaDiversityTimepoint2Factors(ps_sub, sample_id = "sample_id", timeVariable = "timepoint",
                                  varToCompare =  "diet", distMethod ="bray",
                                  customColors = c("deepskyblue", "brown1"),
                                  font = "Arial", path = "../figures/Thibault_abx/diet_abx/beta_diversity/abxOnly/",
-                                 additionnalAes = my_theme(), dim = c(4,5), displayPValue = TRUE)
+                                 additionnalAes = my_theme()+theme(plot.title = element_text(size = 12)), dim = c(3,4), displayPValue = TRUE)
   
   
   # For abx groups only, comparison between t56 and tfinal
@@ -665,7 +713,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
     relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = TRUE, FDR = TRUE, customColors = customColors, path = newPath)
     
     # log2fold change graph based on deseq2 results
-    # log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
+    log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
     
   }
   
@@ -782,7 +830,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
                   list("50:water","50:abx"), list("500:water","500:abx")),
                 path = newPath, single_factor_design = FALSE,
                 dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = TRUE, additionnalAes =
-                  list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nabx","500 ppm\nabx")),
+                  list(scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nAbx","500 ppm\nAbx")),
                        my_theme(),
                        labs(color = "", x=""))) # Include axis lines  # Include axis bar)
   }
@@ -823,7 +871,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
                     list("50:water","50:abx"), list("500:water","500:abx")),
                   path = newPath, single_factor_design = FALSE,
                   dim = c(5,5), displayPvalue = FALSE, displaySignificance = TRUE, additionnalAes =
-                    list(scale_x_discrete(labels = c("50 ppm\ncontrol","500 ppm\ncontrol","50 ppm\nabx","500 ppm\nabx")),
+                    list(scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nAbx","500 ppm\nAbx")),
                          my_theme(),
                          labs(color = "", x="")))  
     }
@@ -858,7 +906,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
     
     # For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
     relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", varToCompare = "diet",
-                         timePoint = timePoint, taxa = "Species", threshold = 0.1, FDR = TRUE, blockFactor = FALSE,
+                         timePoint = timePoint, taxa = "Species", threshold = 0.05, FDR = TRUE, blockFactor = FALSE,
                          LDA = TRUE, customColors = customColors, path = newPath, displayPvalue = TRUE, additionnalAes = my_theme(), displaySampleID = FALSE)
     
 
@@ -869,7 +917,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
   
   # Iterate through timepoints
-  for(timePoint in levels(sample_data(ps_abx_relab_flt)$timepoint)[3]){
+  for(timePoint in levels(sample_data(ps_abx_relab_flt)$timepoint)){
     
     # New path created for each week
     newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
@@ -930,7 +978,7 @@ diet_phyla_fam <- plot_microbiota_timepoints(
   time_variable = "timepoint",
   combined_group = 'gg_group',
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+  hues = c("Blues", "Greens", "Purples", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
   differential_analysis = T,
   sig_lab = T,
   n_row = 2,
@@ -991,8 +1039,8 @@ p <- diet_phyla_fam$plot +
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/newTaxAnnotation/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_abx/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/diet_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1033,8 +1081,7 @@ diet_abx_phyla_fam <- plot_microbiota_2Fac(
   fac2 = "treatment",
   refFac2 = "water",
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
-  differential_analysis = T,
+  hues = c("Blues", "Greens", "Purples", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")  differential_analysis = T,
   sig_lab = T,
   n_row = 2,
   n_col = 2,
@@ -1076,8 +1123,8 @@ p <- diet_abx_phyla_fam$plot +
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/newTaxAnnotation/stackbar/diet_abx_stackbar.png", width = 7, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_abx/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_abx_stackbar.png", width = 7, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = diet_abx_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_abx_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/diet_abx_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1117,8 +1164,7 @@ final_phyla_fam <- plot_microbiota_2Fac(
   fac2 = "treatment",
   refFac2 = "water",
   sample_name = 'sample_id',
-  hues = c("Purples", "Blues", "Greens", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
-  differential_analysis = T,
+  hues = c("Blues", "Greens", "Purples", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")  differential_analysis = T,
   sig_lab = T,
   n_row = 2,
   n_col = 2,
@@ -1160,8 +1206,8 @@ p <- final_phyla_fam$plot +
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/newTaxAnnotation/stackbar/final_stackbar.png", width = 7, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_abx/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar.png", width = 7, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = final_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = final_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/final_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -1183,6 +1229,166 @@ p <- p+scale_x_discrete(labels = c("50 Ctrl vs 50 Abx","500 Ctrl vs 500 Abx","50
         axis.text.x = element_text(size = 11))
 ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub_table.png", width = 3.5, height = 8, dpi = 300, bg = "white")
 
+}
+
+# For diet_abx, all timepoints, facet for each mouse, a bar for each timepoint
+{
+  # First, timepoints and groups must be ordered properly and as factors
+  sample_data(ps_flt_all)$gg_group2 
+  sample_data(ps_flt_all)$week
+  
+  # Selected comparisons should be a number of four and follow design as: "
+  diet_abx_phyla_fam <- plot_microbiota_multiFac_timepoints2(
+    ps_object = ps_flt_all,
+    exp_group = "gg_group2",
+    time_variable = 'week',
+    twoFactor = TRUE,
+    fac1 = "diet",
+    refFac1 = "50",
+    fac2 = "treatment",
+    refFac2 = "water",
+    sample_name = 'sample_id',
+    sample_name2 = 'id',
+    hues = c("Blues", "Greens", "Purples", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")  differential_analysis = T,
+    sig_lab = T,
+    n_row = 2,
+    n_col = 4,
+    threshold = 1,
+    differential_analysis = FALSE,
+    main_level = "Phylum",
+    sub_level = "Family",
+    n_phy = 4, # number of taxa to show 
+    mult_comp = F, # pairwise comparaisons for diff ab analysis
+    selected_comparisons = list(c("50:water", "50:abx"),
+                                c("500:water", "500:abx"),
+                                c("50:water", "500:water"),
+                                c("50:abx", "500:abx")),
+    showOnlySubLegend = FALSE
+  )
+  
+  print(diet_abx_phyla_fam$plot)
+  ggsave(filename = "../figures/Thibault_abx/stackbar/diet_abx_stackbar_per_mouse.png", width = 15, height = 15, dpi = 300)
+  
+}
+
+# For diet_abx, all timepoints, facet timepoint x group
+{
+  
+  sample_data(ps_flt_all)$gg_group <- factor(sample_data(ps_flt_all)$gg_group, levels = c("0:50:water","35:50:water","49:50:water","56:50:water","final:50:water",
+                                                                                          "0:500:water","35:500:water","49:500:water","56:500:water","final:500:water",
+                                                                                          "0:50:abx","35:50:abx","49:50:abx","56:50:abx","final:50:abx",
+                                                                                          "0:500:abx","35:500:abx","49:500:abx","56:500:abx","final:500:abx"))
+
+  
+  diet_phyla_fam <- plot_microbiota_timepoints(
+    ps_object = ps_flt_all,
+    exp_group = "gg_group2",
+    timePoints = TRUE,
+    time_variable = "week",
+    combined_group = 'gg_group',
+    sample_name = 'sample_id',
+    hues = c("Blues", "Greens", "Purples", "Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+    differential_analysis = F,
+    sig_lab = T,
+    n_row = 4,
+    n_col = 5,
+    threshold = 1,
+    fdr_threshold = 0.05,
+    main_level = "Phylum",
+    sub_level = "Family",
+    n_phy = 4, # number of taxa to show 
+    mult_comp = F, # pairwise comparaisons for diff ab analysis
+    selected_comparisons = list(c( "50:0",  "500:0"), c( "50:35",  "500:35"), c( "50:49",  "500:49")),
+    showOnlySubLegend = FALSE
+  )
+  
+  print(diet_phyla_fam$plot)
+  print(diet_phyla_fam$significant_table_main)
+  print(diet_phyla_fam$significant_table_sub)
+  
+  # Define custom x-axis labels for each facet
+  id3 = unique(substring(sample_data(ps_flt_diet)[sample_data(ps_flt_diet)$week == "3" & sample_data(ps_flt_diet)$diet == "50",]$sample_id, 1,5))
+  id8 = unique(substring(text = sample_data(ps_flt_diet)[sample_data(ps_flt_diet)$week == "8" & sample_data(ps_flt_diet)$diet == "50",]$sample_id, 1,5))
+  list1 = which(id8 %in% id3)
+  
+  id3 = unique(substring(sample_data(ps_flt_diet)[sample_data(ps_flt_diet)$week == "3" & sample_data(ps_flt_diet)$diet == "500",]$sample_id, 1,5))
+  id8 = unique(substring(text = sample_data(ps_flt_diet)[sample_data(ps_flt_diet)$week == "8" & sample_data(ps_flt_diet)$diet == "500",]$sample_id, 1,5))
+  list2 = which(id8 %in% id3)+24
+  
+  facet_scales <- list(
+    scale_x_discrete(labels = as.character(list1)),
+    scale_x_discrete(labels = as.character(1:24)),
+    scale_x_discrete(labels = as.character(1:24)),
+    scale_x_discrete(labels = as.character(list2)),
+    scale_x_discrete(labels = as.character(25:48)),
+    scale_x_discrete(labels = as.character(25:48))
+  )
+  
+  # Custom the plot
+  p <- diet_phyla_fam$plot + 
+    facet_wrap2(~ gg_group, 
+                scales  = "free_x", nrow = 4, ncol = 5,
+                strip = strip_themed(background_x = elem_list_rect(fill = c("blue","blue","blue","blue","blue",
+                                                                            "red", "red", "red","red", "red",
+                                                                            "deepskyblue","deepskyblue","deepskyblue","deepskyblue","deepskyblue",
+                                                                            "brown1","brown1","brown1","brown1","brown1"))),
+                labeller = as_labeller(c(
+                  "0:50:water" = "50 ppm Ctrl / 3w",
+                  "35:50:water" = "50 ppm Ctrl / 8w",
+                  "49:50:water" = "50 ppm Ctrl / 10w",
+                  "56:50:water" = "50 ppm Ctrl / 11w",
+                  "final:50:water" = "50 ppm Ctrl / 18w",
+                  "0:500:water" = "500 ppm Ctrl / 3w",
+                  "35:500:water" = "500 ppm Ctrl / 8w",
+                  "49:500:water" = "500 ppm Ctrl / 10w",
+                  "56:500:water" = "500 ppm Ctrl / 11w",
+                  "final:500:water" = "500 ppm Ctrl / 18w",
+                  "0:50:abx" = "50 ppm Abx / 3w",
+                  "35:50:abx" = "50 ppm Abx / 8w",
+                  "49:50:abx" = "50 ppm Abx / 10w",
+                  "56:50:abx" = "50 ppm Abx / 11w",
+                  "final:50:abx" = "50 ppm Abx / 18w",
+                  "0:500:abx" = "500 ppm Abx / 3w",
+                  "35:500:abx" = "500 ppm Abx / 8w",
+                  "49:500:abx" = "500 ppm Abx / 10w",
+                  "56:500:abx" = "500 ppm Abx / 11w",
+                  "final:500:abx" = "500 ppm Abx / 18w"
+                )))+
+    theme(text = element_text(family = "Arial"),      # Global text settings
+          strip.text = element_text(size = 14, face = "bold", color = "white"),  # Facet titles
+          plot.title = element_text(size = 20, face = "bold"),  # Main title
+          axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+          axis.text = element_text(size = 12, face = "bold"),   # Axis text
+          legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+    ) +
+    # facetted_pos_scales(x = facet_scales)+
+    scale_x_discrete(labels = function(x) substr(x, 1, 5))+
+    labs(x = "Mouse ID")
+  p
+  
+  # Saving the plot and the associated stats
+  existingDirCheck("../figures/Thibault_abx/stackbar")
+  ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_abx_stackbar_full_timeline.png", width = 12, height = 9, dpi = 300)
+  writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/diet_stackbar_stats.xlsx")
+  
+  # pvalues heatmap for the main lvl stats
+  p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_abx/stackbar/diet_stackbar_stats.xlsx")),
+                  selected_comparisons = c("50:0_vs_500:0", "50:35_vs_500:35","50:49_vs_500:49"), displayChangeArrows = FALSE, displayPValues = FALSE,
+                  txn_lvl="Phylum", lvl = "main", taxons = diet_phyla_fam$main_names[!grepl("Others", x = diet_phyla_fam$main_names)], group = "gg_group", path)
+  p <- p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
+    theme(text = element_text(family = "Arial"),
+          axis.text.x = element_text(size = 11))
+  ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_stackbar_main_table.png", width = 3, height = 5, dpi = 300, bg = "white")
+  
+  
+  # pvalues heatmap for the sub lvl stats
+  p = pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_abx/stackbar/diet_stackbar_stats.xlsx")),
+                  selected_comparisons = c("50:0_vs_500:0", "50:35_vs_500:35","50:49_vs_500:49"),
+                  txn_lvl="Family", lvl = "sub", taxons =  diet_phyla_fam$sub_names, group = "gg_group", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+  p <- p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10w", "50 vs 500 14w"))+
+    theme(text = element_text(family = "Arial"),
+          axis.text.x = element_text(size = 11))
+  ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_stackbar_sub_table.png", width = 3.5, height = 8, dpi = 300, bg = "white")
 }
 
 # Picrust2 - last timepoint - abx groups only - metacyc pathways directly
@@ -1403,6 +1609,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     average_relab_per_group = TRUE,
     smoothing = FALSE,
     n_phy = 4,
+    hues = c("Blues", "Greens", "Purples", "Oranges"),
     custom_theme = theme_chronobiome()
   )
   p+
@@ -1412,10 +1619,27 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     labs(x = "Time (weeks)")+
 
   
-  existingDirCheck("../figures/Thibault_abx/newTaxAnnotation/chronobiome")
-  ggsave("../figures/Thibault_abx/newTaxAnnotation/chronobiome/diet_chronobiome.png", width = 7, height = 8, dpi = 500, bg = "white")
+  existingDirCheck("../figures/Thibault_abx/chronobiome")
+  ggsave("../figures/Thibault_abx/chronobiome/diet_chronobiome.png", width = 7, height = 8, dpi = 500, bg = "white")
   
   sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
+  
+  library(patchwork)
+  plot_timeline_2_groups(
+    ps_object = ps_flt_all,
+    exp_group =  "gg_group2", # must be as factor
+    time_group = "week", # must be as factor
+    sample_name = "sample_id",
+    main_level = 'Phylum',
+    sub_level = 'Family',
+    average_relab_per_group = FALSE,
+    sample_name_unique = "id",
+    smoothing = TRUE,
+    n_phy = 4,
+    hues = c("Blues", "Greens", "Purples", "Oranges"),
+    custom_theme = theme_chronobiome()
+  )
+  ggsave("../figures/Thibault_abx/chronobiome/diet_abx_chronobiome_per_mouse.png", width = 20, height = 20, dpi = 800, bg = "white")
   
   p <- plot_timeline_2_groups(
     ps_object = ps_flt_all,
@@ -1425,11 +1649,11 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     main_level = 'Phylum',
     sub_level = 'Family',
     average_relab_per_group = TRUE,
-    smoothing = FALSE,
+    smoothing = TRUE,
     n_phy = 4,
+    hues = c("Blues", "Greens", "Purples", "Oranges"),
     custom_theme = theme_chronobiome()
   )
-  p
   p+
     facet_wrap2(~ gg_group2, 
               scales  = "free_x", nrow = 2, ncol = 2,
@@ -1438,7 +1662,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     labs(x = "Time (weeks)")
 
   
-  ggsave("../figures/Thibault_abx/newTaxAnnotation/chronobiome/diet_abx_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
+  ggsave("../figures/Thibault_abx/chronobiome/diet_abx_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
   
   sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm Abx","500 ppm Abx"))
   
@@ -1449,10 +1673,11 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
                      main_level = 'Phylum',
                      sub_level = 'Family',
                      average_relab_per_group = TRUE,
-                     smoothing = TRUE,
+                     smoothing = FALSE,
                      threshold = 1,
                      n_phy = 4,
-                     path = "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/chronobiome/smoothing/",
+                     hues = c("Blues", "Greens", "Purples", "Oranges"),
+                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/",
                      dim = c(9,7),
                      custom_theme = theme_chronobiome(),
                      additionnalAes = list(facet_wrap2(~ gg_group2, 
@@ -1466,9 +1691,9 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   ps_phyla <- tax_glom(ps, taxrank = "Phylum") # Agglom ps at phylum level
   ps_phyla <- transformCounts(ps_phyla, transformation = "rel_ab") # Produce relative abundance table and calculate F/B ratio
   rel_ab <- as.data.frame(otu_table(ps_phyla))
-  rel_ab <- rel_ab[rownames(tax_table(ps_phyla)[tax_table(ps_phyla)[,"Phylum"] %in% c("Bacillota","Bacteroidota"),]),]
+  rel_ab <- rel_ab[rownames(tax_table(ps_phyla)[tax_table(ps_phyla)[,"Phylum"] %in% c("Firmicutes","Bacteroidota"),]),]
   tax_table(ps_phyla)
-  rownames(rel_ab) <- c("Bacillota","Bacteroidota")
+  rownames(rel_ab) <- c("Firmicutes","Bacteroidota")
   rel_ab <- rel_ab %>%
     tibble::rownames_to_column("phyla") %>%
     pivot_longer(
@@ -1482,7 +1707,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
       names_glue = "{phyla}_abundance"
     ) %>%
     mutate(
-      fb_ratio = Bacillota_abundance / Bacteroidota_abundance
+      fb_ratio = Firmicutes_abundance / Bacteroidota_abundance
     )
   
   fb_ratio_df <- merge(rel_ab, metadata, by = "sample_id") # Bind metadata information
@@ -1528,7 +1753,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
       margin_top = 0.1, # Moves the top according to this value
       vjust = -0.1,
     )
-  ggsave("../figures/Thibault_abx/newTaxAnnotation/fb_ratio/fb_ratio_diet.png",
+  ggsave("../figures/Thibault_abx/fb_ratio/fb_ratio_diet.png",
          bg = "white",height = 4, width =5, dpi = 300)
   # Stats
   verifyStatsAssumptions(fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "0",], group = "diet",measure =  "fb_ratio")
@@ -1592,7 +1817,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
       margin_top = 0.1, # Moves the top according to this value
       vjust = 0,
     )
-  ggsave("../figures/Thibault_abx/newTaxAnnotation/fb_ratio/fb_ratio_abx.png",
+  ggsave("../figures/Thibault_abx/fb_ratio/fb_ratio_abx.png",
          bg = "white",height = 5, width =7, dpi = 300)
   
   # Stats
@@ -1861,7 +2086,7 @@ betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "sample_id", timeVariable
                                customColors = c("blue","red","blue4","red4"),
                                font = "Arial", path = "../figures/Thibault_abx/diet_dss/beta_diversity/filtered/")
 
-# Beta diversity, for control only at tfinal
+# Beta diversity, for Ctrl only at tfinal
 ps_subset <- prune_samples(sample_data(ps_flt_dss)$timepoint == "final" & sample_data(ps_flt_dss)$treatment == "water", ps_flt_dss) # Create subset
 # Bray curtis filtered 
 betaDiversityTimepoint2Factors(ps_subset, sample_id = "sample_id", timeVariable = "timepoint",

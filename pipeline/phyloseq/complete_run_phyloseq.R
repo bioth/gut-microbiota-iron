@@ -1066,3 +1066,49 @@ taxGlomResAndStatsTimePoints(ps_claire, taxrank = "Phylum", exp_group = "diet", 
 
 
 
+
+
+
+
+
+# Picrust2 - Claire - 50 vs 500 t49 
+{
+  meta <- metadata[metadata$week == "10" & metadata$student == "Claire",]
+  
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_17/claire_picrust/picrust2/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "diet",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_adjust < 0.05)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta$diet <- factor(meta$diet, levels = c("50","500"), labels = c("50 ppm","500 ppm"))
+  
+  # custom_col_cat <- terrain.colors(11)
+  # custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "diet",custom_colors_group = c('blue','red'), custom_col_cat, hierarchy = "2")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Claire_final/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Claire_final/picrust2/t49_kegg_pathways.png", bg = "white", height = 7, width = 12, dpi = 300)
+  
+}

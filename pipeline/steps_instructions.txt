@@ -133,6 +133,8 @@ Use a function from the 'phyloseq_complete_run.R' to generate both inputs (fasta
 
 To run complete picrust2 pipeline: picrust2_pipeline.py -s seqs.fna -i otu_table.biom -o picrust2_out_pipeline -p 16 --stratified
 
+picrust2_pipeline.py -s input/seqs.fna -i input/otu_table.biom -o picrust2_out_pipeline -p 16
+
 --stratified provides information about the metagenomic contribution of each ASV
 
 

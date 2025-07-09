@@ -26,6 +26,7 @@
   library(pairwiseAdonis)
   library(caret)
   library(ggh4x)
+  library(ggpicrust2)
   
 }
 
@@ -38,6 +39,8 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/re
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/deseq2_log2fold_change_analysis.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/chronobiome.R")
+source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/picrust2_graphs.R")
 
 # For microbiota 18 (final data)
 #set working directory
@@ -1463,6 +1466,377 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_dss/correlation_heatmaps/species_iront35_hmap.png",
          plot = p, bg = "white", height = 6, width = 6, dpi = 300)
 }
+
+# Chronobiome 
+{
+  theme_chronobiome <- function() {
+    theme_bw(base_size = 12) +
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(color = "black", face = "bold"),
+        axis.title = element_text(size = 14, face = "bold"),
+        panel.border = element_rect(color = "black", fill = NA),
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 10),
+        panel.spacing = unit(0, "lines"),
+        legend.title = element_text(face = "bold"),
+        strip.text = element_text(face = "bold", color = "white", size = 12)
+      )
+  }
+  
+  sample_data(ps_flt_diet)$diet <- factor(sample_data(ps_flt_diet)$diet, labels = c("50 ppm","500 ppm"))
+  
+  p <- plot_timeline_2_groups(
+    ps_object = ps_flt_diet,
+    exp_group =  "diet", # must be as factor
+    time_group = "week", # must be as factor
+    sample_name = "sample_id",
+    main_level = 'Phylum',
+    sub_level = 'Family',
+    average_relab_per_group = TRUE,
+    smoothing = FALSE,
+    hues = c("Blues", "Greens", "Purples", "Oranges"),
+    color_bias = 2,
+    n_phy = 4,
+    custom_theme = theme_chronobiome()
+  )
+  p+
+    facet_wrap2(~ diet, 
+                scales  = "free_x", nrow = 2, ncol = 1,
+                strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red"))))+
+    labs(x = "Time (weeks)")+
+    
+    
+  existingDirCheck("../figures/Thibault_dss/chronobiome")
+  ggsave("../figures/Thibault_dss/chronobiome/diet_chronobiome.png", width = 7, height = 8, dpi = 500, bg = "white")
+  
+  sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+  
+  p <- plot_timeline_2_groups(
+    ps_object = ps_flt_all,
+    exp_group =  "gg_group2", # must be as factor
+    time_group = "week", # must be as factor
+    sample_name = "sample_id",
+    main_level = 'Phylum',
+    sub_level = 'Family',
+    average_relab_per_group = TRUE,
+    smoothing = FALSE,
+    n_phy = 4,
+    hues = c("Blues", "Greens", "Purples", "Oranges"),
+    color_bias = 2,
+    custom_theme = theme_chronobiome()
+  )
+  
+  p+
+    facet_wrap2(~ gg_group2, 
+                scales  = "free_x", nrow = 2, ncol = 2,
+                strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red","darkblue","darkred"))))+
+    scale_x_continuous(n.breaks = 12)+
+    labs(x = "Time (weeks)")
+  
+  
+  ggsave("../figures/Thibault_dss/chronobiome/diet_dss_chronobiome.png", width = 10, height = 8, dpi = 800, bg = "white")
+  
+  sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+  
+  plot_timeline_taxa(ps_object = ps_flt_all,
+                     exp_group =  "gg_group2", # must be as factor
+                     time_group = "week", # must be as factor
+                     sample_name = "sample_id",
+                     main_level = 'Phylum',
+                     sub_level = 'Family',
+                     average_relab_per_group = TRUE,
+                     smoothing = FALSE,
+                     threshold = 1,
+                     n_phy = 4,
+                     hues = c("Blues", "Greens", "Purples", "Oranges"),
+                     color_bias = 2,
+                     path = "~/Documents/CHUM_git/figures/Thibault_dss/chronobiome/",
+                     dim = c(9,7),
+                     custom_theme = theme_chronobiome(),
+                     additionnalAes = list(facet_wrap2(~ gg_group2, 
+                                                       scales  = "free_x", nrow = 2, ncol = 2,
+                                                       strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red","darkblue","darkred")))),
+                                           labs(x = "Time (weeks)"), scale_x_continuous(n.breaks = 12)))
+}
+
+# Produce picrust2 input for whole dataset
+producePicrust2Inputs(ps_flt_all, "~/Documents/CHUM_git/Microbiota_18_final/")
+
+# Picrust2 - 50 vs 50 dss and 500 vs 500 dss, at t54
+{
+  meta <- metadata[metadata$diet == "50" & metadata$timepoint == "54",]
+  meta <- metadata[metadata$diet == "500" & metadata$timepoint == "54",]
+  ids <- meta$id[duplicated(meta$id)]
+  ids <- paste0(ids, "_T54")
+  meta <- meta[!meta$sample_id %in% ids,]
+  meta <- meta[meta$id != "10994",] # For 50 ppm
+  meta <- meta[meta$id != "33105",] # For 500 ppm
+  
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_18_final/picrust2/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "treatment",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_adjust < 0.00001)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta <- meta[,-1] # get rid of id col in metadata
+  meta$treatment <- factor(meta$treatment, levels = c("water","dss"), labels = c("50 ppm Ctrl", "50 ppm DSS"))
+  meta$treatment <- factor(meta$treatment, levels = c("water","dss"), labels = c("500 ppm Ctrl", "500 ppm DSS"))
+  
+  
+  # custom_col_cat <- terrain.colors(11)
+  # custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("blue","darkblue"), custom_col_cat, hierarchy = "2")
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("red","darkred"), custom_col_cat, hierarchy = "2")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_dss/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Thibault_dss/picrust2/kegg_t54_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  ggsave("~/Documents/CHUM_git/figures/Thibault_dss/picrust2/kegg_t54_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  
+}
+
+# Picrust2 - 50 vs 50 dss and 500 vs 500 dss, at tFinal
+{
+  meta <- metadata[metadata$diet == "50" & metadata$timepoint == "final",]
+  meta <- metadata[metadata$diet == "500" & metadata$timepoint == "final",]
+  
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_18_final/picrust2/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "treatment",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_adjust < 0.05)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta <- meta[,-1] # get rid of id col in metadata
+  meta$treatment <- factor(meta$treatment, levels = c("water","dss"), labels = c("50 ppm Ctrl", "50 ppm DSS"))
+  meta$treatment <- factor(meta$treatment, levels = c("water","dss"), labels = c("500 ppm Ctrl", "500 ppm DSS"))
+  
+  
+  # custom_col_cat <- terrain.colors(11)
+  # custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("blue","darkblue"), custom_col_cat, hierarchy = "2")
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("red","darkred"), custom_col_cat, hierarchy = "2")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_dss/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Thibault_dss/picrust2/kegg_tfinal_50ppm_hmap.png", bg = "white", height = 10, width = 13, dpi = 300)
+  ggsave("~/Documents/CHUM_git/figures/Thibault_dss/picrust2/kegg_tfinal_500ppm_hmap.png", bg = "white", height = 10, width = 13, dpi = 300)
+  
+}
+
+# Picrust2 - 50 dss vs 500 dss at t54 / at tfinal
+{
+  meta <- metadata[metadata$treatment == "dss" & metadata$timepoint == "54",]
+  ids <- meta$id[duplicated(meta$id)]
+  ids <- paste0(ids, "_T54")
+  meta <- meta[!meta$sample_id %in% ids,]
+  meta <- meta[!meta$id %in% c("10994","33105"),] # Samples not included
+  
+  meta <- metadata[metadata$treatment == "dss" & metadata$timepoint == "final",]
+  
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_18_final/picrust2/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "diet",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05 (!!!NON ADJUSTED!!!)
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_values < 0.05)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta <- meta[,-1] # get rid of id col in metadata
+  meta$treatment <- factor(meta$diet, levels = c("50","500"), labels = c("50 ppm DSS", "500 ppm DSS"))
+  
+  # custom_col_cat <- terrain.colors(11)
+  # custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "diet",custom_colors_group = c("darkblue","darkred"), custom_col_cat, hierarchy = "2")
+  
+  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_dss/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Thibault_dss/picrust2/kegg_t54_50dss_vs_500dss_hmap.png", bg = "white", height = 4, width = 9, dpi = 300)
+  ggsave("~/Documents/CHUM_git/figures/Thibault_dss/picrust2/kegg_tfinal_50dss_vs_500dss_hmap.png", bg = "white", height = 4, width = 9, dpi = 300)
+  
+}
+
+# Creating a cauliflower phylogenetic tree
+{
+  library(ggtree)
+  library(ape)
+  
+  setwd("~/Documents/CHUM_git/Microbiota_18/")
+  asv_table <- as.data.frame(fread("asv_table/asv_table_server.csv", sep = ";"))
+  rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
+  asv_table <- asv_table[,-1]  # Drop the first column
+
+  taxa <- as.matrix(fread("taxonomy/taxa_annotation_server.csv", sep = ";"))
+  rownames(taxa) <- taxa[,1]  # Use the first column as row names
+  taxa <- taxa[,-1]  # Drop the first column
+  
+  # Load phylogenetic tree if possible
+  tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
+  
+  # Metadata handling
+  {
+    #loading metadata of interest
+    metadata <- read.csv("metadata/metadata.csv", sep = ";")
+    
+    
+    # Remove the non-metadata stuff (liver measures and stuff)
+    metadata <- metadata[,-c(5:8)]
+    
+    # Remove the letter at the end of id
+    metadata$id <- substring(metadata$id, 1, 5)
+    
+    #adding id col as rownames too
+    rownames(metadata) <- metadata$id
+    
+    # Remove dead mouse
+    metadata <- metadata[-46,]
+    
+    # Extract 16S reads sample ids
+    samples <- read.xlsx("metadata/Microbiota_18_samples_2025-01-13.xlsx")
+    samples <- as.data.frame(samples$Nom)
+    colnames(samples) <- "sample_id"
+    samples$id <- substring(samples$sample_id, 1, 5)
+    samples$timepoint <- substring(samples$sample_id, 8, nchar(samples$sample_id)) 
+    
+    # Bind both metadata df to link timepoints with their metadata (diet and treatment)
+    metadata <- merge(samples, metadata, by = "id")
+    
+    # Consider timepoint 53 similar as timepoint 54
+    metadata[metadata$timepoint=="53","timepoint"] <- "54"
+    
+    # Add week column 
+    metadata$week <- ifelse(metadata$timepoint == "final", "18", as.character(round(as.numeric(metadata$timepoint)/7, 1)+3))
+    
+    # Adding gg_group variable (combination of time, diet and treatment)
+    metadata$gg_group <- 
+      paste(metadata$timepoint, 
+            metadata$diet,
+            metadata$treatment, 
+            sep = ":")
+    
+    # Another gg_group variable (diet and treatment only)
+    metadata$gg_group2 <- 
+      paste(metadata$diet,
+            metadata$treatment, 
+            sep = ":")
+    
+    # Put full_id as rownames
+    rownames(metadata) <- metadata$sample_id
+  }
+  
+  # Creating phyloseq object
+  ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
+                 tax_table(taxa), sample_data(metadata))
+  
+  # Use short names for the asvs (eg ASV21) rather than full dna sequence name
+  # And add refseq entry to the phyloseq object
+  dna <- Biostrings::DNAStringSet(taxa_names(ps))
+  names(dna) <- taxa_names(ps)
+  ps <- merge_phyloseq(ps, dna)
+  taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+  names(dna) <- taxa_names(ps)
+  
+  # Add tree to phyloseq object
+  ps <- merge_phyloseq(ps, phy_tree(tree))
+  
+  # Basic circular (fan) layout
+  ggtree(tree, layout = "circular") +
+    theme_void()
+  
+  library(metacoder)
+  library(scales)
+  
+  # Step 1: Convert your phyloseq object to metacoder format
+  tax_data <- parse_phyloseq(ps)
+  tax_data$data$tax_data[is.na(tax_data$data$tax_data$Phylum),c(4:9)] "Unkwnown"  # Replace NA by unkwnown
+  tax_data$data$tax_data$Phylum[is.na(tax_data$data$tax_data$Phylum)] <- 
+  
+  
+  
+  # Assign colors to each phyla
+  unique_phyla <- unique(tax_data$data$tax_data$Phylum)
+  custom_colors <- brewer.pal(length(unique_phyla), "Set1")
+  my_phylum_colors <- setNames(
+    custom_colors,
+    unique_phyla
+  )
+  tax_data$data$tax_data$colors <- my_phylum_colors[tax_data$data$tax_data$Phylum]
+  tax_data$data$otu_table$colors <- my_phylum_colors[tax_data$data$tax_data$Phylum]
+  
+  # Step 2: Plot radial tree
+  heat_tree(tax_data,
+            node_label = taxon_names,
+            node_size = n_obs,  # or use abundance values
+            node_color = colors,  # or use phylum here
+            layout = "davidson-harel",
+            node_color_axis_label = "Phylum")
+}
+
+# Good layout options
+c("davidson-harel","fruchterman-reingold")
+
+
+
 
 # Prepare picrust2 input for last timepoint
 ps_subset <- prune_samples(sample_data(ps_dss_relab_flt)$timepoint == "final", ps_dss_relab_flt)

@@ -11,6 +11,7 @@ plot_timeline_2_groups <- function(
     threshold = 1,
     smoothing = FALSE,
     average_relab_per_group = TRUE,
+    sample_name_unique = NULL,
     n_phy,
     hues = c("Oranges", "Greens", "Blues", "Purples"),
     color_bias = 2,
@@ -167,11 +168,14 @@ plot_timeline_2_groups <- function(
                                     "Others ")
     
   }else{
+    
     df_long <- melt(df,
                     id = c(sub_level, "MyColors", main_level),
                     measure.vars = meta[, sample_name],
                     variable.name = sample_name)
+
     df_long <- left_join(df_long, meta, by = sample_name)
+
     df_long[, main_level] <- ifelse(df_long[, main_level] %in% pull(topx[, main_level]),
                                     df_long[, main_level],
                                     "Others ")
@@ -297,6 +301,103 @@ plot_timeline_2_groups <- function(
       return(p+custom_theme)
       
     }
+    
+  }
+  else{
+    
+    # Ensure your time variable is numeric (so geom_area draws it as continuous)
+    df_long[[time_group]] <- as.numeric(as.character(df_long[[time_group]]))
+    
+
+    
+    # Make sure plot_taxa is a factor in the stacking order you want
+    df_long[[sub_level]] <- factor(df_long[[sub_level]],
+                                levels = unique(df_long[[sub_level]]))
+    
+    colnames(df_long)[13] <- "group"
+
+    plots <- df_long %>%
+      split(.$group) %>%
+      lapply(function(sub_df) {
+        base_plot <- ggplot(sub_df,
+                            aes(x = .data[[time_group]],
+                                y = value,
+                                fill = .data[[sub_level]],
+                                group = .data[[sub_level]],
+                                alpha = .data[[main_level]])) +
+          facet_wrap(~ .data[[sample_name_unique]], ncol = 1, scales = "free_y") +
+          geom_area(position = "stack") +
+          ggtitle(unique(sub_df$group)) +
+          scale_alpha_manual(
+            values = rep(1, length(unique(df_long[[main_level]]))),
+            guide = guide_legend(order = 1, override.aes = list(fill = main_level_col)),
+            name = main_level
+          ) +
+          scale_fill_manual(name = sub_level, values = MyColors2) +
+          labs(x = time_group,
+               y = "Relative abundance (%)",
+               fill = sub_level,
+               alpha = main_level) +
+          guides(fill = guide_legend(reverse = FALSE, title = sub_level, order = 2)) +
+          theme_minimal()
+        
+        return(base_plot)
+      })
+    
+    # Remove legends from all but the first plot
+    plots_shared_legend <- plots
+    plots_shared_legend[-1] <- lapply(plots_shared_legend[-1], function(p) p + theme(legend.position = "none"))
+    
+    wrap_plots(plots_shared_legend, ncol = 4, guides = "collect") &
+      theme(legend.position = "bottom")
+    
+    
+    # # Prepare variables for plotting
+    # sample_var <- ensym(sample_name)
+    # group_var <- ensym(exp_group)
+    # 
+    # df_long$facet_var <- interaction(df_long[[as.character(group_var)]], df_long[[as.character(sample_var)]])
+    
+    # Build the ggplot
+    # p <- ggplot(df_long,
+    #             aes(x = .data[[time_group]],
+    #                 y = value,
+    #                 fill = .data[[sub_level]],
+    #                 group = .data[[sub_level]],
+    #                 alpha = .data[[main_level]])) +  # Alpha goes here
+    #   # facet_wrap(as.formula(paste("~", exp_group)), ncol = 1) +
+    #   facet_grid2(
+    #     rows = vars(.data[[sample_name]]), cols = vars(.data[[exp_group]]),
+    #     scales = "free", space = "free",
+    #     switch = "y")+                       
+    #     # strip = strip_themed(background_x = elem_list_rect(fill = c(custom_colors_group[1],custom_colors_group[2])),
+    #     #                      background_y = elem_list_rect(fill = custom_col_cat),
+    #     #                      text_y = elem_list_text(angle = c(0, 0)),
+    #     #                      by_layer_y   = FALSE))
+    #   geom_area(show.legend = TRUE)
+      # facet_wrap(~ facet_var, ncol = 4)
+      
+    
+    #   scale_alpha_manual(
+    #     values = rep(1, length(unique(df_long[[main_level]]))),  # Set to 1 to show legend, or actual transparency values if desired
+    #     guide = guide_legend(order = 1, override.aes = list(fill = main_level_col)),
+    #     name = main_level
+    #   ) +
+    #   scale_fill_manual(name = sub_level, values = MyColors2) +
+    #   labs(x = time_group,
+    #        y = "Relative abundance (%)",
+    #        fill = sub_level,
+    #        alpha = main_level) +
+    #   guides(fill = guide_legend(reverse = FALSE, title = sub_level, order = 2)) +
+    #   theme_minimal()
+    # 
+    # if(isFALSE(is.null(additionnalAes))){
+    #   p <- Reduce("+", c(list(p), additionnalAes))
+    # }
+    
+    # return(p+custom_theme)
+
+
     
   }
 }

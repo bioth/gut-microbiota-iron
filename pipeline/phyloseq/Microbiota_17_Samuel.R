@@ -171,7 +171,7 @@ customColors = list(list('black','#A22004'))
   rownames(variables) <- variables$X3
   variables <- variables[,c(6:11)] 
   variables <- variables[,c(2,1,6,3,4,5)] # rearrange col order
-  colnames(variables) <- c("EcNC101 colonisation","Disease activity index end point","Colon length","LCN-2","IL-6","TNF-α")
+  colnames(variables) <- c("EcNC101 colonisation","Disease activity index","Colon length","LCN-2","IL-6","TNF-α")
   
   customColors = list('black','#A22004')
   p <- correlation2Var(ps_samuel, deseq_samuel, measure = "log2fold", "treatment", taxa = "Species",
@@ -185,7 +185,7 @@ customColors = list(list('black','#A22004'))
     scale_y_discrete(limits =  c("Escherichia-Shigella albertii","Lactobacillus johnsonii","Bifidobacterium pseudolongum","Adlercreutzia equolifaciens"),
                      labels =  c("Escherichia-Shigella albertii","Lactobacillus johnsonii","Bifidobacterium pseudolongum","Adlercreutzia equolifaciens"),
                      expand = c(0,0))+
-    geom_tile(color = "black", lwd = 0.75, linetype = 1) +
+    geom_tile(color = "white", lwd = 0, linetype = 1) +
     labs(y = "")+
     geom_text(aes(label = significance), color = "black", size = 6) +
     theme(
@@ -207,6 +207,7 @@ customColors = list(list('black','#A22004'))
 
 sample_data(ps_samuel)$treatment <- factor(sample_data(ps_samuel)$treatment, levels = c("Vehicle","Putrescine"))
 # Stackbar extended 
+{
 il22_exp_family <- plot_microbiota(
   ps_object = ps_samuel,
   exp_group = 'treatment',
@@ -253,7 +254,50 @@ p <- plot +
   labs(x = "Mouse number")
 p
 ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackbar.png", plot = p, bg = "white", height = 6, width = 7, dpi = 300)
+}
 
+# Picrust2 - Wt vehicle vs putrescine
+{
+  meta <- metadata[metadata$genotype == "Wt",]
+
+  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_17/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
+  pattern <- paste(meta$sample_id, collapse = "|")
+  indexes <-  grep(pattern, colnames(ko_ab)) 
+  ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
+  ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
+  kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+  
+  # Perform differential abundance analysis
+  kegg_daa_results_df <- pathway_daa(
+    abundance = kegg_ab,
+    metadata = meta,
+    group = "treatment",
+    daa_method = "DESeq2"
+  )
+  
+  # Filter features with p < 0.05
+  feature_with_p_0.05 <- kegg_daa_results_df %>%
+    filter(p_adjust < 0.05)
+  
+  # Retrieve kegg brite hierarchies information
+  features <- feature_with_p_0.05$feature
+  brite_mapping <- getBriteFromKeggPathID(features)
+  
+  meta <- meta[,-1] # get rid of id col in metadata
+  meta$treatment <- factor(meta$treatment, levels = c("Vehicle","Putrescine"))
+  
+  # custom_col_cat <- terrain.colors(11)
+  # custom_col_cat <- heat.colors(11)
+  custom_col_cat <- brewer.pal(11, "Set3")
+  custom_col_cat <- alpha(custom_col_cat, 0.3)
+  
+  KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c('black','#A22004'), custom_col_cat, hierarchy = "2")
+
+  existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2")
+  ggsave("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/kegg_pathways.png", bg = "white", height = 7, width = 12, dpi = 300)
+  
+}
 
 # For microbiota 17 - specific to Samuel's data, and il22 ko only
 {

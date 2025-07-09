@@ -49,9 +49,13 @@ asv_table <- as.matrix(read.csv("~/Documents/CHUM_git/Microbiota_19/asv_table/as
 taxa <- assignTaxonomy(asv_table, "~/Documents/CHUM_git/training_set/silva_nr99_v138.2_toGenus_trainset.fa.gz", multithread = TRUE)
 taxa_w_species <- addSpecies(taxtab = taxa, refFasta = "~/Documents/CHUM_git/training_set/silva_v138.2_assignSpecies.fa.gz")
 
+taxa <- assignTaxonomy(asv_table, "~/Documents/CHUM_git/training_set/silva_nr99_v138.1_train_set.fa.gz", multithread = TRUE)
+taxa_w_species <- addSpecies(taxtab = taxa, refFasta = "~/Documents/CHUM_git/training_set/silva_species_assignment_v138.1.fa.gz")
+
 # Save taxa matrix so that we can use it later
 existingDirCheck("~/Documents/CHUM_git/Microbiota_19/taxonomy")
-write.table(taxa_w_spec, sep = ";", file = "~/Documents/CHUM_git/Microbiota_19/taxonomy/taxa_annotation2.csv", col.names = TRUE)
+write.table(taxa_w_species, sep = ";", file = "~/Documents/CHUM_git/Microbiota_19/taxonomy/taxa_annotation2.csv", col.names = TRUE)
+write.table(taxa_w_species, sep = ";", file = "~/Documents/CHUM_git/Microbiota_19/taxonomy/taxa_annotation3.csv", col.names = TRUE)
 
 # Transforming asv_table into matrix so that it can be used by dada2 taxonomic assignment algorithm
 asv_table <- as.matrix(read.csv("~/Documents/CHUM_git/test_chimeras/asv_table/asv_table.csv", sep = ";"))
