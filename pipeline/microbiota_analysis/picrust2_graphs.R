@@ -79,6 +79,8 @@ KeggPathwayHmap <- function(kegg_ab, brite_mapping, metadata, group, custom_colo
       values_to = "abundance"
     )
   
+
+  
   # Bind metadata and kegg brite mapping
   df_long <- merge(df_long, metadata, by = "sample_id")
   df_long <- merge(df_long, brite_mapping, by = "id")

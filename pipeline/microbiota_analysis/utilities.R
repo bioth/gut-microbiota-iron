@@ -220,3 +220,18 @@ fbRatioGraphTimeSeries <- function(df, group, measure, time, custom_colors, cust
   print(p+custom_theme)
   
 }
+
+# Graph for F/B ratio - with x axis as continuous and lines connecting groups
+fbRatioGraphTimeSeries2 <- function(df, group, measure, time, custom_colors, custom_theme = NULL){
+  
+  p <- ggplot(data = df, aes(x = .data[[time]], y = .data[[measure]], group = .data[[group]], color = .data[[group]])) +
+    stat_summary(fun.data = mean_se, geom = "ribbon", alpha = 0.3, color = NA, aes(fill = .data[[group]])) +
+    stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+    stat_summary(fun = mean, geom = "point", size = 1, color = "black") +
+    scale_color_manual(values = custom_colors)+
+    scale_fill_manual(values = custom_colors)+
+    labs(title = "F/B ratio overtime\n according to diet exposure", y = "F/B ratio", fill = "Group", x = "Time")+
+  my_theme()
+  
+  return(p)
+}

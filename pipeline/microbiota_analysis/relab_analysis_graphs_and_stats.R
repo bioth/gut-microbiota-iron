@@ -1218,7 +1218,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   
   #Save results at single timepoint
   if(blockFactor){ # Block factor is used to explain some variability, but overall results are used
-    res <- results(deseq)
+    res <- results(deseq, name = resultsNames(deseq)[3])
   }else{
     res <- results(deseq, name = resultsNames(deseq)[2])
   }

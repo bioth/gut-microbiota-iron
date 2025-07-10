@@ -558,13 +558,14 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     
     # Add the p-value under the legend
     if(displayPValue){
-      p<- p+annotate("text", 
-               x = Inf, y = -Inf,  # Position at bottom right, under the legend
-               label = paste("p =", round(pvalue, 3)), 
-               hjust = 1, vjust = -0.5, 
-               size = 6, color = "black", 
-               fontface = "bold",
-               family = font)  # Make the entire text bold
+      p <- p + annotate("text", 
+                        x = Inf, y = -Inf,
+                        label = sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue),
+                        parse = TRUE,
+                        hjust = 1, vjust = -0.5,
+                        size = 6, color = "black",
+                        family = font
+      )
     }
   
     #Save figure

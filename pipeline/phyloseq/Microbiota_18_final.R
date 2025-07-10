@@ -1808,10 +1808,10 @@ producePicrust2Inputs(ps_flt_all, "~/Documents/CHUM_git/Microbiota_18_final/")
   
   # Step 1: Convert your phyloseq object to metacoder format
   tax_data <- parse_phyloseq(ps)
-  tax_data$data$tax_data[is.na(tax_data$data$tax_data$Phylum),c(4:9)] "Unkwnown"  # Replace NA by unkwnown
-  tax_data$data$tax_data$Phylum[is.na(tax_data$data$tax_data$Phylum)] <- 
+  tax_data$data$tax_data[is.na(tax_data$data$tax_data)] <- "Unkwnown"  # Replace NA by unkwnown
   
-  
+  library(taxa)
+  internal_ids <- taxa::internodes(tax_data)
   
   # Assign colors to each phyla
   unique_phyla <- unique(tax_data$data$tax_data$Phylum)
@@ -1830,6 +1830,29 @@ producePicrust2Inputs(ps_flt_all, "~/Documents/CHUM_git/Microbiota_18_final/")
             node_color = colors,  # or use phylum here
             layout = "davidson-harel",
             node_color_axis_label = "Phylum")
+  
+  library(ggparty)
+  # Build and plot your tree + heatmap
+  p <- heat_tree(tax_data,
+                 node_label = taxon_names,
+                 node_size = n_obs,  # or use abundance values
+                 node_color = colors,  # or use phylum here
+                 layout = "davidson-harel",
+                 node_color_axis_label = "Phylum"
+  )
+  
+  p
+  
+  node_data(p) %>% filter(!is_leaf)
+  
+  # Then add colored internal nodes, e.g. by node purity or some other metric:
+  p +
+    geom_node_point(
+      data = node_data(p) %>% filter(!is_leaf),  # select internal nodes
+      aes(x = x, y = y, color = purity_metric),   # or any internal-node attribute
+      size = 3
+    ) +
+    scale_color_gradient(low = "blue", high = "red")
 }
 
 # Good layout options
