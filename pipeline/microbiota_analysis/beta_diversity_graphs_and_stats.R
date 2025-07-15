@@ -139,7 +139,7 @@ betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors,
     colnames(pcoa_results$vectors) <- gsub("Axis.", "PC", colnames(pcoa_results$vectors)) #Replace colnames "Axis.n" by "PCn"
     
     #Statistics, and save table in folder
-    test.adonis <- adonis(as.formula(paste("dist_subset ~", gg_group)), data = data.frame(sample_data(ps_subset)))
+    test.adonis <- adonis2(as.formula(paste("dist_subset ~", gg_group)), data = data.frame(sample_data(ps_subset)))
     test.adonis <- as.data.frame(test.adonis$aov.tab)
     p_value <- test.adonis[["Pr(>F)"]][1]  #Extract p-value from adonis result
     print(test.adonis)
@@ -167,7 +167,7 @@ betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors,
         legend.text = element_text(size = 9, face = "bold", family = font),  # Adjust legend font size
         panel.grid.major = element_blank(),  # Add major grid lines
         panel.grid.minor = element_blank(),  # Remove minor grid lines
-        axis.line = element_line(color = "black", size = 1))+ # Include axis lines  # Include axis bars
+        axis.line = element_line(color = "black", size = 0.5))+ # Include axis lines  # Include axis bars
       
       # Add the p-value under the legend
       if(displayPValue){
@@ -563,7 +563,7 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
                         label = sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue),
                         parse = TRUE,
                         hjust = 1, vjust = -0.5,
-                        size = 6, color = "black",
+                        size = 4, color = "black",
                         family = font
       )
     }

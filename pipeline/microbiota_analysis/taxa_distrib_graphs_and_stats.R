@@ -65,12 +65,17 @@ taxGlomResAndStats <- function(ps, taxrank, exp_group, twoFactors = FALSE, fac1 
                                  tax_table(ps_taxa)[rownames(tax_table(ps_taxa)) %in% rownames(results(deseq))]))
   
   meta <- as.data.frame(sample_data(ps_taxa)) #sample metadata
-  comparisons <- combn(levels(meta[[exp_group]]), 2, simplify = FALSE) # writes all possible comparaisons between yout experimental groups
+  
+  if(twoFactors){
+    comparisons <- combn(levels(meta[[exp_group]]), 2, simplify = FALSE) # writes all possible comparaisons between yout experimental groups
   
   # Filter only selected comparisons
   comparisons <- Filter(function(cmp) {
     any(sapply(selected_comparisons, function(sel) all(sel == cmp)))
-  }, comparisons)
+  }, comparisons)}
+  else{
+    comparisons <- c(levels(meta[[exp_group]])[1],levels(meta[[exp_group]])[2])
+  }
   
   # Using correctly formatted contrasts based on results names
   results_list <- list()

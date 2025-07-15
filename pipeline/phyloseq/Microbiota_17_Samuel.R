@@ -92,6 +92,7 @@ sum(taxa_sums(ps)) #total number of reads
 length(taxa_sums(ps)) #total number of ASVs
 
 ps_samuel <- subset_samples(ps, student == "Samuel" & genotype == "Wt")
+ps_samuel <- prune_taxa(taxa_sums(ps_samuel) > 0, ps_samuel)
 sum(taxa_sums(ps_samuel))
 length(taxa_sums(ps_samuel))
 
@@ -219,10 +220,12 @@ il22_exp_family <- plot_microbiota(
   main_level = "Phylum",
   sub_level = "Family",
   n_phy = 4, # number of taxa to show
+  legend_size = 10
   )
 plot <- il22_exp_family$plot
 il22_exp_family$plot
 
+library(ggh4x)
 # Replace the sample names by some number as an id
 facet_levels <- unique(plot$data$treatment)
 num_samples <- 13
@@ -238,22 +241,22 @@ p <- plot +
               scales  = "free_x", nrow = 1, ncol = 2,
               strip = strip_themed(background_x = elem_list_rect(fill = c('black','#A22004'))))+
   facetted_pos_scales(x = facet_scales) +
-  
   theme(
     text = element_text(family = "Times New Roman"),      # Global text settings
     strip.text.x = element_text(size = 14, face = "bold", color = "white"),
+    strip.switch.pad.grid = unit(10000, "pt"),
     plot.title = element_text(size = 20, face = "bold"),  # Main title
     axis.title = element_text(size = 15, face = "bold", margin = margin(t = 30)),  # Axis titles
     axis.text = element_text(size = 12, face = "bold"),   # Axis text
-    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0, margin = margin(t = -17), size = 9),
-    axis.title.y = element_text(margin = margin(r = -15, unit = "pt")),
+    axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0, margin = margin(t = -17), size = 8),
+    axis.title.y = element_text(margin = margin(r = -15)),
     legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
     axis.ticks.x = element_blank(),
-    panel.spacing = unit(0.01, "lines")      # Size of item labels
+    panel.spacing = unit(0.1, "lines")      # Size of item labels
   ) +
   labs(x = "Mouse number")
 p
-ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackbar.png", plot = p, bg = "white", height = 6, width = 7, dpi = 300)
+ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackbar.png", plot = p, bg = "white", height = 6, width = 7, dpi = 500)
 }
 
 # Picrust2 - Wt vehicle vs putrescine
@@ -297,6 +300,14 @@ ggsave(filename = "~/Documents/CHUM_git/figures/Samuel_final_wt/stackbar/stackba
   existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2")
   ggsave("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/kegg_pathways.png", bg = "white", height = 7, width = 12, dpi = 300)
   
+}
+
+# Phyla data + stats
+{
+  existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/phyla_data/")
+  # Agglomerates asvs at phylum level and returns stats and results relative_abundance (Samuel)
+  taxGlomResAndStats(ps_samuel, taxrank = "Phylum", exp_group = "treatment", twoFactors = FALSE,
+                     path = "~/Documents/CHUM_git/figures/Samuel_final_wt/phyla_data/", include_graph = FALSE, write_full_data = TRUE)
 }
 
 # For microbiota 17 - specific to Samuel's data, and il22 ko only
@@ -499,5 +510,7 @@ p <- plot +
   labs(x = "Sample ID")
 p
 }
+
+
 
                                            

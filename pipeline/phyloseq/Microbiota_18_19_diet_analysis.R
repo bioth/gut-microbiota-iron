@@ -27,6 +27,7 @@
   library(caret)
   library(ggh4x)
   library(ggpicrust2)
+  library(readxl)
   
 }
 
@@ -42,55 +43,24 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/de
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/chronobiome.R")
 source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/picrust2_graphs.R")
 
-# Old workaround
-{
-# For microbiota 18 (final data)
-#set working directory
-setwd("~/Documents/CHUM_git/Microbiota_18_final/")
-asv_table <- as.data.frame(fread("asv_table/asv_table.csv", sep = ";"))
-rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
-asv_table <- asv_table[,-1]  # Drop the first column
 
-
-
-# Load taxonomical assignments
-taxa <- as.matrix(fread("taxonomy/taxa_annotation4.csv", sep = ";"))
-rownames(taxa) <- taxa[,1]  # Use the first column as row names
-taxa <- taxa[,-1]  # Drop the first column
-
-# Creating phyloseq object
-ps_dss <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
-               tax_table(taxa), sample_data(metadata))
-
-
-
-# For microbiota 19
-#set working directory
-setwd("~/Documents/CHUM_git/Microbiota_19/")
-asv_table <- as.data.frame(fread("asv_table/asv_table.csv", sep = ";"))
+# Set working directory
+setwd("~/Documents/CHUM_git/Microbiota_18_19_merged/")
+asv_table <- as.data.frame(fread("from_server3/merged_asv_table.csv", sep = ";"))
 rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
 asv_table <- asv_table[,-1]  # Drop the first column
 rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
 
-
-
 # Load taxonomical assignments
-taxa <- as.matrix(fread("taxonomy/taxa_annotation3.csv", sep = ";"))
+taxa <- as.matrix(fread("from_server3/merged_taxa_annotation.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
 
-# Creating phyloseq object
-ps_abx <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
-               tax_table(taxa), sample_data(metadata))
-
-# Merge the two phyloseq objects
-ps <- merge_phyloseq(ps_dss, ps_abx)
-}
-
-# Metadata microbiota_18
+# Metadata M18
 {
   #loading metadata of interest
-  metadata <- read.csv("~/Documents/CHUM_git/Microbiota_18/metadata/metadata.csv", sep = ";")
+  metadata <- read.csv("../Microbiota_18/metadata/metadata.csv", sep = ";")
+  
   
   # Remove the non-metadata stuff (liver measures and stuff)
   metadata <- metadata[,-c(5:8)]
@@ -105,7 +75,7 @@ ps <- merge_phyloseq(ps_dss, ps_abx)
   metadata <- metadata[-46,]
   
   # Extract 16S reads sample ids
-  samples <- read.xlsx("~/Documents/CHUM_git/Microbiota_18/metadata/Microbiota_18_samples_2025-01-13.xlsx")
+  samples <- read.xlsx("../Microbiota_18/metadata/Microbiota_18_samples_2025-01-13.xlsx")
   samples <- as.data.frame(samples$Nom)
   colnames(samples) <- "sample_id"
   samples$id <- substring(samples$sample_id, 1, 5)
@@ -132,18 +102,20 @@ ps <- merge_phyloseq(ps_dss, ps_abx)
     paste(metadata$diet,
           metadata$treatment, 
           sep = ":")
+  metadata 
   
   # Put full_id as rownames
   rownames(metadata) <- metadata$sample_id
-  metadata$run <- "1"
+  
+  metadata$run <- 1
   
   metadata_M18 <- metadata
 }
 
-# Metadata microbiota_19
+# Metadata M19
 {
   #loading metadata of interest
-  metadata <- read.xlsx("~/Documents/CHUM_git/Microbiota_19/metadata/dissection.xlsx")
+  metadata <- read.xlsx("../Microbiota_19/metadata/dissection.xlsx")
   metadata <- metadata[,-c(5:8)] # Remove the non-metadata stuff (liver measures and stuff)
   metadata$ID <- substring(metadata$ID, 1, 5) # Remove the letter at the end of id
   rownames(metadata) <- metadata$id #adding id col as rownames too
@@ -151,7 +123,7 @@ ps <- merge_phyloseq(ps_dss, ps_abx)
   colnames(metadata)[2] <- "id"
   
   # Extract 16S reads sample ids
-  samples <- read.xlsx("~/Documents/CHUM_git/Microbiota_19/metadata/Microbiota_19_NextSeqReadSet_2025-06-22.xlsx")
+  samples <- read.xlsx("../Microbiota_19/metadata/Microbiota_19_NextSeqReadSet_2025-06-22.xlsx")
   samples <- as.data.frame(samples$Nom)
   colnames(samples) <- "sample_id"
   samples$id <- substring(samples$sample_id, 1, 5)
@@ -171,7 +143,9 @@ ps <- merge_phyloseq(ps_dss, ps_abx)
           metadata$treatment, 
           sep = ":")
   rownames(metadata) <- metadata$sample_id # Put full_id as rownames
-  metadata$run <- "2"
+  
+  metadata$run <- 2
+  
   metadata_M19 <- metadata
 }
 
@@ -179,24 +153,9 @@ ps <- merge_phyloseq(ps_dss, ps_abx)
 colnames(metadata_M19)[4] <- "cage"
 metadata <- rbind(metadata_M18, metadata_M19)
 
-# Load merged ASV table and tax table
-setwd("~/Documents/CHUM_git/Microbiota_18_19_merged/")
-asv_table <- as.data.frame(fread("asv_table.csv", sep = ";"))
-rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
-asv_table <- asv_table[,-1]  # Drop the first column
-rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
-
-# Load taxonomical assignments
-taxa <- as.matrix(fread("taxa_annotation.csv", sep = ";"))
-rownames(taxa) <- taxa[,1]  # Use the first column as row names
-taxa <- taxa[,-1]  # Drop the first column
-
 # Creating phyloseq object
 ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
-                   tax_table(taxa), sample_data(metadata))
-
-sum(taxa_sums(ps)) # total number of reads
-length(taxa_sums(ps)) # total number of ASVs
+               tax_table(taxa), sample_data(metadata))
 
 # Use short names for the asvs (eg ASV21) rather than full dna sequence name
 # And add refseq entry to the phyloseq object
@@ -206,47 +165,97 @@ ps <- merge_phyloseq(ps, dna)
 taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
 names(dna) <- taxa_names(ps)
 
+sum(taxa_sums(ps)) # total number of reads
+length(taxa_sums(ps)) # total number of ASVs
+
 # Put as factors variables that are going to be used
-sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","56","final")) # Put timepoint as factor
-sample_data(ps)$week <- factor(sample_data(ps)$week, levels = c("3","8","10","11","18")) # Put week as factor
+sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49")) # Put timepoint as factor
+sample_data(ps)$week <- factor(sample_data(ps)$week, levels = c("3","8","10")) # Put week as factor
 sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500"), labels = c("50 ppm","500 ppm")) # Put diet as factor
+
+# Trying to limit batch effects
+{
+  library(ConQuR)
+  library(doParallel)
+  
+  taxa <- as.data.frame(otu_table(ps))
+  taxa <- merge(taxa, metadata, by = "row.names")
+  row.names(taxa) <- taxa[,1]
+  taxa <- taxa[,-1]
+  taxa$run <- factor(taxa$run, levels = c("1","2"))
+  taxa$diet <- factor(taxa$diet, levels = c("50","500"))
+  taxa$week <- factor(taxa$week, levels = c("3","8","10"))
+  batchid <- taxa[,"run"]
+  covar <- taxa[,c("diet","week")]
+  taxa_corrected <- ConQuR(tax_tab = as.data.frame(otu_table(ps)), batchid = batchid, covariates = covar, batch_ref = 1)
+  
+  par(mfrow=c(1, 2))
+  Plot_PCoA(TAX = otu_table(ps), factor = batchid, main="Before Correction, Bray-Curtis")
+  Plot_PCoA(TAX = taxa_corrected, factor = batchid, main="After Correction, Bray-Curtis")
+  
+  otu_table(ps) <- otu_table(taxa_corrected, taxa_are_rows = FALSE) 
+}
+
+# Creating phylogenetic tree
+{
+  #Rarefaction curve, not necessary when lots of high quality data such as here
+  {
+    tab = otu_table(ps)
+    class(tab) <- "matrix" # as.matrix() will do nothing
+    tab <- t(tab)
+    rarecurve(tab, step=10000, lwd=2, ylab="ASV",  label=F)
+  }
+  
+  #adding a phylogenetic tree
+  # Align sequences
+  alignment <- AlignSeqs(DNAStringSet(dna), processors = 20)
+  
+  # Build a distance matrix
+  dist_matrix <- DistanceMatrix(alignment, processors = 20)
+  
+  #build tree using neighbor-joining method
+  tree  <- nj(dist_matrix)
+  
+  # Export the tree as a Newick file
+  write.tree(tree, file = "~/Documents/CHUM_git/Microbiota_18_19_merged/taxonomy/phylogenetic_tree.newick")
+  
+  #refinement with maximum likelihood
+  {
+    # Convert the alignment to a phangorn-compatible format
+    alignment_matrix <- as.matrix(alignment)
+    
+    # Estimate the substitution model (e.g., GTR)
+    fitGTR <- pml(tree, data = alignment_matrix)
+    
+    # Optimize the ML tree
+    ml_tree <- optim.pml(fitGTR, model = "GTR", rearrangement = "stochastic")
+  }
+}
+
+# Add phylogenetic tree to phyloseq object
+tree <- read.tree("~/Documents/CHUM_git/Microbiota_18_19_merged/taxonomy/phylogenetic_tree.newick")
+ps <- merge_phyloseq(ps, tree)
+phy_tree(ps) <- midpoint(tree) # Root the tree
 
 # Create single timepoint phyloseq objects and apply filter
 ps_t0 <- prune_samples(sample_data(ps)$timepoint %in% c("0"), ps)
 ps_t0_flt <- prune_taxa(taxa_sums(ps_t0) > 10, ps_t0)
-ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.3 * nsamples(ps_t0_flt)), ps_t0_flt)
+ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.5 * nsamples(ps_t0_flt)), ps_t0_flt)
 length(taxa_sums(ps_t0_flt))
 
 ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
 ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
-ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.3 * nsamples(ps_t35_flt)), ps_t35_flt)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.5 * nsamples(ps_t35_flt)), ps_t35_flt)
 length(taxa_sums(ps_t35_flt))
 
 ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
 ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
-ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.3 * nsamples(ps_t49_flt)), ps_t49_flt)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.5 * nsamples(ps_t49_flt)), ps_t49_flt)
 length(taxa_sums(ps_t49_flt))
-
-ps_t56 <- prune_samples(sample_data(ps)$timepoint %in% c("56"), ps)
-ps_t56_flt <- prune_taxa(taxa_sums(ps_t56) > 10, ps_t56)
-ps_t56_flt <- prune_taxa(colSums(otu_table(ps_t56_flt) > 0) >= (0.3 * nsamples(ps_t56_flt)), ps_t56_flt)
-length(taxa_sums(ps_t56_flt))
-
-ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("final"), ps)
-ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
-ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.3 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
-length(taxa_sums(ps_tfinal_flt))
 
 # Create phyloseq obejcts that we need for the analysis
 ps_diet <- merge_phyloseq(ps_t0, ps_t35, ps_t49)
 ps_flt_diet <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt)
-
-# Generate picrust2 input
-{
-  existingDirCheck("~/Documents/CHUM_git/Microbiota_18_19_merged/picrust2/input/")
-  producePicrust2Inputs(ps_flt_diet, "~/Documents/CHUM_git/Microbiota_18_19_merged/")
-}
-
 
 #### Alpha diversity ####
 existingDirCheck("../figures/Thibault_iron/alpha_diversity")
@@ -263,7 +272,7 @@ graphs <- alphaDiversityTimeline(ps_diet, time = "week", group = "diet", custom_
 
 # Chao1
 graphs[[1]]+
-  scale_x_continuous(n.breaks = )+
+  scale_x_continuous(n.breaks = 8)+
   labs(y = "Chao1 Index", x = "Time (weeks)", color = "Diet", fill = "")+
   guides(fill = "none")+
   ylim(0,NA)+
@@ -272,7 +281,7 @@ graphs[[1]]+
     xmin = c(3),           # left box in each timepoint
     xmax = c(3),
     annotations = "n.s.",
-    y_position = c(650), #
+    y_position = c(300), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -284,19 +293,20 @@ graphs[[1]]+
     xmin = c(8),           # left box in each timepoint
     xmax = c(8),
     annotations = "n.s.",
-    y_position = c(800), #
+    y_position = c(320), #
     tip_length = 0,
     color = "black",
     size = 0,
     textsize = 4,
     margin_top = 0.1, # Moves the top according to this value
     vjust = 0,
+    # fontface = "bold"
   )+geom_signif( # For first timepoint
     # comparisons = list(c(groups[1],groups[4])),
     xmin = c(10),           # left box in each timepoint
     xmax = c(10),
     annotations = "n.s.",
-    y_position = c(800), #
+    y_position = c(300), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -328,7 +338,7 @@ t.test(Chao1 ~ timepoint, data = alpha_d[alpha_d$timepoint %in% c("35","49") & a
 
 # Shannon
 graphs[[2]]+
-  scale_x_continuous(n.breaks = )+
+  scale_x_continuous(n.breaks = 8)+
   labs(y = "Shannon Index", x = "Time (weeks)", color = "Diet", fill = "")+
   guides(fill = "none")+
   ylim(0,NA)+
@@ -337,7 +347,7 @@ graphs[[2]]+
     xmin = c(3),           # left box in each timepoint
     xmax = c(3),
     annotations = "n.s.",
-    y_position = c(4), #
+    y_position = c(3.7), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -349,7 +359,7 @@ graphs[[2]]+
     xmin = c(8),           # left box in each timepoint
     xmax = c(8),
     annotations = "n.s.",
-    y_position = c(3.5), #
+    y_position = c(3), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -361,7 +371,7 @@ graphs[[2]]+
     xmin = c(10),           # left box in each timepoint
     xmax = c(10),
     annotations = "n.s.",
-    y_position = c(3.5), #
+    y_position = c(2.9), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -389,11 +399,11 @@ verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint %in% c("35","49") & alpha_
 t.test(Shannon ~ timepoint, data = alpha_d[alpha_d$timepoint %in% c("35","49") & alpha_d$diet == "50 ppm",], var.equal = TRUE)
 
 verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint %in% c("35","49") & alpha_d$diet == "500 ppm",], group = "timepoint", measure = "Shannon")
-t.test(Shannon ~ timepoint, data = alpha_d[alpha_d$timepoint %in% c("35","49") & alpha_d$diet == "500 ppm",], var.equal = FALSE)
+wilcox.test(Shannon ~ timepoint, data = alpha_d[alpha_d$timepoint %in% c("35","49") & alpha_d$diet == "500 ppm",])
 
 # Inverse Simpson
 graphs[[3]]+
-  scale_x_continuous(n.breaks = )+
+  scale_x_continuous(n.breaks = 8)+
   labs(y = "Inverse Simpson Index", x = "Time (weeks)", color = "Diet", fill = "")+
   guides(fill = "none")+
   ylim(0,NA)+
@@ -402,7 +412,7 @@ graphs[[3]]+
     xmin = c(3),           # left box in each timepoint
     xmax = c(3),
     annotations = "n.s.",
-    y_position = c(23), #
+    y_position = c(15), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -414,7 +424,7 @@ graphs[[3]]+
     xmin = c(8),           # left box in each timepoint
     xmax = c(8),
     annotations = "n.s.",
-    y_position = c(11), #
+    y_position = c(6), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -426,7 +436,7 @@ graphs[[3]]+
     xmin = c(10),           # left box in each timepoint
     xmax = c(10),
     annotations = "n.s.",
-    y_position = c(10), #
+    y_position = c(5), #
     tip_length = 0,
     color = "black",
     size = 0,
@@ -464,19 +474,36 @@ betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "sample_id", timeVariabl
                                varToCompare =  "diet", distMethod ="bray",
                                transform = "rel_ab", customColors = c("blue","red"),
                                font = "Arial", path = "../figures/Thibault_iron/beta_diversity/filtered/", 
+                               additionnalAes = my_theme()+theme(plot.title = element_text(size = 12),
+                                                                 axis.line = element_line(color = "black", size = 0.6)),
+                               dim = c(3,4), displayPValue = TRUE)
+
+# Weighted unifrac unfiltered
+betaDiversityTimepoint2Factors(ps_diet, sample_id = "sample_id", timeVariable = "week",
+                               varToCompare =  "diet", distMethod ="wunifrac",
+                               transform = "rel_ab", customColors = c("blue","red"),
+                               font = "Arial", path = "../figures/Thibault_iron/beta_diversity/filtered/", 
+                               additionnalAes = my_theme()+theme(plot.title = element_text(size = 12),
+                                                                 axis.line = element_line(color = "black", size = 0.6)),
+                               dim = c(3,4), displayPValue = TRUE)
+
+sample_data(ps_flt_diet)$run <- factor(sample_data(ps_flt_diet)$run, labels = c("1","2"))
+sample_data(ps_diet)$run <- factor(sample_data(ps_diet)$run, labels = c("1","2"))
+sample_data(ps_diet)$week <- factor(sample_data(ps_diet)$week, levels = c("3","8","10"))
+betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "sample_id", timeVariable = "week",
+                               varToCompare =  "run", distMethod ="bray",
+                               transform = "rel_ab", customColors = c("green","yellow"),
+                               font = "Arial", path = "../figures/Thibault_iron/beta_diversity/runs/", 
                                additionnalAes = my_theme()+theme(plot.title = element_text(size = 12)), dim = c(3,4), displayPValue = TRUE)
-
-
 
 #### Relative abundance ####
 # Path where to save graphs
 pathToSave <- "~/Documents/CHUM_git/figures/Thibault_iron/relative_abundance/"
-pathToSave <- "~/Documents/CHUM_git/figures/Thibault_iron/relative_abundance_batch/"
 existingDirCheck(pathToSave)
 
 #customColors for graph display
 customColors = c("blue","red")
-customPhylaColors = c("#e6550d","#31a354", "#583093","yellow")
+customPhylaColors = c("#583093","#31a354", "#3165a3")
 
 #Iterate through timepoints
 for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
@@ -491,12 +518,12 @@ for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
   print(length(taxa_sums(ps_subset)))
   
   #Simple deseq object only accounting for the differences in diet
-  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ run+diet) 
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
   deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
   print(resultsNames(deseq_subset))
   
   #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath, blockFactor = TRUE)
+  relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath, dim = c(5,5))
   
   # log2fold change graph based on deseq2 results
   log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
@@ -527,21 +554,31 @@ for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
     deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
     
     #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
-    relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath) 
+    relabSingleTimepoint(ps_taxa, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = txnLevel, threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath, dim = c(5,5)) 
   }
 }
 
+#### Relative abundance timeline ####
+# Path where to save graphs
+pathToSave <- "~/Documents/CHUM_git/figures/Thibault_iron/relative_abundance_timeline/"
+existingDirCheck(pathToSave)
 
-ASV2
-ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == timePoint, ps_flt_diet)
-ps_taxa <- tax_glom(ps_subset, taxrank = txnLevel)
-tax_table(ps_taxa)
-colnames(sample_data(ps_taxa))[2] <- "sample_id"
-deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet)
-deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+#customColors for graph display
+customColors = c("blue","red")
+  
+relabTimelineRevised(ps_flt_diet, timeVariable = "week", varToCompare = "diet", taxa = "Species", threshold = 0.05, customColors = customColors, path = pathToSave)
 
-ps_taxa <- transformCounts(ps_taxa, transformation = "rel_ab")
-View(otu_table(ps_taxa))
+#At other taxonomic levels
+taxonomicLevels <- c("Genus","Family","Order","Class","Phylum")
+
+for(txnLevel in taxonomicLevels){
+  
+  #Creates ps subset for taxonomical level of interest
+  ps_taxa <- tax_glom(ps_flt_diet, taxrank = txnLevel)
+  
+  #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+  relabTimelineRevised(ps_taxa, timeVariable = "week", varToCompare = "diet", taxa = txnLevel, threshold = 0.05, customColors = customColors, path = pathToSave)
+}
 
 #### F/B ratio ####
 ps_phyla <- tax_glom(ps_diet, taxrank = "Phylum") # Agglom ps at phylum level
@@ -573,11 +610,12 @@ fbRatioGraphTimeSeries(fb_ratio_df, group = "diet",time = "week", measure = "fb_
   ylim(0,NA)+
   labs(x = "Time (weeks)", fill = "", color = "Diet")+
   guides(fill = "none")
-
+  
 fb_ratio_df$week <- as.numeric(as.character(fb_ratio_df$week))
 fbRatioGraphTimeSeries2(fb_ratio_df, group = "diet",time = "week", measure = "fb_ratio", custom_colors = c("blue","red"), custom_theme = my_theme())+
   ylim(0,NA)+
   labs(x = "Time (weeks)", fill = "", color = "Diet")+
+  scale_x_continuous(n.breaks = 8)+
   guides(fill = "none")+
   geom_signif( # For first timepoint
     # comparisons = list(c(groups[1],groups[4])),
@@ -595,12 +633,12 @@ fbRatioGraphTimeSeries2(fb_ratio_df, group = "diet",time = "week", measure = "fb
     # comparisons = list(c(groups[1],groups[4])),
     xmin = c(8),           # left box in each timepoint
     xmax = c(8),
-    annotations = "**",
-    y_position = c(2.3), #
+    annotations = "*",
+    y_position = c(3.8), #
     tip_length = 0,
     color = "black",
     size = 0,
-    textsize = 6,
+    textsize = 5,
     margin_top = 0.1, # Moves the top according to this value
     vjust = 0,
     fontface = "bold"
@@ -609,16 +647,29 @@ fbRatioGraphTimeSeries2(fb_ratio_df, group = "diet",time = "week", measure = "fb
     xmin = c(10),           # left box in each timepoint
     xmax = c(10),
     annotations = "n.s.",
-    y_position = c(2.5), #
+    y_position = c(4.8), #
     tip_length = 0,
     color = "black",
     size = 0,
     textsize = 4,
     margin_top = 0.1, # Moves the top according to this value
     vjust = -0.1,
+  )+geom_signif( # For third timepoint
+    # comparisons = list(c(groups[1],groups[4])),
+    xmin = c(8),           # left box in each timepoint
+    xmax = c(10),
+    annotations = "*",
+    y_position = c(5.2), #
+    tip_length = 0.02,
+    color = "black",
+    size = 0.5,
+    textsize = 5,
+    margin_top = 0.5, # Moves the top according to this value
+    vjust = -0.1,
+    fontface = "bold"
   )
 ggsave("../figures/Thibault_iron/fb_ratio/fb_ratio_diet.png",
-       bg = "white",height = 4, width =5, dpi = 300)
+       bg = "white",height = 5, width =5, dpi = 300)
 # Stats
 verifyStatsAssumptions(fb_ratio_df[fb_ratio_df$timepoint == "0",], group = "diet",measure =  "fb_ratio")
 wilcox.test(fb_ratio ~ diet, data = fb_ratio_df[fb_ratio_df$timepoint == "0",])
@@ -681,11 +732,11 @@ list2 = which(id8 %in% id3)+24
 
 facet_scales <- list(
   scale_x_discrete(labels = as.character(list1)),
-  scale_x_discrete(labels = as.character(1:24)),
-  scale_x_discrete(labels = as.character(1:24)),
+  scale_x_discrete(labels = as.character(1:48)),
+  scale_x_discrete(labels = as.character(1:48)),
   scale_x_discrete(labels = as.character(list2)),
-  scale_x_discrete(labels = as.character(25:48)),
-  scale_x_discrete(labels = as.character(25:48))
+  scale_x_discrete(labels = as.character(49:96)),
+  scale_x_discrete(labels = as.character(49:96))
 )
 
 # Custom the plot
@@ -704,16 +755,18 @@ p <- diet_phyla_fam$plot +
         plot.title = element_text(size = 20, face = "bold"),  # Main title
         axis.title = element_text(size = 15, face = "bold"),  # Axis titles
         axis.text = element_text(size = 12, face = "bold"),   # Axis text
-        legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
-  ) +
+        axis.text.x = element_text(angle = 45, hjust = 0.5, margin = margin(t = -5), size = 5),
+        axis.title.y = element_text(margin = margin(r = -15, unit = "pt")),
+        legend.title = element_text(face = "bold", size = 14),  # Legend title  # Legend text
+        axis.ticks.x = element_blank()) +
+  # scale_x_discrete(labels = function(x) substr(x, 1, 5))+
   facetted_pos_scales(x = facet_scales)+
-  scale_x_discrete(labels = function(x) substr(x, 1, 5))+
-  labs(x = "Mouse ID")
+  labs(x = "Mouse number")
 p
 
 # Saving the plot and the associated stats
-existingDirCheck("../figures/Thibault_abx/stackbar")
-ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_stackbar.png", width = 9, height = 7, dpi = 300)
+existingDirCheck("../figures/Thibault_iron/stackbar")
+ggsave(plot = p, filename = "../figures/Thibault_iron/stackbar/diet_stackbar.png", width = 12, height = 7, dpi = 300)
 writeStackbarExtendedSigTable(main_table = diet_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_abx/stackbar/diet_stackbar_stats.xlsx")
 
 # pvalues heatmap for the main lvl stats
@@ -735,65 +788,219 @@ p <- p+scale_x_discrete(labels = c("50 vs 500 3w", "50 vs 500 8w", "50 vs 500 10
         axis.text.x = element_text(size = 11))
 ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/diet_stackbar_sub_table.png", width = 3.5, height = 8, dpi = 300, bg = "white")
 
-#### Picrust2 ####
-# Picrust2 - 50 vs 50 dss and 500 vs 500 dss, at t54
-meta <- metadata[metadata$timepoint == "35",]
-# ids <- meta$id[duplicated(meta$id)]
-# ids <- paste0(ids, "_T54")
-# meta <- meta[!meta$sample_id %in% ids,]
-# meta <- meta[meta$id != "10994",] # For 50 ppm
-# meta <- meta[meta$id != "33105",] # For 500 ppm
+#### Correlations ####
+#Preparing dataframe for correlation
+# Load all data
+df <- as.data.frame(read_xlsx("~/Documents/CHUM_git/gut-microbiota-iron/experiments/data_both_exp.xlsx"))
+df <- df[!is.na(df$id),] # Remove dead mice
+df$id[30] <- "10958" # Correct name
+df$id <- paste0(substring(df$id, 1, 5),"_T35")
+colnames(df)[1] <- "sample_id"
+rownames(df) <- df$sample_id
+df <- df[,-c(1:3)]
+df$nrm_spleen_weight <- df$spleen_weight/df$body_weight # Normalize spleen and liver weights
+df$nrm_liver_weight <- df$liver_weight/df$body_weight 
 
-ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_18_19_merged/picrust2/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
-colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
-pattern <- paste(meta$sample_id, collapse = "|")
-indexes <-  grep(pattern, colnames(ko_ab)) 
-ko_ab <- ko_ab[,c(1,indexes)] # Keep only samples for 10 weeks
-ko_ab <- ko_ab[rowSums(ko_ab[,-1])!=0,]
-kegg_ab <- ko2kegg_abundance(data = ko_ab) # KO to kegg pathways
+ps_taxa <- tax_glom(ps_t35_flt, taxrank = "Phylum")
+deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet)
+deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet)
+deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+# res <- results(deseq_subset, name = resultsNames(deseq_subset)[2]) #50 vs 500
+# print(resultsNames(deseq_subset))
 
-meta$diet <- factor(meta$diet, levels = c("50","500"), labels = c("50 ppm", "500 ppm"))
-meta$run <- factor(meta$run, levels = c("1","2"), labels = c("Run 1", "Run 2"))
-
-# Perform differential abundance analysis
-kegg_daa_results_df <- pathway_daa(
-  abundance = kegg_ab,
-  metadata = meta,
-  group = "diet",
-  daa_method = "DESeq2"
-)
-
-# Filter features with p < 0.05
-feature_with_p_0.05 <- kegg_daa_results_df %>%
-  filter(p_adjust < 0.05)
-
-# Retrieve kegg brite hierarchies information
-features <- feature_with_p_0.05$feature
-brite_mapping <- getBriteFromKeggPathID(features)
-
-meta <- meta[,-1] # get rid of id col in metadata
-
-"ko00361"
-
-
-# custom_col_cat <- terrain.colors(11)
-# custom_col_cat <- heat.colors(11)
-custom_col_cat <- brewer.pal(11, "Set3")
-custom_col_cat <- alpha(custom_col_cat, 0.3)
-
-KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "diet",custom_colors_group = c("blue","red"), custom_col_cat, hierarchy = "2")
-
-existingDirCheck("~/Documents/CHUM_git/figures/Thibault_iron/picrust2")
-ggsave("~/Documents/CHUM_git/figures/Thibault_iron/picrust2/kegg_diet_hmap.png", bg = "white", height = 20, width = 20, dpi = 300)
-
-
-#### Beta diversity (comparing sequencing bouts) ####
-# Bray curtis filtered
-betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "sample_id", timeVariable = "week",
-                               varToCompare =  "run", distMethod ="bray",
-                               transform = "rel_ab", customColors = c("green","yellow"),
-                               font = "Arial", path = "../figures/Thibault_iron/batch_effects/", 
-                               additionnalAes = my_theme()+theme(plot.title = element_text(size = 12)), dim = c(3,4), displayPValue = TRUE)
+#For species level
+#One heatmap for all groups
+p <- correlation2Var(ps_taxa, deseq_subset, measure = "log2fold", "diet", taxa = "Phylum", displayPvalue = FALSE, threshold = 0.05, FDR = TRUE, "~/Documents/CHUM_git/figures/Thibault_dss/newTaxAnnotation/correlation_heatmaps/", df = df, global = TRUE, singleVariable = FALSE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = TRUE)
+p <- p+
+  labs(title = "Correlation between iron in stools at t35\nand differentially abundant species abundance", y = "", x = "")+
+  coord_fixed() + # Makes thing squared
+  theme(
+    text = element_text(family = "Arial"),      # Global text settings
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title.x = element_text(size = 12, face = "bold"),  # Axis titles
+    axis.text.y = element_blank(),  # Axis titles
+    axis.text.x = element_text(size = 12, face = "bold",hjust = 0.5, vjust = 0.75),   # Axis text
+    legend.title = element_text(face = "bold", size = 12),  # Legend title  # Legend text
+    axis.ticks = element_blank()
+  ) #axis.text.x = element_text(angle = -45, hjust = 1)
+p
+ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_dss/correlation_heatmaps/species_iront35_hmap.png",
+       plot = p, bg = "white", height = 6, width = 6, dpi = 300)
 
 
 
+
+# Creating a cauliflower phylogenetic tree
+{
+  library(ggtree)
+  library(ape)
+  library(metacoder)
+  library(scales)
+  
+  # Load and parse
+  ps_tree <- ps
+  tree <- unroot(phy_tree(ps_tree))
+  tax_data <- parse_phyloseq(ps_tree)
+  
+  # Build taxa-level table
+  all_ids <- tax_data$taxon_ids()
+  taxa_df <- data.frame(
+    taxon_id = all_ids,
+    Phylum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  
+  # Copy tip phyla
+  tip_ids <- tax_data$data$tax_data$taxon_id
+  taxa_df$Phylum[match(tip_ids, taxa_df$taxon_id)] <- tax_data$data$tax_data$Phylum
+  
+  # Assign it
+  tax_data$data$taxa <- taxa_df
+  tax_data$data$sample_data <- NULL
+  
+  tax_data$data$taxa$Phylum <- as.character(taxa_df$Phylum)
+  
+  tax_data$data$taxa$Phylum <- sapply(all_ids, function(id) {
+    ids <- c(id, tax_data$subtaxa(id, recursive = TRUE, simplify = TRUE))
+    vals <- tax_data$data$taxa$Phylum[taxa_df$taxon_id %in% ids]
+    vals <- na.omit(vals)
+    if (length(vals)) vals[1] else NA
+  })
+  
+  table(is.na(tax_data$data$taxa$Phylum)) 
+  
+  # Unique phyla (no NAs)
+  unique_phyla <- sort(unique(tax_data$data$taxa$Phylum))
+  n <- length(unique_phyla)
+  
+  # Generate palette
+  pal <- colorRampPalette(brewer.pal(min(8, n), "Set3"))(n)
+  my_phylum_colors <- setNames(pal, unique_phyla)
+  
+  tax_data$data$taxa$Phylum <- as.character(tax_data$data$taxa$Phylum)
+  tax_data$data$taxa$Phylum[is.na(tax_data$data$taxa$Phylum)] <- "Unassigned"
+  
+  unique_phyla <- sort(unique(tax_data$data$taxa$Phylum))
+  palette_vec <- colorRampPalette(brewer.pal(8, "Set3"))(length(unique_phyla))
+  my_phylum_colors <- setNames(palette_vec, unique_phyla)
+  
+  heat_tree(
+    tax_data,
+    node_color       = Phylum,
+    edge_color       = Phylum,
+    node_label       = taxon_names,
+    node_color_range = my_phylum_colors,
+    edge_color_range = my_phylum_colors,
+    layout           = "davidson-harel"
+  )
+  
+  tax_data2 <- tax_data %>%
+    filter_taxa(!is_leaf, supertaxa = TRUE, invert = TRUE)
+  
+  unique_phyla <- sort(unique(tax_data2$data$taxa$Phylum))
+  palette_vec <- colorRampPalette(RColorBrewer::brewer.pal(8, "Set3"))(length(unique_phyla))
+  my_phylum_colors <- setNames(palette_vec, unique_phyla)
+  
+  heat_tree(
+    tax_data2,
+    node_color = Phylum,
+    edge_color = Phylum,
+    node_label = taxon_names,
+    node_color_range = my_phylum_colors,
+    edge_color_range = my_phylum_colors,
+    layout = "davidson-harel"
+  )
+  
+  
+  # # Step 2: Plot radial tree
+  # heat_tree(tax_data,
+  #           node_label = taxon_names,
+  #           node_size = n_obs,  # or use abundance values
+  #           node_color = colors,  # or use phylum here
+  #           layout = "davidson-harel",
+  #           # initial_layout = "davidson-harel",
+  #           node_color_axis_label = "Phylum")
+  
+  library(ggparty)
+  # Build and plot your tree + heatmap
+  p <- heat_tree(tax_data,
+                 node_label = taxon_names,
+                 node_size = n_obs,  # or use abundance values
+                 node_color = colors,  # or use phylum here
+                 layout = "davidson-harel",
+                 node_color_axis_label = "Phylum"
+  )
+  
+  p
+  
+  node_data(p) %>% filter(!is_leaf)
+  
+  # Then add colored internal nodes, e.g. by node purity or some other metric:
+  p +
+    geom_node_point(
+      data = node_data(p) %>% filter(!is_leaf),  # select internal nodes
+      aes(x = x, y = y, color = purity_metric),   # or any internal-node attribute
+      size = 3
+    ) +
+    scale_color_gradient(low = "blue", high = "red")
+  
+  
+  
+  
+  
+  
+  
+  
+  #############
+  
+  library(metacoder)
+  library(RColorBrewer)
+  
+  tax_data <- parse_phyloseq(ps)
+  all_ids  <- tax_data$taxon_ids()
+  tip_df   <- tax_data$data$tax_data
+  
+  taxa_df <- data.frame(taxon_id = all_ids, Phylum = NA_character_, stringsAsFactors = FALSE)
+  taxa_df$Phylum[match(tip_df$taxon_id, all_ids)] <- as.character(tip_df$Phylum)
+  tax_data$data$taxa <- taxa_df
+  
+  el <- tax_data$edge_list
+  
+  # Initialize propagated Phylum
+  prop_phylum <- setNames(taxa_df$Phylum, taxa_df$taxon_id)
+  
+  # Fill internal nodes by inheriting from their descendants
+  repeat {
+    # Find internals missing Phylum
+    no_phylum_ids <- taxa_df$taxon_id[is.na(prop_phylum)]
+    updated <- FALSE
+    
+    for (nid in no_phylum_ids) {
+      kids <- el$to[el$from == nid]
+      ph_values <- unique(na.omit(prop_phylum[kids]))
+      if (length(ph_values) > 0) {
+        prop_phylum[nid] <- ph_values[1]
+        updated <- TRUE
+      }
+    }
+    if (!updated) break
+  }
+  
+  tax_data$data$taxa$Phylum <- prop_phylum
+  
+  unique_phyla <- sort(unique(prop_phylum))
+  palette_vec <- colorRampPalette(brewer.pal(min(8, length(unique_phyla)), "Set3"))(length(unique_phyla))
+  phylum_pal  <- setNames(palette_vec, unique_phyla)
+  tax_data$data$taxa$color <- phylum_pal[prop_phylum]
+  
+  heat_tree(
+    tax_data,
+    node_color       = color,
+    edge_color       = color,
+    node_label       = taxon_names,
+    node_color_range = phylum_pal,
+    edge_color_range = phylum_pal,
+    layout           = "davidson-harel"
+  )
+  
+}

@@ -1328,7 +1328,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
       labs(title = paste(taxa ,taxonName, "\nat last timepoint", sep = " "), y = "Relative abundance (%)", color = "Diet", x = "") +
       scale_color_manual(values = customColors)+
       # scale_x_discrete(labels = c("50 ppm\nDSS","500 ppm\nDSS"))+
-      scale_x_discrete(labels = c("Vehicle","Putrescine"))+
+      scale_x_discrete(labels = c(levels(sample_data(ps)[[varToCompare]])))+
 
       #Add stat bar
       geom_signif(comparisons = list(c(groups[1],groups[2])),
@@ -1426,7 +1426,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 }
 
 #Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint, works with design "~ factor", and is done separately for each week
-relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, returnSigAsvs = FALSE, customColors, path){
+relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, returnSigAsvs = FALSE, customColors, path, displayIndivValues = FALSE, dim = c(5,5)){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -1558,71 +1558,65 @@ relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCo
       group_by(week) %>%
       summarise(upper_limit = max(mean_abundance), lower_limit = min(mean_abundance))
     
-    #Before merging sigtab, ensure timeVariable is numeric and *7
-    sigtab_taxon[[timeVariable]] <- as.numeric(as.character(sigtab_taxon[[timeVariable]])) * 7
+    #Before merging sigtab, ensure timeVariable is numeric
+    sigtab_taxon[[timeVariable]] <- as.numeric(as.character(sigtab_taxon[[timeVariable]])) *7
     
     #Merge sigtab_taxon with means_df
     means_df <- merge(sigtab_taxon, means_df, by = timeVariable)
     
     p <- ggplot(data = relative_abundance, aes(x = !!sym(timeVariable), y = rel_ab, color = !!sym(varToCompare)), group = !!sym(varToCompare)) +
-      
-      geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) + 
-      
+      scale_x_continuous(n.breaks = 8)+
       # Error bars
       stat_summary(fun.data = "mean_se", geom = "errorbar",
                    aes(color = !!sym(varToCompare)),
                    width = 5, size = 1,
                    alpha = 0.5,
                    position = "identity")+
-      
       #Mean lines
       stat_summary(fun.data = "mean_se", geom = "errorbar",
                    aes(ymin = ..y.., ymax = ..y.., group = !!sym(varToCompare)),
                    color = "black", linewidth = 0.5, width = 0.5,
                    position = "identity")+
-      
       #Connecting mean points with lines
       stat_summary(fun = mean, geom = "line", size = 1.2) +  # Connecting means with lines
-      
-      
-      
       labs(title = taxonName, y = "Relative abundance (%)", color = "Diet", x = "Time (days)") +
       scale_color_manual(values = customColors)+
-      
       #Add vertical line segments for significance at each timepoint
       geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable)+1.6,
                                         y = lower_limit, yend = upper_limit),
                    color = "black", linetype = "dashed", ) +
-      
       #Complete with short horizontal segments to make the bar look nicer
       geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
                                         y = upper_limit, yend = upper_limit),
                    color = "black", linetype = "dashed", ) +
-      
       geom_segment(data = means_df, aes(x = !!sym(timeVariable)+1.6, xend = !!sym(timeVariable),
                                         y = lower_limit, yend = lower_limit),
                    color = "black", linetype = "dashed", ) +
-      
       # Add significance text at each timepoint
       geom_text(data = means_df, aes(x = !!sym(timeVariable)+1.6, 
                                      y = (upper_limit + lower_limit) / 2, 
                                      label = significance),
                 color = "black", size = 5, vjust = 0.5) +
-      
-      
-      theme(
-        plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
-        axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
-        axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-        axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
-        axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
-        legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
-        legend.text = element_text(size = 12),  # Adjust legend font size
-        panel.grid.major = element_blank(),  # Add major grid lines
-        panel.grid.minor = element_blank(),  # Remove minor grid lines
-        axis.line = element_line(color = "black", size = 1),
-        panel.background = element_blank()) # Include axis lines  # Include axis bar
-    ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = 6, width = 6, bg = 'white')
+      # theme(
+      #   plot.title = element_text(size = 16, face = "bold"),  # Adjust title font size and style
+      #   axis.title.x = element_text(size = 14, face = "bold"),  # Adjust x-axis label font size and style
+      #   axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
+      #   axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Adjust x-axis tick label font size
+      #   axis.text.y = element_text(size = 12),  # Adjust y-axis tick label font size
+      #   legend.title = element_text(size = 12, face = "bold"),  # Remove legend title
+      #   legend.text = element_text(size = 12),  # Adjust legend font size
+      #   panel.grid.major = element_blank(),  # Add major grid lines
+      #   panel.grid.minor = element_blank(),  # Remove minor grid lines
+      #   axis.line = element_line(color = "black", size = 1),
+      #   panel.background = element_blank()) # Include axis lines  # Include axis bar
+      my_theme()
+    
+    # Show individual values
+    if(displayIndivValues){
+      p <- p + geom_point(size = 1, position = position_jitterdodge(jitter.width = 0.1, dodge.width = -0.75)) 
+    }
+    
+    ggsave(plot = p, filename = paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_relab.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
     
     #Write as excel file the significance table specific to an ASV
     write.xlsx(sigtab_taxon, paste(dir_taxon,"/",gsub(" ", "_", taxonName),"_stats.xlsx", sep = ""))
