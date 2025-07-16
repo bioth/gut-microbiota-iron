@@ -835,125 +835,6 @@ ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_dss/correlation_heatmap
   library(ggtree)
   library(ape)
   library(metacoder)
-  library(scales)
-  
-  # Load and parse
-  ps_tree <- ps
-  tree <- unroot(phy_tree(ps_tree))
-  tax_data <- parse_phyloseq(ps_tree)
-  
-  # Build taxa-level table
-  all_ids <- tax_data$taxon_ids()
-  taxa_df <- data.frame(
-    taxon_id = all_ids,
-    Phylum = NA_character_,
-    stringsAsFactors = FALSE
-  )
-  
-  # Copy tip phyla
-  tip_ids <- tax_data$data$tax_data$taxon_id
-  taxa_df$Phylum[match(tip_ids, taxa_df$taxon_id)] <- tax_data$data$tax_data$Phylum
-  
-  # Assign it
-  tax_data$data$taxa <- taxa_df
-  tax_data$data$sample_data <- NULL
-  
-  tax_data$data$taxa$Phylum <- as.character(taxa_df$Phylum)
-  
-  tax_data$data$taxa$Phylum <- sapply(all_ids, function(id) {
-    ids <- c(id, tax_data$subtaxa(id, recursive = TRUE, simplify = TRUE))
-    vals <- tax_data$data$taxa$Phylum[taxa_df$taxon_id %in% ids]
-    vals <- na.omit(vals)
-    if (length(vals)) vals[1] else NA
-  })
-  
-  table(is.na(tax_data$data$taxa$Phylum)) 
-  
-  # Unique phyla (no NAs)
-  unique_phyla <- sort(unique(tax_data$data$taxa$Phylum))
-  n <- length(unique_phyla)
-  
-  # Generate palette
-  pal <- colorRampPalette(brewer.pal(min(8, n), "Set3"))(n)
-  my_phylum_colors <- setNames(pal, unique_phyla)
-  
-  tax_data$data$taxa$Phylum <- as.character(tax_data$data$taxa$Phylum)
-  tax_data$data$taxa$Phylum[is.na(tax_data$data$taxa$Phylum)] <- "Unassigned"
-  
-  unique_phyla <- sort(unique(tax_data$data$taxa$Phylum))
-  palette_vec <- colorRampPalette(brewer.pal(8, "Set3"))(length(unique_phyla))
-  my_phylum_colors <- setNames(palette_vec, unique_phyla)
-  
-  heat_tree(
-    tax_data,
-    node_color       = Phylum,
-    edge_color       = Phylum,
-    node_label       = taxon_names,
-    node_color_range = my_phylum_colors,
-    edge_color_range = my_phylum_colors,
-    layout           = "davidson-harel"
-  )
-  
-  tax_data2 <- tax_data %>%
-    filter_taxa(!is_leaf, supertaxa = TRUE, invert = TRUE)
-  
-  unique_phyla <- sort(unique(tax_data2$data$taxa$Phylum))
-  palette_vec <- colorRampPalette(RColorBrewer::brewer.pal(8, "Set3"))(length(unique_phyla))
-  my_phylum_colors <- setNames(palette_vec, unique_phyla)
-  
-  heat_tree(
-    tax_data2,
-    node_color = Phylum,
-    edge_color = Phylum,
-    node_label = taxon_names,
-    node_color_range = my_phylum_colors,
-    edge_color_range = my_phylum_colors,
-    layout = "davidson-harel"
-  )
-  
-  
-  # # Step 2: Plot radial tree
-  # heat_tree(tax_data,
-  #           node_label = taxon_names,
-  #           node_size = n_obs,  # or use abundance values
-  #           node_color = colors,  # or use phylum here
-  #           layout = "davidson-harel",
-  #           # initial_layout = "davidson-harel",
-  #           node_color_axis_label = "Phylum")
-  
-  library(ggparty)
-  # Build and plot your tree + heatmap
-  p <- heat_tree(tax_data,
-                 node_label = taxon_names,
-                 node_size = n_obs,  # or use abundance values
-                 node_color = colors,  # or use phylum here
-                 layout = "davidson-harel",
-                 node_color_axis_label = "Phylum"
-  )
-  
-  p
-  
-  node_data(p) %>% filter(!is_leaf)
-  
-  # Then add colored internal nodes, e.g. by node purity or some other metric:
-  p +
-    geom_node_point(
-      data = node_data(p) %>% filter(!is_leaf),  # select internal nodes
-      aes(x = x, y = y, color = purity_metric),   # or any internal-node attribute
-      size = 3
-    ) +
-    scale_color_gradient(low = "blue", high = "red")
-  
-  
-  
-  
-  
-  
-  
-  
-  #############
-  
-  library(metacoder)
   library(RColorBrewer)
   
   tax_data <- parse_phyloseq(ps)
@@ -993,14 +874,39 @@ ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_dss/correlation_heatmap
   phylum_pal  <- setNames(palette_vec, unique_phyla)
   tax_data$data$taxa$color <- phylum_pal[prop_phylum]
   
-  heat_tree(
+  p_tree <- heat_tree(
     tax_data,
     node_color       = color,
     edge_color       = color,
-    node_label       = taxon_names,
+    node_label       = "",
     node_color_range = phylum_pal,
     edge_color_range = phylum_pal,
+    node_legend_title = "Phylum",
     layout           = "davidson-harel"
   )
   
+  library(patchwork)  # For combining plots
+  
+  # Data frame for legend
+  legend_df <- data.frame(
+    Phylum = names(phylum_pal),
+    Color  = phylum_pal
+  )
+  
+  # Make dummy points for legend
+  p_legend <- ggplot(legend_df, aes(x = 1, y = Phylum, color = Phylum)) +
+    geom_point(size = 3) +
+    scale_color_manual(values = phylum_pal) +
+    theme_void() +
+    theme(
+      legend.position = "none",
+      axis.text.y = element_text(size = 10, hjust = 0),
+      plot.margin = margin(2, 2, 2, 2)
+    ) +
+    labs(title = "Phylum")
+  
+  final_plot <- p_tree + p_legend + plot_layout(widths = c(5, 1))
+  final_plot
+  
+  ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_iron/cauliflower phytree/phy_tree.png", plot = final_plot, bg = "white", height = 7, width = 11, dpi = 300)
 }

@@ -44,9 +44,8 @@ source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/pi
 
 # For microbiota 18 (final data)
 #set working directory
-setwd("~/Documents/CHUM_git/Microbiota_18_final/")
-asv_table <- as.data.frame(fread("asv_table/asv_table.csv", sep = ";"))
-asv_table <- as.data.frame(fread("asv_table/asv_table_full_optimization.csv", sep = ";"))
+setwd("~/Documents/CHUM_git/Microbiota_18_final")
+asv_table <- as.data.frame(fread("Microbiota18_final_data2/asv_table/asv_table.csv", sep = ";"))
 rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
 asv_table <- asv_table[,-1]  # Drop the first column
 
@@ -54,7 +53,6 @@ asv_table <- asv_table[,-1]  # Drop the first column
 {
   #loading metadata of interest
   metadata <- read.csv("metadata/metadata.csv", sep = ";")
-  
   
   # Remove the non-metadata stuff (liver measures and stuff)
   metadata <- metadata[,-c(5:8)]
@@ -102,15 +100,9 @@ asv_table <- asv_table[,-1]  # Drop the first column
 }
 
 # Load taxonomical assignments
-taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";")) # associated with asv_table.csv
-taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";"))
-taxa <- as.matrix(fread("taxonomy/taxa_annotation3.csv", sep = ";"))
-taxa <- as.matrix(fread("taxonomy/taxa_annotation4.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation_final.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
-
-# Load phylogenetic tree if possible
-tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
 
 # Creating phyloseq object
 ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
@@ -145,7 +137,7 @@ names(dna) <- taxa_names(ps)
   tree  <- nj(dist_matrix)
   
   # Export the tree as a Newick file
-  write.tree(tree, file = "~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
+  write.tree(tree, file = "~/Documents/CHUM_git/Microbiota_18_final/taxonomy/phylogenetic_tree.newick")
   
   #refinement with maximum likelihood
   {
@@ -159,10 +151,6 @@ names(dna) <- taxa_names(ps)
     ml_tree <- optim.pml(fitGTR, model = "GTR", rearrangement = "stochastic")
   }
 }
-
-# Add tree to phyloseq object
-ps <- merge_phyloseq(ps, phy_tree(tree))
-length(taxa_sums(ps))
 
 sum(taxa_sums(ps)) # total number of reads
 length(taxa_sums(ps)) # total number of ASVs
@@ -179,30 +167,37 @@ sample_data(ps)$week <- factor(sample_data(ps)$week, levels = c("3","8","10","10
 sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","dss")) # Put treatment as factor
 sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # Put diet as factor
 
+# Load phylogenetic tree if possible
+tree <- read.tree("~/Documents/CHUM_git/Microbiota_18_final/taxonomy/phylogenetic_tree.newick")
+
+# Add tree to phyloseq object
+ps_tree <- merge_phyloseq(ps, phy_tree(tree))
+phy_tree(ps_tree) <- midpoint(tree) # Root the tree
+
 # Create single timepoint phyloseq objects and apply filter
 ps_t0 <- prune_samples(sample_data(ps)$timepoint %in% c("0"), ps)
 ps_t0_flt <- prune_taxa(taxa_sums(ps_t0) > 10, ps_t0)
-ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.5 * nsamples(ps_t0_flt)), ps_t0_flt)
+ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.05 * nsamples(ps_t0_flt)), ps_t0_flt)
 length(taxa_sums(ps_t0_flt))
 
 ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
 ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
-ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.5 * nsamples(ps_t35_flt)), ps_t35_flt)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.05 * nsamples(ps_t35_flt)), ps_t35_flt)
 length(taxa_sums(ps_t35_flt))
 
 ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
 ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
-ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.5 * nsamples(ps_t49_flt)), ps_t49_flt)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.05 * nsamples(ps_t49_flt)), ps_t49_flt)
 length(taxa_sums(ps_t49_flt))
 
 ps_t54 <- prune_samples(sample_data(ps)$timepoint %in% c("54"), ps)
 ps_t54_flt <- prune_taxa(taxa_sums(ps_t54) > 10, ps_t54)
-ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.5 * nsamples(ps_t54_flt)), ps_t54_flt)
+ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.05 * nsamples(ps_t54_flt)), ps_t54_flt)
 length(taxa_sums(ps_t54_flt))
 
 ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("final"), ps)
 ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
-ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.5 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
+ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.05 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
 length(taxa_sums(ps_tfinal_flt))
 
 # Create phyloseq obejcts that we need for the analysis
@@ -413,8 +408,8 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                      expand = c(0,0.5))+
     labs(y = "Species Richness", x = "")+
     guides(pattern = "none")+
-    ylim(0,2200)+
-    my_theme()+
+    ylim(0,NA)+
+    my_theme()
     geom_signif( # For first timepoint
       # comparisons = list(c(groups[1],groups[4])),
       xmin = c(0.7),           # left box in each timepoint
@@ -475,8 +470,8 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                      expand = c(0,0.5))+
     labs(y = "Shannon Index", x = "", title = "Shannon index")+
     guides(pattern = "none")+
-    ylim(0,5)+
-    my_theme()+
+    ylim(0,NA)+
+    my_theme()
     geom_signif( # For first timepoint
       # comparisons = list(c(groups[1],groups[4])),
       xmin = c(0.7),           # left box in each timepoint
@@ -539,8 +534,8 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                      expand = c(0,0.5))+
     labs(y = "Inverse Simpson Index", x = "", title = "Inverse Simpson index")+
     guides(pattern = "none")+
-    ylim(0,27)+
-    my_theme()+
+    ylim(0,NA)+
+    my_theme()
     geom_signif( # For first timepoint
       # comparisons = list(c(groups[1],groups[4])),
       xmin = c(0.7),           # left box in each timepoint
@@ -595,29 +590,111 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   
 }
 
+# Alpha diveristy - but timeline
+{
+  existingDirCheck("../figures/Thibault_dss/alpha_diversity_timeline/")
+  
+  # Week as numeric
+  sample_data(ps)$week  <- as.numeric(as.character(sample_data(ps)$week))
+  sample_data(ps)$gg_group2 
+  sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+  
+  sample_data(ps)$gg_group3 <- ifelse(
+    sample_data(ps)$week %in% c(3, 8),
+    as.character(sample_data(ps)$diet),
+    as.character(sample_data(ps)$gg_group2)
+  )
+  sample_data(ps)$gg_group3 <- factor(sample_data(ps)$gg_group3, levels = c("50","500","50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+  custom_colors <- c("blue","red","blue","red","darkblue", "darkred")
+  
+  #Estinate richness measures for dataset
+  richness_data <- estimate_richness(ps, measures = c("Chao1", "Shannon", "InvSimpson", "Observed"))
+  alpha_d <- cbind(as.data.frame(sample_data(ps)), richness_data)
+  
+  custom_colors <- c("blue","red","darkblue", "darkred")
+  
+  
+  graphs <- alphaDiversityTimeline(ps, time = "week", group = "gg_group2", custom_colors, semRibbons = TRUE)
+  graphs <- alphaDiversityTimeline(ps, time = "week", group = "gg_group3", custom_colors)
+  
+  # Observed
+  graphs[[4]]+
+    scale_x_continuous(n.breaks = 18)+
+    labs(y = "Species observed", x = "Time (weeks)", color = "Group", fill = "", title = 'Species observed')+
+    guides(fill = "none")+
+    ylim(80,NA)
+  
+  ggsave("../figures/Thibault_dss/alpha_diversity_timeline/observed.png",
+         bg = "white",height = 3, width =7, dpi = 300)
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "Chao1")
+  TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "49",]))
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "Chao1")
+  TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "54",]))
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "Chao1")
+  TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
+  
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "Observed")
+  TukeyHSD(aov(Observed ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "54",]))
+  
+  # Shannon
+  graphs[[2]]+
+    scale_x_continuous(n.breaks = )+
+    labs(y = "Shannon Index", x = "Time (weeks)", color = "Group", fill = "")+
+    guides(fill = "none")+
+    ylim(0,NA)
+  
+  ggsave("../figures/Thibault_dss/alpha_diversity_timeline/shannon.png",
+         bg = "white",height = 3, width =7, dpi = 300)
+  
+  # Inverse Simpson
+  graphs[[3]]+
+    scale_x_continuous(n.breaks = )+
+    labs(y = "Inverse Simpson", x = "Time (weeks)", color = "Group", fill = "", title = "Inverse Simpson")+
+    guides(fill = "none")+
+    ylim(0,NA)
+  
+  ggsave("../figures/Thibault_dss/alpha_diversity_timeline/invsimpson.png",
+         bg = "white",height = 3, width =7, dpi = 300)
+}
+
 # Beta diversity
 {
+  phy_tree(ps_flt_diet) <- midpoint(tree) # Add rooted tree to phyloseq object
+  
   # For diet timepoints
   sample_data(ps_flt_diet)$diet <- factor(sample_data(ps_flt_diet)$diet, labels = c("50 ppm","500 ppm"))
-  # Bray curtis filtered
+  
+  # Weighted unifrac
   betaDiversityTimepoint2Factors(ps_flt_diet, sample_id = "sample_id", timeVariable = "week",
-                                 varToCompare =  "diet", distMethod ="bray",
+                                 varToCompare =  "diet", distMethod ="wunifrac",
                                  transform = "rel_ab", customColors = c("blue","red"),
-                                 font = "Arial", path = "../figures/Thibault_dss/diet/beta_diversity/filtered/", 
+                                 font = "Arial", path = "../figures/Thibault_dss/beta_diversity/diet/", 
                                  additionnalAes = my_theme()+theme(plot.title = element_text(size = 12)), dim = c(3,4), displayPValue = TRUE)
 
   # For diet + treatment at t54 and tfinal
-  sample_data(ps_flt_dss)$gg_group2 <- factor(sample_data(ps_flt_dss)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS"))
-  # Bray curtis filtered => not very informative
-  betaDiversityTimepoint2Factors(ps_flt_dss, sample_id = "sample_id", timeVariable = "timepoint",
-                                 varToCompare =  "gg_group2", distMethod ="bray",
+  phy_tree(ps_dss_relab_flt) <- midpoint(tree) # Add rooted tree to phyloseq object
+  sample_data(ps_dss_relab_flt)$gg_group2 <- factor(sample_data(ps_dss_relab_flt)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl", "50 ppm DSS", "500 ppm DSS"))
+  # Weighted unifrac => not very informative
+  betaDiversityTimepoint2Factors(ps_dss_relab_flt, sample_id = "sample_id", timeVariable = "timepoint",
+                                 varToCompare =  "gg_group2", distMethod ="wunifrac",
                                  customColors = c("blue","red","darkblue","darkred"),
-                                 font = "Arial", path = "../figures/Thibault_dss/diet_dss/beta_diversity/filtered/",
+                                 font = "Arial", path = "../figures/Thibault_dss/beta_diversity/diet_dss/",
+                                 additionnalAes = my_theme()+theme(plot.title = element_blank()), dim = c(2.5,4))
+  
+  # Weighted unifrac for dss groups - t54 and last timepoint
+  ps_sub <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
+  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm DSS","500 ppm DSS"))
+  phy_tree(ps_sub) <- midpoint(tree) # Add rooted tree to phyloseq object
+  betaDiversityTimepoint2Factors(ps_sub , sample_id = "sample_id", timeVariable = "timepoint",
+                                 varToCompare =  "diet", distMethod ="wunifrac",
+                                 customColors = c("darkblue","darkred"),
+                                 font = "Arial", path = "../figures/Thibault_dss/beta_diversity/dss_only/",
                                  additionnalAes = my_theme()+theme(plot.title = element_blank()), dim = c(2.5,4))
 
   # dbRDA method at t54 and for DSS groups
-  ps_sub <- prune_samples(sample_data(ps_flt_dss)$timepoint == "54" & sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
-  sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm DSS","500 ppm DSS"))
   betaDiversityTimepointsGroupedDbRDA(ps_sub, sample_id = "sample_id", varToCompare = "diet", formula = "diet",
                                       transform = "none", distMethod = "bray", customColors = c("darkblue","darkred"),
                                       font = "Arial", path = "../figures/Thibault_dss/dss_only/beta_diversity/dbRDA_t54/", dim = c(3,4),
@@ -1720,143 +1797,82 @@ producePicrust2Inputs(ps_flt_all, "~/Documents/CHUM_git/Microbiota_18_final/")
 {
   library(ggtree)
   library(ape)
+  library(metacoder)
+  library(RColorBrewer)
   
-  setwd("~/Documents/CHUM_git/Microbiota_18/")
-  asv_table <- as.data.frame(fread("asv_table/asv_table_server.csv", sep = ";"))
-  rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
-  asv_table <- asv_table[,-1]  # Drop the first column
-
-  taxa <- as.matrix(fread("taxonomy/taxa_annotation_server.csv", sep = ";"))
-  rownames(taxa) <- taxa[,1]  # Use the first column as row names
-  taxa <- taxa[,-1]  # Drop the first column
+  tax_data <- parse_phyloseq(ps_tree)
+  all_ids  <- tax_data$taxon_ids()
+  tip_df   <- tax_data$data$tax_data
   
-  # Load phylogenetic tree if possible
-  tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
+  taxa_df <- data.frame(taxon_id = all_ids, Phylum = NA_character_, stringsAsFactors = FALSE)
+  taxa_df$Phylum[match(tip_df$taxon_id, all_ids)] <- as.character(tip_df$Phylum)
+  tax_data$data$taxa <- taxa_df
   
-  # Metadata handling
-  {
-    #loading metadata of interest
-    metadata <- read.csv("metadata/metadata.csv", sep = ";")
+  el <- tax_data$edge_list
+  
+  # Initialize propagated Phylum
+  prop_phylum <- setNames(taxa_df$Phylum, taxa_df$taxon_id)
+  
+  # Fill internal nodes by inheriting from their descendants
+  repeat {
+    # Find internals missing Phylum
+    no_phylum_ids <- taxa_df$taxon_id[is.na(prop_phylum)]
+    updated <- FALSE
     
-    
-    # Remove the non-metadata stuff (liver measures and stuff)
-    metadata <- metadata[,-c(5:8)]
-    
-    # Remove the letter at the end of id
-    metadata$id <- substring(metadata$id, 1, 5)
-    
-    #adding id col as rownames too
-    rownames(metadata) <- metadata$id
-    
-    # Remove dead mouse
-    metadata <- metadata[-46,]
-    
-    # Extract 16S reads sample ids
-    samples <- read.xlsx("metadata/Microbiota_18_samples_2025-01-13.xlsx")
-    samples <- as.data.frame(samples$Nom)
-    colnames(samples) <- "sample_id"
-    samples$id <- substring(samples$sample_id, 1, 5)
-    samples$timepoint <- substring(samples$sample_id, 8, nchar(samples$sample_id)) 
-    
-    # Bind both metadata df to link timepoints with their metadata (diet and treatment)
-    metadata <- merge(samples, metadata, by = "id")
-    
-    # Consider timepoint 53 similar as timepoint 54
-    metadata[metadata$timepoint=="53","timepoint"] <- "54"
-    
-    # Add week column 
-    metadata$week <- ifelse(metadata$timepoint == "final", "18", as.character(round(as.numeric(metadata$timepoint)/7, 1)+3))
-    
-    # Adding gg_group variable (combination of time, diet and treatment)
-    metadata$gg_group <- 
-      paste(metadata$timepoint, 
-            metadata$diet,
-            metadata$treatment, 
-            sep = ":")
-    
-    # Another gg_group variable (diet and treatment only)
-    metadata$gg_group2 <- 
-      paste(metadata$diet,
-            metadata$treatment, 
-            sep = ":")
-    
-    # Put full_id as rownames
-    rownames(metadata) <- metadata$sample_id
+    for (nid in no_phylum_ids) {
+      kids <- el$to[el$from == nid]
+      ph_values <- unique(na.omit(prop_phylum[kids]))
+      if (length(ph_values) > 0) {
+        prop_phylum[nid] <- ph_values[1]
+        updated <- TRUE
+      }
+    }
+    if (!updated) break
   }
   
-  # Creating phyloseq object
-  ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
-                 tax_table(taxa), sample_data(metadata))
+  tax_data$data$taxa$Phylum <- prop_phylum
   
-  # Use short names for the asvs (eg ASV21) rather than full dna sequence name
-  # And add refseq entry to the phyloseq object
-  dna <- Biostrings::DNAStringSet(taxa_names(ps))
-  names(dna) <- taxa_names(ps)
-  ps <- merge_phyloseq(ps, dna)
-  taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
-  names(dna) <- taxa_names(ps)
+  unique_phyla <- sort(unique(prop_phylum))
+  palette_vec <- colorRampPalette(brewer.pal(min(8, length(unique_phyla)), "Set3"))(length(unique_phyla))
+  phylum_pal  <- setNames(palette_vec, unique_phyla)
+  tax_data$data$taxa$color <- phylum_pal[prop_phylum]
   
-  # Add tree to phyloseq object
-  ps <- merge_phyloseq(ps, phy_tree(tree))
-  
-  # Basic circular (fan) layout
-  ggtree(tree, layout = "circular") +
-    theme_void()
-  
-  library(metacoder)
-  library(scales)
-  
-  # Step 1: Convert your phyloseq object to metacoder format
-  tax_data <- parse_phyloseq(ps)
-  tax_data$data$tax_data[is.na(tax_data$data$tax_data)] <- "Unkwnown"  # Replace NA by unkwnown
-  
-  library(taxa)
-  internal_ids <- taxa::internodes(tax_data)
-  
-  # Assign colors to each phyla
-  unique_phyla <- unique(tax_data$data$tax_data$Phylum)
-  custom_colors <- brewer.pal(length(unique_phyla), "Set1")
-  my_phylum_colors <- setNames(
-    custom_colors,
-    unique_phyla
-  )
-  tax_data$data$tax_data$colors <- my_phylum_colors[tax_data$data$tax_data$Phylum]
-  tax_data$data$otu_table$colors <- my_phylum_colors[tax_data$data$tax_data$Phylum]
-  
-  # Step 2: Plot radial tree
-  heat_tree(tax_data,
-            node_label = taxon_names,
-            node_size = n_obs,  # or use abundance values
-            node_color = colors,  # or use phylum here
-            layout = "davidson-harel",
-            node_color_axis_label = "Phylum")
-  
-  library(ggparty)
-  # Build and plot your tree + heatmap
-  p <- heat_tree(tax_data,
-                 node_label = taxon_names,
-                 node_size = n_obs,  # or use abundance values
-                 node_color = colors,  # or use phylum here
-                 layout = "davidson-harel",
-                 node_color_axis_label = "Phylum"
+  p_tree <- heat_tree(
+    tax_data,
+    node_color       = color,
+    edge_color       = color,
+    node_label       = taxon_names,
+    node_color_range = phylum_pal,
+    edge_color_range = phylum_pal,
+    node_legend_title = "Phylum",
+    layout           = "davidson-harel"
   )
   
-  p
+  library(patchwork)  # For combining plots
   
-  node_data(p) %>% filter(!is_leaf)
+  # Data frame for legend
+  legend_df <- data.frame(
+    Phylum = names(phylum_pal),
+    Color  = phylum_pal
+  )
   
-  # Then add colored internal nodes, e.g. by node purity or some other metric:
-  p +
-    geom_node_point(
-      data = node_data(p) %>% filter(!is_leaf),  # select internal nodes
-      aes(x = x, y = y, color = purity_metric),   # or any internal-node attribute
-      size = 3
+  # Make dummy points for legend
+  p_legend <- ggplot(legend_df, aes(x = 1, y = Phylum, color = Phylum)) +
+    geom_point(size = 3) +
+    scale_color_manual(values = phylum_pal) +
+    theme_void() +
+    theme(
+      legend.position = "none",
+      axis.text.y = element_text(size = 10, hjust = 0),
+      plot.margin = margin(2, 2, 2, 2)
     ) +
-    scale_color_gradient(low = "blue", high = "red")
+    labs(title = "Phylum")
+  
+  final_plot <- p_tree + p_legend + plot_layout(widths = c(5, 1))
+  final_plot
+  
+  ggsave(filename = "~/Documents/CHUM_git/figures/Thibault_iron/cauliflower phytree/phy_tree.png", plot = final_plot, bg = "white", height = 7, width = 11, dpi = 300)
 }
-
-# Good layout options
-c("davidson-harel","fruchterman-reingold")
 
 
 

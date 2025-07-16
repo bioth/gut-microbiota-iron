@@ -87,7 +87,7 @@ rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
 
 # Load taxonomical assignments
 taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";"))
-taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";")) # right one?
 taxa <- as.matrix(fread("taxonomy/taxa_annotation3.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
@@ -172,27 +172,27 @@ sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # P
 # Create single timepoint phyloseq objects and apply filter
 ps_t0 <- prune_samples(sample_data(ps)$timepoint %in% c("0"), ps)
 ps_t0_flt <- prune_taxa(taxa_sums(ps_t0) > 10, ps_t0)
-ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.3 * nsamples(ps_t0_flt)), ps_t0_flt)
+ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.5 * nsamples(ps_t0_flt)), ps_t0_flt)
 length(taxa_sums(ps_t0_flt))
 
 ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
 ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
-ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.3 * nsamples(ps_t35_flt)), ps_t35_flt)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.5 * nsamples(ps_t35_flt)), ps_t35_flt)
 length(taxa_sums(ps_t35_flt))
 
 ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
 ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
-ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.3 * nsamples(ps_t49_flt)), ps_t49_flt)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.5 * nsamples(ps_t49_flt)), ps_t49_flt)
 length(taxa_sums(ps_t49_flt))
 
 ps_t56 <- prune_samples(sample_data(ps)$timepoint %in% c("56"), ps)
 ps_t56_flt <- prune_taxa(taxa_sums(ps_t56) > 10, ps_t56)
-ps_t56_flt <- prune_taxa(colSums(otu_table(ps_t56_flt) > 0) >= (0.3 * nsamples(ps_t56_flt)), ps_t56_flt)
+ps_t56_flt <- prune_taxa(colSums(otu_table(ps_t56_flt) > 0) >= (0.5 * nsamples(ps_t56_flt)), ps_t56_flt)
 length(taxa_sums(ps_t56_flt))
 
 ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("final"), ps)
 ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
-ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.3 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
+ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.5 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
 length(taxa_sums(ps_tfinal_flt))
 
 # Create phyloseq obejcts that we need for the analysis
@@ -463,7 +463,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "Chao1")
   TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
-
+  pairwise.wilcox.test(alpha_d[alpha_d$timepoint == "final",]$Chao1, alpha_d[alpha_d$timepoint == "final",]$gg_group2, p.adjust.method = "BH")
   
   # Shannon
   graphs[[2]]+
@@ -618,7 +618,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   
   # Chao1
   graphs[[1]]+
-    scale_x_continuous(n.breaks = )+
+    scale_x_continuous(n.breaks = 18)+
     labs(y = "Chao1 Index", x = "Time (weeks)", color = "Group", fill = "")+
     guides(fill = "none")+
     ylim(0,NA)

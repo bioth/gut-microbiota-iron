@@ -315,10 +315,10 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE, sa
 }
 
 # Plots alpha diversity as timeline, time must numeric and group must be a factor
-alphaDiversityTimeline <- function(ps, time, group, custom_colors){
+alphaDiversityTimeline <- function(ps, time, group, custom_colors, semRibbons = TRUE){
   
   # measures <- c("Shannon", "Simpson","InvSimpson","Chao1","Observed")
-  measures <- c("Chao1", "Shannon", "InvSimpson")
+  measures <- c("Chao1", "Shannon", "InvSimpson", "Observed")
   
   #Estinate richness measures for dataset
   alpha_data <- estimate_richness(ps, measures = measures)
@@ -332,7 +332,6 @@ alphaDiversityTimeline <- function(ps, time, group, custom_colors){
   for(measure in measures){
     
     p <- ggplot(data = alpha_data, aes(x = .data[[time]], y = .data[[measure]], group = .data[[group]], color = .data[[group]])) +
-      stat_summary(fun.data = mean_se, geom = "ribbon", alpha = 0.3, color = NA, aes(fill = .data[[group]])) +
       stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
       stat_summary(fun = mean, geom = "point", size = 1, color = "black") +
 
@@ -340,6 +339,17 @@ alphaDiversityTimeline <- function(ps, time, group, custom_colors){
       scale_fill_manual(values = custom_colors)+
       labs(x = "Time", y = measure, title = measure)+
       my_theme()
+    
+    if(semRibbons){
+      p <- p + stat_summary(fun.data = mean_se, geom = "ribbon", alpha = 0.3, color = NA, aes(fill = .data[[group]]))
+    }else{
+      p <- p+ stat_summary(
+        fun.data = mean_se,
+        geom = "errorbar",
+        width = 0.2,
+        aes(color = .data[[group]])
+      )
+    }
     
     # Append graph to graph list
     graphs <- append(graphs, list(p))
