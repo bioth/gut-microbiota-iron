@@ -442,7 +442,7 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, dim = c(6,6), font, path, additionnalAes = NULL, displayPValue = FALSE){
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, dim = c(6,6), font, path, additionnalAes = NULL, displayPValue = FALSE, combineGraphs = FALSE){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -456,6 +456,10 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     dist <- phyloseq::distance(ps, method = "jaccard", binary = TRUE)
   }else{
     dist <- phyloseq::distance(ps, method = distMethod)
+  }
+  
+  if(combineGraphs){
+    combined_fig <- list()
   }
   
   for(timepoint in levels(sample_data(ps)[[timeVariable]])){
@@ -531,12 +535,13 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
-      labs(title = paste0("PCoA of ", distCharacter, " distance matrix at\n", timepoint, " weeks.")) +
+      labs(title = paste0("Timepoint T", timepoint)) +
       scale_color_manual(values = customColors)+
-      labs(color = "Diet")+
+      # labs(color = "Diet")+
+      labs(color = "Group")+
       theme(aspect.ratio = 1) + # Scale the x and y axis the same +
       theme(
-        plot.title = element_text(size = 16, face = "bold", family = font),  # Adjust title font size and style
+        plot.title = element_text(size = 16, face = "bold", family = font, hjust = 0.5),  # Adjust title font size and style
         axis.title.x = element_text(size = 14, face = "bold", family = font), # Adjust x-axis label font size and style   
         axis.title.y = element_text(size = 14, face = "bold", family = font), # Adjust y-axis label font size and style
         axis.text.x = element_text(size = 14, face = "bold", family = font),  # Adjust x-axis tick label font size
@@ -560,17 +565,28 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     if(displayPValue){
       p <- p + annotate("text", 
                         x = Inf, y = -Inf,
-                        label = sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue),
+                        label = ifelse(pvalue < 0.05, sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue) , "bold('n.s.')"),
                         parse = TRUE,
                         hjust = 1, vjust = -0.5,
-                        size = 4, color = "black",
+                        size = ifelse(pvalue < 0.05, 5, 6),
+                        color = "black",
                         family = font
       )
     }
+    
+    if(combineGraphs){
+      combined_fig[[length(combined_fig) + 1]] <- p
+    }
   
     #Save figure
-    ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
-    
+    if(!combineGraphs){
+      ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+    }
+  }
+  
+  if(combineGraphs){
+    combined_fig <- Reduce(`+`, combined_fig) + plot_layout(guides = "collect")
+    ggsave(plot = combined_fig, filename = paste(path,"/",distMethod,"_combined.png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
   }
 }
 

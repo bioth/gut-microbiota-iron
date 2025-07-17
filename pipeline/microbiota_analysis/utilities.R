@@ -193,7 +193,8 @@ my_theme <- function() {
       axis.line = element_line(color = "black", size = 1),
       legend.text = element_text(face = "bold"),
       legend.title = element_text(face = "bold"),
-      legend.position = "right"
+      legend.position = "right",
+      legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5)
     )
 }
 
