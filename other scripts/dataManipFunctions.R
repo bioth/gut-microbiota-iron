@@ -263,9 +263,12 @@ mean_cl_normal <- function(x, mult = 2.201) {
 }
 
 #function that is combination of functions above, startDateCol is position at which date cols start appearing
-weightDataManipulation<- function(df,groupInfoCols, fromDay0){
+weightDataManipulation<- function(df,groupInfoCols, fromDay0, arrangeDateColsFormat = TRUE){
+  
   df <- emptyRow(df)
-  df <- changeDateCols(df)
+  if(arrangeDateColsFormat){
+    df <- changeDateCols(df)
+  }
   df <- pivotLongerWeightDate(df)
   
   #putting "date" col as a date variable type (not character)
@@ -436,7 +439,7 @@ custom_colors_4 <- c("blue","red", "deepskyblue", "brown1")
 # }
 
 #function for plotting DSS disease index data
-dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "n.s.", signifPositionShift = 0){
+dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "n.s.", signifPositionShift = 0, signifSize = 6){
   
  plot <- df %>%
     ggplot(aes(x = time_numeric, y = index, color = diet))+
@@ -476,7 +479,7 @@ dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "n.s
      geom_segment(aes(x = x_pos, xend = x_pos, y = y_low, yend = y_high),
                   color = "black", linewidth = 0.9, inherit.aes = FALSE) +
      # Add significance annotation on the right side
-     annotate("text", x = x_pos + signifPositionShift, y = (y_low + y_high) / 2, label = signifAnnotation, size = 6)
+     annotate("text", x = x_pos + signifPositionShift, y = (y_low + y_high) / 2, label = signifAnnotation, size = signifSize)
  }
   return(plot)
 }

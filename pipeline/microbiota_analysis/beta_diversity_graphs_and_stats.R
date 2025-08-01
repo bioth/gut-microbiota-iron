@@ -442,7 +442,11 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod, transform = "none", displaySampleIDs = FALSE, customColors, dim = c(6,6), font, path, additionnalAes = NULL, displayPValue = FALSE, combineGraphs = FALSE){
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod,
+                                           transform = "none", displaySampleIDs = FALSE, customColors,
+                                           dim = c(6,6), font, path, additionnalAes = NULL, displayPValue = FALSE,
+                                           combineGraphs = FALSE, returnFig = FALSE, customTitles = NULL,
+                                           pairwiseAdonis = TRUE, hideLegend = FALSE, positionPvalue = "left"){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -462,6 +466,11 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     combined_fig <- list()
   }
   
+  # Associate customTitles with timepoints
+  if(!is.null(customTitles)){
+    names(customTitles) <- levels(sample_data(ps)[[timeVariable]])
+  }
+  
   for(timepoint in levels(sample_data(ps)[[timeVariable]])){
     
     #calculating distance matrix
@@ -477,7 +486,7 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     existingDirCheck(path = dir)
     
     # Statistics
-    if(length(levels(sample_data(ps)[[varToCompare]])) > 2){
+    if(length(levels(sample_data(ps)[[varToCompare]])) > 2 & pairwiseAdonis){
       
       df <- data.frame(sample_data(ps_subset))
       df <- df[order(df[[varToCompare]]), ]
@@ -543,10 +552,10 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
-      labs(title = paste0("Timepoint T", timepoint)) +
+      labs(title = ifelse(!is.null(customTitles),customTitles[[timepoint]],paste0("Timepoint T", timepoint))) +
       scale_color_manual(values = customColors)+
-      # labs(color = "Diet")+
-      labs(color = "Group")+
+      # labs(color = "Group")+
+      labs(color = "Diet")+
       theme(aspect.ratio = 1) + # Scale the x and y axis the same +
       theme(
         plot.title = element_text(size = 16, face = "bold", family = font, hjust = 0.5),  # Adjust title font size and style
@@ -560,6 +569,10 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
         panel.grid.minor = element_blank(),  # Remove minor grid lines
         axis.line = element_line(color = "black", size = 1)) # Include axis lines  # Include axis bars
     
+    if(hideLegend){
+      p <- p + guides(color = "none")
+    }
+    
     if(displaySampleIDs){
       p <- p + geom_text(aes(label = sample_data(ps_subset)[[sample_id]]), # Add sample names next to the points
                   size = 1, vjust = -1, hjust = 1.2, color = "black")  # Adjust text size and position
@@ -571,15 +584,27 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     
     # Add the p-value under the legend
     if(displayPValue){
-      p <- p + annotate("text", 
-                        x = Inf, y = -Inf,
-                        label = ifelse(pvalue < 0.05, sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue) , "bold('n.s.')"),
-                        parse = TRUE,
-                        hjust = 1, vjust = -0.5,
-                        size = ifelse(pvalue < 0.05, 5, 6),
-                        color = "black",
-                        family = font
-      )
+      if(positionPvalue == "right"){
+        p <- p + annotate("text", 
+                          x = Inf, y = -Inf,
+                          label = ifelse(pvalue < 0.05, sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue) , "bold('n.s.')"),
+                          parse = TRUE,
+                          hjust = 1, vjust = -0.5,
+                          size = ifelse(pvalue < 0.05, 5, 6),
+                          color = "black",
+                          family = font
+        )
+      }else if(positionPvalue == "left"){
+        p <- p + annotate("text", 
+                          x = -Inf, y = -Inf,
+                          label = ifelse(pvalue < 0.05, sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue) , "bold('n.s.')"),
+                          parse = TRUE,
+                          hjust = -0.1, vjust = -0.8,
+                          size = ifelse(pvalue < 0.05, 5, 6),
+                          color = "black",
+                          family = font
+                          )
+      }
     }
     
     if(combineGraphs){
@@ -588,13 +613,22 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
   
     #Save figure
     if(!combineGraphs){
-      ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+      if(returnFig){
+        return(p)
+      }
+      else{
+        ggsave(plot = p, filename = paste(dir,"/",distMethod,"_","week_",timepoint,".png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+      }
     }
   }
   
   if(combineGraphs){
     combined_fig <- Reduce(`+`, combined_fig) + plot_layout(guides = "collect")
-    ggsave(plot = combined_fig, filename = paste(path,"/",distMethod,"_combined.png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+    if(returnFig){
+      return(combined_fig)
+    }else{
+      ggsave(plot = combined_fig, filename = paste(path,"/",distMethod,"_combined.png", sep = ""), dpi = 600, height = dim[1], width = dim[2], bg = 'white')
+    }
   }
 }
 
@@ -739,8 +773,6 @@ betaDiversityTimepointsGroupedRDA <- function(ps, sample_id, varToCompare, formu
   ggsave(plot = p, filename = paste0(path, "/RDA.png"), dpi = 600, height = 6, width = 6, bg = 'white')
     
 }
-
-
 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
 # distMethod can be either hellinger, wunifrac or bray curtis
