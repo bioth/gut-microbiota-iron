@@ -26,28 +26,29 @@
   library(pairwiseAdonis)
   library(caret)
   library(ggh4x)
-  library(ggpicrust2)
-  library(KEGGREST)
+  # library(ggpicrust2)
+  # library(KEGGREST)
   library(RColorBrewer)
   library(ggtext)
+  library(ggpubr)
 }
 
 # Load custom functions for microbiota analysis
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/utilities.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/beta_diversity_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/correlation_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/relab_analysis_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/deseq2_log2fold_change_analysis.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/chronobiome.R")
-source("~/Documents/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/picrust2_graphs.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/utilities.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/alpha_diversity_graphs_and_stats.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/beta_diversity_graphs_and_stats.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/correlation_graphs_and_stats.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/relab_analysis_graphs_and_stats.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/taxa_distrib_graphs_and_stats.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/plot_microbiota_extension.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/deseq2_log2fold_change_analysis.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/chronobiome.R")
+source("~/CHUM_git/gut-microbiota-iron/pipeline/microbiota_analysis/picrust2_graphs.R")
 
 # For microbiota 19
 #set working directory
-setwd("~/Documents/CHUM_git/Microbiota_19/")
-asv_table <- as.data.frame(fread("asv_table/asv_table.csv", sep = ";"))
+setwd("~/CHUM_git/Microbiota_19_final/")
+asv_table <- as.data.frame(fread("Microbiota_19_final_data2/asv_table/asv_table.csv", sep = ";"))
 rownames(asv_table) <- asv_table[,1]  # Use the first column as row names
 asv_table <- asv_table[,-1]  # Drop the first column
 rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
@@ -72,7 +73,16 @@ rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
   
   # Bind both metadata df to link timepoints with their metadata (diet and treatment)
   metadata <- merge(samples, metadata, by = "id")
-  metadata$week <- ifelse(metadata$timepoint == "final", "18", as.character(round(as.numeric(metadata$timepoint)/7, 1)+3)) # Add week column 
+  
+  # Replace final by t112
+  metadata[metadata$timepoint=="final","timepoint"] <- "112"
+  
+  # Add week column 
+  metadata$week <- as.character(round(as.numeric(metadata$timepoint)/7, 1))
+  
+  # Add age column 
+  metadata$age <- as.character(round(as.numeric(metadata$timepoint)/7+3, 1))
+  
   metadata$gg_group <- # Adding gg_group variable (combination of time, diet and treatment)
     paste(metadata$timepoint, 
           metadata$diet,
@@ -86,9 +96,7 @@ rownames(asv_table) <- gsub("_16S", "", rownames(asv_table))
 }
 
 # Load taxonomical assignments
-taxa <- as.matrix(fread("taxonomy/taxa_annotation.csv", sep = ";"))
-taxa <- as.matrix(fread("taxonomy/taxa_annotation2.csv", sep = ";")) # right one?
-taxa <- as.matrix(fread("taxonomy/taxa_annotation3.csv", sep = ";"))
+taxa <- as.matrix(fread("taxonomy/taxa_annotation_final.csv", sep = ";"))
 rownames(taxa) <- taxa[,1]  # Use the first column as row names
 taxa <- taxa[,-1]  # Drop the first column
 
@@ -98,9 +106,6 @@ taxa <- taxa[,-1]  # Drop the first column
   colnames(taxa)[8] <- "Genus_species"
   
 }
-
-# Load phylogenetic tree if possible
-tree <- read.tree("~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
 
 # Creating phyloseq object
 ps <- phyloseq(otu_table(asv_table, taxa_are_rows = FALSE),
@@ -135,7 +140,7 @@ names(dna) <- taxa_names(ps)
   tree  <- nj(dist_matrix)
   
   # Export the tree as a Newick file
-  write.tree(tree, file = "~/Documents/CHUM_git/Microbiota_18/taxonomy/phylogenetic_tree.newick")
+  write.tree(tree, file = "~/CHUM_git/Microbiota_19_final/taxonomy/phylogenetic_tree.newick")
   
   #refinement with maximum likelihood
   {
@@ -150,10 +155,6 @@ names(dna) <- taxa_names(ps)
   }
 }
 
-# Add tree to phyloseq object
-ps <- merge_phyloseq(ps, phy_tree(tree))
-length(taxa_sums(ps))
-
 sum(taxa_sums(ps)) # total number of reads
 length(taxa_sums(ps)) # total number of ASVs
 nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,7])) # how many identified at species level
@@ -164,35 +165,43 @@ nrow(tax_table(ps))-sum(is.na(tax_table(ps)[,3])) # how many identified at class
 
 # Put as factors variables that are going to be used
 sample_data(ps)$gg_group2 <- factor(sample_data(ps)$gg_group2, levels = c("50:water", "500:water", "50:abx", "500:abx")) # Put gg_group2 as factor
-sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","56","final")) # Put timepoint as factor
-sample_data(ps)$week <- factor(sample_data(ps)$week, levels = c("3","8","10","11","18")) # Put week as factor
+sample_data(ps)$timepoint <- factor(sample_data(ps)$timepoint, levels = c("0","35","49","56","112")) # Put timepoint as factor
+sample_data(ps)$week <- factor(sample_data(ps)$week, levels = c("0","5","7","8","16")) # Put week as factor
 sample_data(ps)$treatment <- factor(sample_data(ps)$treatment, levels = c("water","abx")) # Put treatment as factor
 sample_data(ps)$diet <- factor(sample_data(ps)$diet, levels = c("50","500")) # Put diet as factor
+
+# Load phylogenetic tree if possible
+tree <- read.tree("~/CHUM_git/Microbiota_19_final/taxonomy/phylogenetic_tree.newick")
+
+# Add tree to phyloseq object
+ps_tree <- merge_phyloseq(ps, phy_tree(tree))
+phy_tree(ps_tree) <- midpoint(tree) # Root the tree
+
 
 # Create single timepoint phyloseq objects and apply filter
 ps_t0 <- prune_samples(sample_data(ps)$timepoint %in% c("0"), ps)
 ps_t0_flt <- prune_taxa(taxa_sums(ps_t0) > 10, ps_t0)
-ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.5 * nsamples(ps_t0_flt)), ps_t0_flt)
+ps_t0_flt <- prune_taxa(colSums(otu_table(ps_t0_flt) > 0) >= (0.3 * nsamples(ps_t0_flt)), ps_t0_flt)
 length(taxa_sums(ps_t0_flt))
 
 ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
 ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
-ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.5 * nsamples(ps_t35_flt)), ps_t35_flt)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.4 * nsamples(ps_t35_flt)), ps_t35_flt)
 length(taxa_sums(ps_t35_flt))
 
 ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
 ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
-ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.5 * nsamples(ps_t49_flt)), ps_t49_flt)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.4 * nsamples(ps_t49_flt)), ps_t49_flt)
 length(taxa_sums(ps_t49_flt))
 
 ps_t56 <- prune_samples(sample_data(ps)$timepoint %in% c("56"), ps)
 ps_t56_flt <- prune_taxa(taxa_sums(ps_t56) > 10, ps_t56)
-ps_t56_flt <- prune_taxa(colSums(otu_table(ps_t56_flt) > 0) >= (0.5 * nsamples(ps_t56_flt)), ps_t56_flt)
+ps_t56_flt <- prune_taxa(colSums(otu_table(ps_t56_flt) > 0) >= (0.25 * nsamples(ps_t56_flt)), ps_t56_flt)
 length(taxa_sums(ps_t56_flt))
 
-ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("final"), ps)
+ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("112"), ps)
 ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
-ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.5 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
+ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.25 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
 length(taxa_sums(ps_tfinal_flt))
 
 # Create phyloseq obejcts that we need for the analysis
@@ -206,8 +215,8 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 
 # Generate picrust2 input
 {
-  existingDirCheck("~/Documents/CHUM_git/Microbiota_19/picrust2/input/")
-  producePicrust2Inputs(ps_flt_all, "~/Documents/CHUM_git/Microbiota_19/picrust2/input/")
+  existingDirCheck("~/CHUM_git/Microbiota_19/picrust2/input/")
+  producePicrust2Inputs(ps_flt_all, "~/CHUM_git/Microbiota_19/picrust2/input/")
 }
 
 # Alpha diveristy
@@ -685,7 +694,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
 {
   # Path where to save graphs
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_diet/"
+  pathToSave <- "~/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_diet/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -766,12 +775,12 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   taxons = unique(sigtab$Species)
   taxons = c("rodentium","johnsonii")
   
-  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/asv_msa/")
+  existingDirCheck("~/CHUM_git/figures/Thibault_abx/asv_msa/")
   for(txn in taxons){
     asvList <- rownames(sigtab[sigtab$Species == txn,])
     refseqs <- refseq(ps_subset)[asvList]
-    # writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_diet/timepoint_35/asv_sequences_",txn,".fasta"))
-    writeXStringSet(refseqs, filepath = paste0("~/Documents/CHUM_git/figures/Thibault_abx/asv_msa/asv_sequences_",txn,".fasta"))
+    # writeXStringSet(refseqs, filepath = paste0("~/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_diet/timepoint_35/asv_sequences_",txn,".fasta"))
+    writeXStringSet(refseqs, filepath = paste0("~/CHUM_git/figures/Thibault_abx/asv_msa/asv_sequences_",txn,".fasta"))
   }
   
   # Tests to see what happens if we group ASV representing the same species together
@@ -797,7 +806,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups, for t49 t54 and tfinal timepoints
 # Path where to save graphs
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_abx_diet_all_groups/"
+  pathToSave <- "~/CHUM_git/figures/Thibault_abx/relative_abundance_abx_diet_all_groups2/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -829,7 +838,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
                   list("50:water","500:water"), list("50:abx","500:abx"),
                   list("50:water","50:abx"), list("500:water","500:abx")),
                 path = newPath, single_factor_design = FALSE,
-                dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = TRUE, additionnalAes =
+                dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = TRUE, includeUnknownSpecies = TRUE, additionnalAes =
                   list(scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nAbx","500 ppm\nAbx")),
                        my_theme(),
                        labs(color = "", x=""))) # Include axis lines  # Include axis bar)
@@ -880,7 +889,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
 
 # Relative abundance analysis: finding differential abundant bugs at different taxonomical levels - only abx groups
 {
-  pathToSave <- "~/Documents/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_abx/"
+  pathToSave <- "~/CHUM_git/figures/Thibault_abx/newTaxAnnotation/relative_abundance_abx/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -962,6 +971,88 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t56_flt, ps_t
   sigtab <- sigtab[!is.na(sigtab[["Species"]]),] # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
   sigtab <- sigtab[(sigtab["padj"])<0.05,]
 }
+
+# Verify bugs abundance that were not annotated at the species level
+{
+  # Returns graph of ASV relative abundance, use a ps at timepoint of interest
+  # with annotations at the species level and choose asv of interest
+  # Does not include statistics
+  asvRelAbDistribution <- function(ps, asv, group){
+    
+    # Relative abundance of otu_table
+    ps <- transformCounts(ps, transformation = "rel_ab")
+    asv_ab <- t(otu_table(ps)[asv])
+    asv_ab <- merge(asv_ab, sample_data(ps), by = 'row.names') # Bind metadata information
+    View(asv_ab)
+    ironBoxplot(asv_ab, measure = asv, group = group, title = paste(asv, "abundance"), y_axis_title = "Relative abundance (%)", custom_colors = c("blue","darkblue","red","darkred"), stats = FALSE)
+    
+  }
+  
+  # Returns graph of ASV relative abundance, use a ps with multiple timepoints
+  # with annotations at the taxon level of interest and choose asv of interest
+  # Does not include statistics
+  asvRelAbDistributionTimeline <- function(ps, asv, taxon, group, time, custom_colors){
+    
+    # Relative abundance of otu_table
+    ps <- transformCounts(ps, transformation = "rel_ab")
+    asv_ab <- t(otu_table(ps)[asv])
+    asv_ab <- merge(asv_ab, sample_data(ps), by = 'row.names') # Bind metadata information
+    taxa <- as.data.frame(tax_table(ps))
+    p <- ggplot(data = asv_ab, aes(x = .data[[time]], y = .data[[asv]], group = .data[[group]], color = .data[[group]])) +
+      stat_summary(fun.data = mean_se, geom = "errorbar", width = 1, aes(color = .data[[group]]))+
+      stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+      stat_summary(fun = mean, geom = "point", size = 1, color = "black") +
+      scale_color_manual(values = custom_colors)+
+      scale_fill_manual(values = custom_colors)+
+      labs(y = "Relative abundance (%)", title = paste(ifelse(taxon == "Species",paste(taxa[asv,"Genus"],taxa[asv,"Species"]), taxa[asv,taxon]), asv))
+    print(p+my_theme())
+    
+  }
+  sample_data(ps_abx_relab_flt)$gg_group2
+  sample_data(ps_abx_relab_flt)$timepoint <- as.numeric(as.character(sample_data(ps_abx_relab_flt)$timepoint))
+  
+  # Species P. goldsteinii ASV8
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV8", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  # Species F. rodentium ASV1
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV1", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  # Species Lactococcus ASV144
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV144", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  # Checking protobacteria species
+  # Species Escherichia-Shigella ASV179
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV179", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  # Species Parasutterella ASV29/ASV54
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV29", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV54", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  # ASV100 -> order Rhodospirillales
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV100", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  # Rombusita ilealis ASV37
+  asvRelAbDistributionTimeline(ps_abx_relab_flt, "ASV37", taxon = "Species", "gg_group2", "timepoint", c("blue","red","deepskyblue", "brown1"))
+  
+  
+  ps_taxa <- tax_glom(ps_abx_relab_flt, taxrank = "Genus")
+  
+  # Genus Rikenella 
+  asvRelAbDistributionTimeline(ps_taxa, "ASV18", taxon = "Genus","gg_group2", "timepoint", c("blue", "red", "deepskyblue", "brown1"))
+  
+  # Genus enterococcus 
+  asvRelAbDistributionTimeline(ps_taxa, "ASV24", taxon = "Genus","gg_group2", "timepoint", c("blue", "red", "deepskyblue", "brown1"))
+  
+  # Genus ASF356
+  asvRelAbDistributionTimeline(ps_taxa, "ASV156", taxon = "Genus","gg_group2", "timepoint", c("blue", "red", "deepskyblue", "brown1"))
+  
+  ps_taxa <- tax_glom(ps_abx_relab_flt, taxrank = "Family")
+  
+  # Family defferibacteriacae
+  asvRelAbDistributionTimeline(ps_taxa, "ASV71", taxon = "Family","gg_group2", "timepoint", c("blue", "red", "deepskyblue", "brown1"))
+  
+}
+
 
 # Relative abundance analysis, stackbar extended graphs
 # For diet only timepoints
@@ -1397,12 +1488,12 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   meta <- metadata[metadata$timepoint == "35",]
   
   # Trying with pathways data directly
-  pwys_predicted <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/pathways_out/path_abun_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  pwys_predicted <- read.table("~/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/pathways_out/path_abun_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
   colnames(pwys_predicted)[2:ncol(pwys_predicted)] <- substring(colnames(pwys_predicted)[2:ncol(pwys_predicted)], 2)
   pattern <- paste(meta$sample_id, collapse = "|")
   indexes <-  grep(pattern, colnames(pwys_predicted)) 
   pwys_predicted <- pwys_predicted[,c(1,indexes)] # Keep only samples for 10 weeks
-  mapping <- read.xlsx("~/Documents/CHUM_git/picrust2 database/pathway_mapping.xlsx")
+  mapping <- read.xlsx("~/CHUM_git/picrust2 database/pathway_mapping.xlsx")
   pwys <- merge(pwys_predicted, mapping, by.x = "pathway", by.y = "id") # Retrieve pathway names with mapping with ids
   pwys <- pwys[,-1]
   
@@ -1431,8 +1522,8 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
     colors = c("deepskyblue","brown1"),
     custom_theme = theme(strip.text = element_text(color = "white"))
   )
-  existingDirCheck("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2")
-  ggsave("~/Documents/CHUM_git/figures/Samuel_final_wt/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
+  existingDirCheck("~/CHUM_git/figures/Samuel_final_wt/picrust2")
+  ggsave("~/CHUM_git/figures/Samuel_final_wt/picrust2/pwy_hmap.png", bg = "white", height = 6, width = 14, dpi = 300)
 }
 
 # Picrust2 - last timepoint - abx groups only - ko data
@@ -1441,7 +1532,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   meta <- metadata[metadata$treatment == "abx" & metadata$timepoint == "56",]
   meta <- metadata[metadata$timepoint == "35",]
 
-  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  ko_ab <- read.table("~/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
   colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
   pattern <- paste(meta$sample_id, collapse = "|")
   indexes <-  grep(pattern, colnames(ko_ab)) 
@@ -1476,8 +1567,8 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   
   KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = test, metadata = meta, group = "diet",custom_colors_group = c("blue","red"), custom_col_cat2, hierarchy = "2")
   
-  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/picrust2")
-  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_hmap.png", bg = "white", height = 6, width = 10, dpi = 300)
+  existingDirCheck("~/CHUM_git/figures/Thibault_abx/picrust2")
+  ggsave("~/CHUM_git/figures/Thibault_abx/picrust2/kegg_hmap.png", bg = "white", height = 6, width = 10, dpi = 300)
 }
 
 # Picrust2 - end of abx exposure - 50 ctrl vs 50 abx // 500 ctrl vs 500 abx  - ko data
@@ -1485,7 +1576,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   meta <- metadata[metadata$diet == "50" & metadata$timepoint == "56",]
   meta <- metadata[metadata$diet == "500" & metadata$timepoint == "56",]
   
-  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  ko_ab <- read.table("~/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
   colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
   pattern <- paste(meta$sample_id, collapse = "|")
   indexes <-  grep(pattern, colnames(ko_ab)) 
@@ -1522,9 +1613,9 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("blue","deepskyblue"), custom_col_cat2, hierarchy = "2")
   KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("red","brown1"), custom_col_cat2, hierarchy = "2")
   
-  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/picrust2")
-  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
-  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  existingDirCheck("~/CHUM_git/figures/Thibault_abx/picrust2")
+  ggsave("~/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  ggsave("~/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
   
 }
 
@@ -1532,7 +1623,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
 {
   meta <- metadata[metadata$treatment == "abx" & metadata$timepoint == "56",]
   
-  ko_ab <- read.table("~/Documents/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
+  ko_ab <- read.table("~/CHUM_git/Microbiota_19/picrust2/input/picrust2_out_pipeline/KO_metagenome_out/pred_metagenome_unstrat.tsv.gz", sep = "\t", header = TRUE) # Load KO annotations
   colnames(ko_ab)[2:ncol(ko_ab)] <- substring(colnames(ko_ab)[2:ncol(ko_ab)], 2)
   pattern <- paste(meta$sample_id, collapse = "|")
   indexes <-  grep(pattern, colnames(ko_ab)) 
@@ -1572,9 +1663,9 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
   KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("blue","deepskyblue"), custom_col_cat2, hierarchy = "2")
   KeggPathwayHmap(kegg_ab = kegg_ab, brite_mapping = brite_mapping, metadata = meta, group = "treatment",custom_colors_group = c("red","brown1"), custom_col_cat2, hierarchy = "2")
   
-  existingDirCheck("~/Documents/CHUM_git/figures/Thibault_abx/picrust2")
-  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
-  ggsave("~/Documents/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  existingDirCheck("~/CHUM_git/figures/Thibault_abx/picrust2")
+  ggsave("~/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_50ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
+  ggsave("~/CHUM_git/figures/Thibault_abx/picrust2/kegg_t56_500ppm_hmap.png", bg = "white", height = 13, width = 13, dpi = 300)
   
 }
 
@@ -1677,7 +1768,7 @@ ggsave(plot = p, filename = "../figures/Thibault_abx/stackbar/final_stackbar_sub
                      threshold = 1,
                      n_phy = 4,
                      hues = c("Blues", "Greens", "Purples", "Oranges"),
-                     path = "~/Documents/CHUM_git/figures/Thibault_abx/chronobiome/",
+                     path = "~/CHUM_git/figures/Thibault_abx/chronobiome/",
                      dim = c(9,7),
                      custom_theme = theme_chronobiome(),
                      additionnalAes = list(facet_wrap2(~ gg_group2, 
@@ -2348,7 +2439,7 @@ if (nrow(significant_features) == 0) {
 
 # LRT analysis
 # Subset for 50 ppm
-relabTimepoints(ps_flt_diet, deseq_subset, timeVariable = "week", varToCompare = "diet", taxa = "Species", threshold == 0.05, customColors = c("blue","red"), path = "~/Documents/CHUM_git/figures/Thibault_abx/lrt_diet/")
+relabTimepoints(ps_flt_diet, deseq_subset, timeVariable = "week", varToCompare = "diet", taxa = "Species", threshold == 0.05, customColors = c("blue","red"), path = "~/CHUM_git/figures/Thibault_abx/lrt_diet/")
 # Subset for 50 ppm, and for family level taxa
 ps_subset <- prune_samples(sample_data(ps_flt_diet)$diet == "50", ps_flt_diet)
 ps_taxa <- tax_glom(ps_subset, taxrank = "Phylum")

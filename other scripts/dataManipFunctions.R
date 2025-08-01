@@ -419,24 +419,24 @@ custom_colors_2 <- c("blue","red","darkblue","darkred")
 custom_colors_3 <- c("darkblue","darkred")
 custom_colors_4 <- c("blue","red", "deepskyblue", "brown1")
 
-# Ensure consistent themes across all graphs
-my_theme <- function() {
-  theme_minimal(base_size = 12) +
-    theme(
-      plot.title = element_text(size = 16, face = "bold"),
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      axis.text = element_text(color = "black", face = "bold"),
-      axis.title = element_text(size = 14, face = "bold"),
-      axis.line = element_line(color = "black", size = 1),
-      legend.text = element_text(face = "bold"),
-      legend.title = element_text(face = "bold"),
-      legend.position = "right"
-    )
-}
+# # Ensure consistent themes across all graphs
+# my_theme <- function() {
+#   theme_minimal(base_size = 12) +
+#     theme(
+#       plot.title = element_text(size = 16, face = "bold"),
+#       panel.grid.major = element_blank(),
+#       panel.grid.minor = element_blank(),
+#       axis.text = element_text(color = "black", face = "bold"),
+#       axis.title = element_text(size = 14, face = "bold"),
+#       axis.line = element_line(color = "black", size = 1),
+#       legend.text = element_text(face = "bold"),
+#       legend.title = element_text(face = "bold"),
+#       legend.position = "right"
+#     )
+# }
 
 #function for plotting DSS disease index data
-dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "ns"){
+dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "n.s.", signifPositionShift = 0){
   
  plot <- df %>%
     ggplot(aes(x = time_numeric, y = index, color = diet))+
@@ -476,7 +476,7 @@ dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "ns"
      geom_segment(aes(x = x_pos, xend = x_pos, y = y_low, yend = y_high),
                   color = "black", linewidth = 0.9, inherit.aes = FALSE) +
      # Add significance annotation on the right side
-     annotate("text", x = x_pos + 0.2, y = (y_low + y_high) / 2, label = signifAnnotation, size = 6)
+     annotate("text", x = x_pos + signifPositionShift, y = (y_low + y_high) / 2, label = signifAnnotation, size = 6)
  }
   return(plot)
 }
@@ -771,7 +771,7 @@ ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
             max(df[[measure]]),
             max(df[[measure]]) + 1/12*max(df[[measure]]),
             max(df[[measure]]) + 2/12*max(df[[measure]]),
-            max(df[[measure]]) + 3/12*max(df[[measure]]))
+            max(df[[measure]]) + 4/12*max(df[[measure]]))
           
           # Apply each geom_signif layer individually
           for (i in seq_along(comparisons_list)) {

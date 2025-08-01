@@ -27,6 +27,7 @@
   library(caret)
   library(ggh4x)
   # library(ggpicrust2)
+  library(EnhancedVolcano)
   
 }
 
@@ -79,7 +80,7 @@ asv_table <- asv_table[,-1]  # Drop the first column
   # Consider timepoint 53 similar as timepoint 54
   metadata[metadata$timepoint=="53","timepoint"] <- "54"
   
-  # Replace final by 
+  # Replace final by t112
   metadata[metadata$timepoint=="final","timepoint"] <- "112"
   
   # Add week column 
@@ -188,22 +189,22 @@ length(taxa_sums(ps_t0_flt))
 
 ps_t35 <- prune_samples(sample_data(ps)$timepoint %in% c("35"), ps)
 ps_t35_flt <- prune_taxa(taxa_sums(ps_t35) > 10, ps_t35)
-ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.5 * nsamples(ps_t35_flt)), ps_t35_flt)
+ps_t35_flt <- prune_taxa(colSums(otu_table(ps_t35_flt) > 0) >= (0.4 * nsamples(ps_t35_flt)), ps_t35_flt)
 length(taxa_sums(ps_t35_flt))
 
 ps_t49 <- prune_samples(sample_data(ps)$timepoint %in% c("49"), ps)
 ps_t49_flt <- prune_taxa(taxa_sums(ps_t49) > 10, ps_t49)
-ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.5 * nsamples(ps_t49_flt)), ps_t49_flt)
+ps_t49_flt <- prune_taxa(colSums(otu_table(ps_t49_flt) > 0) >= (0.4 * nsamples(ps_t49_flt)), ps_t49_flt)
 length(taxa_sums(ps_t49_flt))
 
 ps_t54 <- prune_samples(sample_data(ps)$timepoint %in% c("54"), ps)
 ps_t54_flt <- prune_taxa(taxa_sums(ps_t54) > 10, ps_t54)
-ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.5 * nsamples(ps_t54_flt)), ps_t54_flt)
+ps_t54_flt <- prune_taxa(colSums(otu_table(ps_t54_flt) > 0) >= (0.4 * nsamples(ps_t54_flt)), ps_t54_flt)
 length(taxa_sums(ps_t54_flt))
 
 ps_tfinal <- prune_samples(sample_data(ps)$timepoint %in% c("112"), ps)
 ps_tfinal_flt <- prune_taxa(taxa_sums(ps_tfinal) > 10, ps_tfinal)
-ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.5 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
+ps_tfinal_flt <- prune_taxa(colSums(otu_table(ps_tfinal_flt) > 0) >= (0.4 * nsamples(ps_tfinal_flt)), ps_tfinal_flt)
 length(taxa_sums(ps_tfinal_flt))
 
 # Create phyloseq obejcts that we need for the analysis
@@ -640,17 +641,28 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   ggsave("../figures/Thibault_dss/alpha_diversity_timeline/observed.png",
          bg = "white",height = 3, width =7, dpi = 300)
   
-  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "Chao1")
-  TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "49",]))
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "49",], group = "gg_group2", measure = "observed")
+  TukeyHSD(aov(observed ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "49",]))
   
-  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "Chao1")
-  TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "54",]))
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "observed")
+  TukeyHSD(aov(observed ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "54",]))
   
-  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "Chao1")
-  TukeyHSD(aov(Chao1 ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
+  verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "final",], group = "gg_group2", measure = "observed")
+  TukeyHSD(aov(observed ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "final",]))
   
   verifyStatsAssumptions(df = alpha_d[alpha_d$timepoint == "54",], group = "gg_group2", measure = "Observed")
   TukeyHSD(aov(Observed ~ gg_group2 , data = alpha_d[alpha_d$timepoint == "54",]))
+  
+  df <- data.frame(Comparison=c("50 vs 500 / Ctrl", "50 vs 500 / DSS","50 Ctrl vs 50 DSS","500 Ctrl vs 500 DSS"),
+                   T0='',T35='',T49='',T54='',T112='')
+  
+  
+  df <- df %>%
+    mutate(across(2:4, ~ as.character(cut(.,
+                                          breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                          labels = c("***", "**", "*", "n.s.")))))
+  
+  ggtexttable(df, rows =NULL, theme = ttheme("light"))
   
   # Shannon
   p2 <- graphs[[2]]+
@@ -717,6 +729,27 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                                  font = "Arial", path = "../figures/Thibault_dss/beta_diversity/diet_dss/",
                                  additionnalAes = my_theme()+theme(plot.title = element_text(size = 16)), dim = c(4,12), combineGraphs = TRUE)
   
+  # Build table to display stats
+  {
+    df_1 <- read.xlsx("~/CHUM_git/figures/Thibault_dss/beta_diversity/diet_dss/week_49/wunifrac_week_49.xlsx")
+    colnames(df_1)[2] <- "pvalue_t49"
+    df_2 <- read.xlsx("~/CHUM_git/figures/Thibault_dss/beta_diversity/diet_dss/week_54/wunifrac_week_54.xlsx")
+    colnames(df_2)[2] <- "pvalue_t54"
+    df_3 <- read.xlsx("~/CHUM_git/figures/Thibault_dss/beta_diversity/diet_dss/week_112/wunifrac_week_112.xlsx")
+    colnames(df_3)[2] <- "pvalue_t112"
+    df <- cbind(df_1, df_2[2], df_3[2])
+    
+    df <- df[c(1,4,2,3),]
+    colnames(df) <- c("Comparison","T49","T54","T112")
+    df$Comparison <- c("50 vs 500 / Ctrl", "50 vs 500 / DSS","50 Ctrl vs 50 DSS","500 Ctrl vs 500 DSS")
+    df <- df %>%
+      mutate(across(2:4, ~ as.character(cut(.,
+                                            breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                                            labels = c("***", "**", "*", "n.s.")))))
+    
+    ggtexttable(df, rows =NULL, theme = ttheme("light"))
+  }
+  
   # Weighted unifrac for dss groups - t54 and last timepoint
   ps_sub <- prune_samples(sample_data(ps_flt_dss)$treatment == "dss", ps_flt_dss)
   sample_data(ps_sub)$diet <- factor(sample_data(ps_sub)$diet, labels = c("50 ppm DSS","500 ppm DSS"))
@@ -763,7 +796,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, for diet groups only
 {
   # Path where to save graphs
-  pathToSave <- "~/CHUM_git/figures/Thibault_dss/newTaxAnnotation/relative_abundance_diet/"
+  pathToSave <- "~/CHUM_git/figures/Thibault_dss/relative_abundance_diet/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -827,7 +860,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 # Relative abundance analysis: finding differential abundant bugs at the species level, all groups, for t49 t54 and tfinal timepoints
 # Path where to save graphs
 {
-  pathToSave <- "~/CHUM_git/figures/Thibault_dss/newTaxAnnotation/relative_abundance_dss_diet_all_groups/"
+  pathToSave <- "~/CHUM_git/figures/Thibault_dss/relative_abundance_dss_diet_all_groups/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -859,7 +892,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                   list("50:water","500:water"), list("50:dss","500:dss"),
                   list("50:water","50:dss"), list("500:water","500:dss")),
                 path = newPath, single_factor_design = FALSE,
-                dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = TRUE, additionnalAes =
+                dim = c(4,4.5), displayPvalue = FALSE, displaySignificance = TRUE, includeUnknownSpecies = TRUE, additionnalAes =
                   list(scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS")),
                        my_theme(),
                        labs(color = "", x=""))) # Include axis lines  # Include axis bar)
@@ -910,7 +943,7 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
 
 # Relative abundance analysis: finding differential abundant bugs at different taxonomical levels - only DSS groups
 {
-  pathToSave <- "~/CHUM_git/figures/Thibault_dss/newTaxAnnotation/relative_abundance_dss/"
+  pathToSave <- "~/CHUM_git/figures/Thibault_dss/relative_abundance_dss_only/"
   existingDirCheck(pathToSave)
   
   #customColors for graph display
@@ -930,6 +963,10 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
     
     #Simple deseq object only accounting for the differences in diet
     deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+    
+    dds <- DESeqDataSet(..., design = ~ diet + treatment + diet:treatment)
+    dds <- DESeq(dds)
+    
     deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
     print(resultsNames(deseq_subset))
     
@@ -969,6 +1006,145 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
                            dim = c(3.5,3.5), displayPvalue = TRUE) 
     }
   }
+}
+
+# Verify bugs abundance that were not annotated at the species level
+{
+  # Returns graph of ASV relative abundance, use a ps at timepoint of interest
+  # with annotations at the species level and choose asv of interest
+  # Does not include statistics
+  asvRelAbDistribution <- function(ps, asv, group){
+  
+    # Relative abundance of otu_table
+    ps <- transformCounts(ps, transformation = "rel_ab")
+    asv_ab <- t(otu_table(ps)[asv])
+    asv_ab <- merge(asv_ab, sample_data(ps), by = 'row.names') # Bind metadata information
+    View(asv_ab)
+    ironBoxplot(asv_ab, measure = asv, group = group, title = paste(asv, "abundance"), y_axis_title = "Relative abundance (%)", custom_colors = c("blue","darkblue","red","darkred"), stats = FALSE)
+    
+  }
+  
+  asvRelAbDistribution(ps_tfinal_flt, "ASV38", "gg_group2")
+  
+  # Returns graph of ASV relative abundance, use a ps with multiple timepoints
+  # with annotations at the taxon level of interest and choose asv of interest
+  # Does not include statistics
+  asvRelAbDistributionTimeline <- function(ps, asv, taxon, group, time, custom_colors){
+  
+    # Relative abundance of otu_table
+    ps <- transformCounts(ps, transformation = "rel_ab")
+    asv_ab <- t(otu_table(ps)[asv])
+    asv_ab <- merge(asv_ab, sample_data(ps), by = 'row.names') # Bind metadata information
+    View(asv_ab)
+    taxa <- as.data.frame(tax_table(ps))
+    p <- ggplot(data = asv_ab, aes(x = .data[[time]], y = .data[[asv]], group = .data[[group]], color = .data[[group]])) +
+      stat_summary(fun.data = mean_se, geom = "errorbar", width = 1, aes(color = .data[[group]]))+
+      stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+      stat_summary(fun = mean, geom = "point", size = 1, color = "black") +
+      scale_color_manual(values = custom_colors)+
+      scale_fill_manual(values = custom_colors)+
+      labs(y = "Relative abundance (%)", title = paste(ifelse(taxon == "Species",paste(taxa[asv,"Genus"],taxa[asv,"Species"]), taxa[asv,taxon]), asv))
+    print(p+my_theme())
+    
+  }
+  sample_data(ps_dss_relab_flt)$gg_group2
+  sample_data(ps_dss_relab_flt)$timepoint <- as.numeric(as.character(sample_data(ps_dss_relab_flt)$timepoint))
+  
+  # Species M. intestinal ASV19 / ASV55
+  asvRelAbDistributionTimeline(ps_dss_relab_flt, "ASV19", taxon = "Species", "gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  asvRelAbDistributionTimeline(ps_dss_relab_flt, "ASV55", taxon = "Species", "gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+  # Species ligilactobacillus murinus ASV 8/ ASV 38
+  asvRelAbDistributionTimeline(ps_dss_relab_flt, "ASV8", taxon = "Species", "gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  asvRelAbDistributionTimeline(ps_dss_relab_flt, "ASV38", taxon = "Species", "gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+  
+  
+  
+  ps_taxa <- tax_glom(ps_dss_relab_flt, taxrank = "Family")
+  
+  # Lactobacillacea
+  asvRelAbDistributionTimeline(ps_taxa, "ASV2", taxon = "Family","gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+  # Erysipelotrichaceae
+  asvRelAbDistributionTimeline(ps_taxa, "ASV1", taxon = "Family","gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+  # Enterobacteriaceae
+  asvRelAbDistributionTimeline(ps_taxa, "ASV22", taxon = "Family","gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+  ps_taxa <- tax_glom(ps_dss_relab_flt, taxrank = "Genus")
+  
+  # Eschiera whatever
+  asvRelAbDistributionTimeline(ps_taxa, "ASV22", taxon = "Genus","gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+  # Bacteroides Genus
+  asvRelAbDistributionTimeline(ps_taxa, "ASV9", taxon = "Genus","gg_group2", "timepoint", c("blue", "red", "darkblue","darkred"))
+  
+}
+
+# Differentially abundant bugs visuals with Volcano plots - 50 VS 500 timepoints
+{
+  #At other taxonomic levels
+  taxonomicLevels <- c("Genus","Family")
+  
+  #Iterate through timepoints
+  for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)[2]){
+    
+    #Creating phyloseq objects for each timepoint
+    ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == timePoint, ps_flt_diet)
+    ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset)
+    print(length(taxa_sums(ps_subset)))
+    
+    # Optional: Add unknown to species to display them
+    
+    
+    deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet)
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+    
+    
+    
+    #For a given taxononical levels, creates graph for each timepoint, displaying a volcano plot for taxononical level of interest
+    volcanoPlot2Groups(ps = ps_subset, deseq = deseq_subset, varToCompare = "diet", taxa = "Species", threshold = 0.05, customColors = NULL)
+    
+    for(txnLevel in taxonomicLevels[2]){
+      
+      #Creates ps subset for taxonomical level of interest
+      ps_taxa <- tax_glom(ps_subset, taxrank = txnLevel)
+      colnames(sample_data(ps_taxa))[2] <- "sample_id"
+      deseq_subset <- phyloseq_to_deseq2(ps_taxa, ~ diet)
+      deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+      
+      #For a given taxononical levels, creates graph for each timepoint, displaying a volcano plot for taxononical level of interest
+      volcanoPlot2Groups(ps = ps_taxa, deseq = deseq_subset, varToCompare = "diet", taxa = txnLevel, threshold = 0.05, customColors = NULL)
+     
+    }
+  }
+  
+  #Iterate through timepoints
+  for(timePoint in levels(sample_data(ps_flt_diet)$timepoint)){
+    
+    #New path created for each week
+    newPath <- paste(pathToSave, "timepoint_", timePoint, "/", sep = "")
+    existingDirCheck(newPath)
+    
+    #Creating phyloseq objects for each timepoint
+    ps_subset <- prune_samples(sample_data(ps_flt_diet)$timepoint == timePoint, ps_flt_diet)
+    ps_subset <- prune_taxa(taxa_sums(ps_subset) > 0, ps_subset)
+    print(length(taxa_sums(ps_subset)))
+    
+    #Simple deseq object only accounting for the differences in diet
+    deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet) 
+    deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric") #Performing the deseq analysis
+    print(resultsNames(deseq_subset))
+    
+    #For a given taxononical levels, creates graph for each timepoint, displaying which species were found to be differentially abundant
+    relabSingleTimepoint(ps_subset, deseq_subset, measure = "log2fold", "diet", timePoint = timePoint, taxa = "Species", threshold = 0.05, LDA = FALSE, FDR = TRUE, customColors = customColors, path = newPath)
+    
+    # log2fold change graph based on deseq2 results
+    log2foldChangeGraphSingleTimepoint(ps_subset, deseq_subset, timePoint = timePoint, taxa = "Species", threshold = 0.05, customColors = customColors, customPhylaColors = customPhylaColors, path = newPath, dim =c(6,10))
+    
+  }
+  
 }
 
 # Relative abundance analysis, stackbar extended graphs
@@ -1233,7 +1409,7 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
 
 # Firmicutes to bacteroidites ratio
 {
-  ps_phyla <- tax_glom(ps, taxrank = "Phylum") # Agglom ps at phylum level
+  ps_phyla <- tax_glom(ps_flt_all, taxrank = "Phylum") # Agglom ps at phylum level
   ps_phyla <- transformCounts(ps_phyla, transformation = "rel_ab") # Produce relative abundance table and calculate F/B ratio
   rel_ab <- as.data.frame(otu_table(ps_phyla))
   rel_ab <- rel_ab[rownames(tax_table(ps_phyla)[tax_table(ps_phyla)[,"Phylum"] %in% c("Firmicutes","Bacteroidota"),]),]
@@ -1311,15 +1487,15 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   t.test(fb_ratio ~ diet, data = fb_ratio_df_diet[fb_ratio_df_diet$timepoint == "49",], var.equal = FALSE)
   
   # For dss_diet groups
-  fb_ratio_df_gg_group2 <- fb_ratio_df[fb_ratio_df$timepoint %in% c("49","54","final"),]
+  fb_ratio_df_gg_group2 <- fb_ratio_df[fb_ratio_df$timepoint %in% c("49","54","112"),]
   fb_ratio_df_gg_group2$gg_group2 <- factor(fb_ratio_df_gg_group2$gg_group2, levels = c("50:water","500:water", "50:dss","500:dss"), labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
-  fb_ratio_df_gg_group2$week <- factor(fb_ratio_df_gg_group2$week, levels = c("10","10.7", "18"), labels = c("DSS Day 0","DSS Day 5","End of recovery"))
+  fb_ratio_df_gg_group2$week <- factor(fb_ratio_df_gg_group2$week, levels = c("7","7.7", "16"), labels = c("DSS Day 0","DSS Day 5","End of recovery"))
   fb_ratio_df_gg_group2 <- fb_ratio_df_gg_group2 %>%
     mutate(log_FB_ratio = log10(fb_ratio))
   
   fbRatioGraphTimeSeries(fb_ratio_df_gg_group2, group = "gg_group2",time = "week", measure = "fb_ratio", custom_colors = c("blue","red","darkblue", "darkred"), custom_theme = my_theme())+
-    ylim(0,9)+
-    labs(y = "F/B ratio", title = "F/B ratio overtime\naccording to DSS exposure ")+
+    ylim(0,NA)+
+    labs(y = "F/B ratio", title = "F/B ratio overtime\naccording to DSS exposure ")
     geom_signif( # For first timepoint
       # comparisons = list(c(groups[1],groups[4])),
       xmin = c(0.7),           # left box in each timepoint
@@ -1364,13 +1540,13 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   
   # Stats
   verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",], group = "gg_group2",measure =  "fb_ratio")
-  TukeyHSD(aov(log_FB_ratio ~ gg_group2 , data = fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",]))
+  TukeyHSD(aov(fb_ratio ~ gg_group2 , data = fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "49",]))
   
   verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "54",], group = "gg_group2",measure =  "fb_ratio")
   pairwise.wilcox.test(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "54",]$fb_ratio, fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "54",]$gg_group2, p.adjust.method = "BH")
   
-  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "final",], group = "gg_group2",measure =  "fb_ratio")
-  pairwise.wilcox.test(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "final",]$fb_ratio, fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "final",]$gg_group2, p.adjust.method = "BH")
+  verifyStatsAssumptions(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "112",], group = "gg_group2",measure =  "fb_ratio")
+  pairwise.wilcox.test(fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "112",]$fb_ratio, fb_ratio_df_gg_group2[fb_ratio_df_gg_group2$timepoint == "112",]$gg_group2, p.adjust.method = "BH")
   
 }
 
@@ -1560,6 +1736,53 @@ p+scale_x_discrete(labels = c("50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS", "50 Ct
   #For species level
   #One heatmap for all groups
   p <- correlation2Var(ps_subset, deseq_subset, measure = "log2fold", "diet", taxa = "Genus", displayPvalue = FALSE, threshold = 0.05, FDR = TRUE, "~/CHUM_git/figures/Thibault_dss/newTaxAnnotation/correlation_heatmaps/", df = variables, global = TRUE, singleVariable = FALSE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE)
+  p <- p+
+    labs(title = "Correlation between iron in stools at t35\nand differentially abundant species abundance", y = "", x = "")+
+    coord_fixed() + # Makes thing squared
+    theme(
+      text = element_text(family = "Arial"),      # Global text settings
+      plot.title = element_text(size = 16, face = "bold"),
+      axis.title.x = element_text(size = 12, face = "bold"),  # Axis titles
+      axis.text.y = element_blank(),  # Axis titles
+      axis.text.x = element_text(size = 12, face = "bold",hjust = 0.5, vjust = 0.75),   # Axis text
+      legend.title = element_text(face = "bold", size = 12),  # Legend title  # Legend text
+      axis.ticks = element_blank()
+    ) #axis.text.x = element_text(angle = -45, hjust = 1)
+  p
+  ggsave(filename = "~/CHUM_git/figures/Thibault_dss/correlation_heatmaps/species_iront35_hmap.png",
+         plot = p, bg = "white", height = 6, width = 6, dpi = 300)
+}
+
+# Correlation with all parameters - different taxonomical levels
+{
+  library(readxl)
+  
+  # Load DSS related results
+  variables <- read.xlsx("~/CHUM_git/gut-microbiota-iron/experiments/data_both_exp.xlsx")
+  variables <- variables[variables$exp == "dss",]
+  variables$id <- gsub(x = variables$id, replacement = "", pattern = "[A-Z]")
+  variables <- variables[!is.na(variables$id),] # Remove dead mice
+  variables$id <- paste0(variables$id, "_T54")
+  variables$id <- paste0(variables$id, "_Tfinal")
+  rownames(variables) <- variables$id
+  variables <- variables[,c(4:11)]
+
+  ps_subset <- tax_glom(ps_t54_flt, taxrank = "Genus")
+  ps_subset <- tax_glom(ps_tfinal_flt, taxrank = "Genus")
+  ps_subset <- tax_glom(ps_t54_flt, taxrank = "Family")
+  ps_subset <- tax_glom(ps_tfinal_flt, taxrank = "Family")
+  deseq_subset <- phyloseq_to_deseq2(ps_subset, ~ diet+treatment+diet:treatment) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  
+  deseq_subset <- phyloseq_to_deseq2(ps_tfinal_flt, ~ diet+treatment+diet:treatment) 
+  deseq_subset <- DESeq(deseq_subset, test="Wald", fitType = "parametric")
+  
+  print(resultsNames(deseq_subset))
+  
+  #For species level
+  #One heatmap for all groups
+  p <- correlationMultipleGroups(ps_tfinal_flt, deseq_subset, measure = "log2fold", "gg_group2", taxa = "Species", displayPvalue = FALSE, threshold = 0.05, FDR = TRUE, "~/CHUM_git/figures/Thibault_dss/correlation_heatmaps/", df = variables, global = TRUE, singleVariable = FALSE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, includeUnknownSpecies = TRUE)
+  p <- correlationMultipleGroups(ps_subset, deseq_subset, measure = "log2fold", "gg_group2", taxa = "Family", displayPvalue = FALSE, threshold = 0.05, FDR = TRUE, "~/CHUM_git/figures/Thibault_dss/correlation_heatmaps/", df = variables, global = TRUE, singleVariable = FALSE, showIndivCor = FALSE, transformation = "CLR", displayOnlySig = FALSE, returnMainFig = TRUE, displaySpeciesASVNumber = FALSE, includeUnknownSpecies = TRUE)
   p <- p+
     labs(title = "Correlation between iron in stools at t35\nand differentially abundant species abundance", y = "", x = "")+
     coord_fixed() + # Makes thing squared
@@ -1921,6 +2144,14 @@ producePicrust2Inputs(ps_flt_all, "~/CHUM_git/Microbiota_18_final/")
   final_plot
   
   ggsave(filename = "~/CHUM_git/figures/Thibault_iron/cauliflower phytree/phy_tree.png", plot = final_plot, bg = "white", height = 7, width = 11, dpi = 300)
+}
+
+# Retrieve 16s sequences from all bacteria associated to erysipelotrichaecea family 
+{
+  ids <- rownames(tax_table(ps)[tax_table(ps)[,"Family"] %in% "Erysipelotrichaceae",])
+  refseqs <- refseq(ps)[ids]
+  existingDirCheck("~/CHUM_git/figures/Thibault_dss/asv_msa")
+  writeXStringSet(refseqs, filepath = paste0("~/CHUM_git/figures/Thibault_dss/asv_msa/erysipelotrichaceae_sequences.fasta"))
 }
 
 

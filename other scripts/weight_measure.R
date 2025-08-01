@@ -3,23 +3,25 @@
   library("tidyverse") # loading bunch of packages
   library("ggplot2") # come on, everyone knows what it is used for
   library("dplyr") # arranging and manipulating data easily
-  library("geepack") # library for loading GEE tests
+  # library("geepack") # library for loading GEE tests
   library("lme4") # library for loading ANOVA
   library("car") # for anova too
   library("ggsignif") # adding significance bars to ggplots
   library("readxl") # Read and write excel files
-  library("PMCMRplus") # gamesHowellTest (post hoc test for welch test when variances are unequal)
-  library("FSA")
+  # library("PMCMRplus") # gamesHowellTest (post hoc test for welch test when variances are unequal)
+  # library("FSA")
+  library(permuco)
 }
 
 
 # Setting working directory
 setwd("~/Documents/CHUM_git/gut-microbiota-iron/")
 setwd("I:/Chercheurs/Santos_Manuela/Thibault M/gut-microbiota-iron/")
-setwd("D:/CHUM_git/gut-microbiota-iron/")
+setwd("~/CHUM_git/gut-microbiota-iron/")
 
 # Loading functions for data manipulation
 source("other scripts/dataManipFunctions.R")
+source("pipeline/microbiota_analysis/utilities.R")
 
 # Young mice + DSS experiment
 {
@@ -27,19 +29,42 @@ source("other scripts/dataManipFunctions.R")
   young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
   young_weight <- young_weight[,-c(6:10,18:ncol(young_weight))] # Remove repeated weight measures at start of experiment + measures after dss
   young_weight <- weightDataManipulation(young_weight, groupInfoCols = 4, fromDay0 = TRUE)
+  young_weight$time_numeric[young_weight$time_numeric == 6] <- 7
   
   # Scatter plot with weight evolution over time for diet exposure
   young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = TRUE, title = "Body weight change during diet exposure")
-  young_weight_plot
-  ggsave("../../../figures/youngDSS/diet_weight.png",
-         young_weight_plot, bg = "white",height = 5, width =8, dpi = 300)
+  young_weight_plot+
+    scale_x_continuous(
+      breaks = seq(min(young_weight$time_numeric), max(young_weight$time_numeric), by = 7), # breaks every 7 days
+      labels = function(x) paste0("T", x)                    # "T" before each label
+    )+
+    labs(x = "Timepoint")
+  ggsave("../../../figures/youngDSS/diet_weight.png", bg = "white",height = 5, width =6, dpi = 300)
   
   young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
   young_weight <- young_weight[,-c(5:16)] # Remove weight measures before start of DSS
   young_weight <- weightDataManipulation(young_weight, groupInfoCols = 4, fromDay0 = TRUE)
   
   # Scatter plot with the four different treatments (diet combined with dss or control)
-  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE, title = "Body weight change after DSS exposure", nbrDaysStart = 50)
+  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE, title = "Body weight")
+  young_weight_plot+
+    scale_x_continuous(
+    breaks = seq(min(young_weight$time_numeric), max(young_weight$time_numeric), by = 7), # breaks every 7 days
+    labels = function(x) paste0("T", x)                    # "T" before each label
+  )+
+    labs(x = "Timepoint")+
+    theme(axis.ticks.x = element_line(),
+          legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5),
+          axis.text.x = element_text(size = 6))
+  ggsave("../../../figures/youngDSS/weight.png", bg = "white",height = 5, width =6, dpi = 300)
+  
+  
+  young_weight <- read.csv("young48_weight_cageChanges.csv", header = TRUE, sep = ";")
+  young_weight <- young_weight[,-c(6:10)] # Remove weight measures before start of DSS
+  young_weight <- weightDataManipulation(young_weight, groupInfoCols = 4, fromDay0 = TRUE)
+  
+  # Scatter plot with the four different treatments (diet combined with dss or control) - all timepoints
+  young_weight_plot <- weightPlot(young_weight, percentage = TRUE, diet_only = FALSE, title = "Body weight", nbrDaysStart = 50)
   young_weight_plot
   ggsave("../../../figures/youngDSS/dss_weight.png",
          young_weight_plot, bg = "white",height = 5, width =8, dpi = 300)
@@ -48,9 +73,10 @@ source("other scripts/dataManipFunctions.R")
   young_dss_followup <- read.csv("young48_dss_followup.csv", header = TRUE, sep=";")
   young_dss_followup <- dssFollowupManipulation(df = young_dss_followup,groupInfoCols = 4,dateStart = "2024-05-29",nbrDays = 5, negativeOnly = TRUE)
   young_dssflwup_plot <- dssDiseaseIndexPlot(young_dss_followup, statBarLast = TRUE, signifAnnotation = "*")
-  young_dssflwup_plot
-  ggsave("../../../figures/youngDSS/dai.png",
-         young_dssflwup_plot, bg = "white",height = 4, width =5, dpi = 300)
+  young_dssflwup_plot+
+    theme(axis.ticks.x = element_line(),
+          legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5))
+  ggsave("../../../figures/youngDSS/dai.png", bg = "white",height = 4, width =5, dpi = 300)
   
 # Statistics for last day of DAI
   verifyStatsAssumptions(df = young_dss_followup[young_dss_followup$time_numeric == "5",], group = "gg_group", measure = "index")
@@ -71,9 +97,7 @@ source("other scripts/dataManipFunctions.R")
   young_dissec_bw <- dissecBoxplot(dissec_young,"body", stats = TRUE,
                                    test_results = c("*","n.s.","n.s.","p=0.059"),
                                    text_sizes = c(5,3,3,3), upper_margin = 2) 
-  young_dissec_bw
-  ggsave("../../../figures/youngDSS/bw_final.png",
-         young_dissec_bw, bg = "white",height = 4, width =4, dpi = 300)
+  ggsave("../../../figures/youngDSS/bw_final.png", bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "body_weight")
@@ -83,10 +107,8 @@ source("other scripts/dataManipFunctions.R")
   results
   
   #boxplot for std liver weight
-  young_dissec_lvr <- dissecBoxplot(dissec_young,"liver",stats = TRUE, all.ns = TRUE) 
-  young_dissec_lvr
-  ggsave("../../../figures/youngDSS/lvr_final.png",
-         young_dissec_lvr, bg = "white",height = 4, width =4, dpi = 300)
+  dissecBoxplot(dissec_young,"liver",stats = TRUE, all.ns = TRUE) 
+  ggsave("../../../figures/youngDSS/lvr_final.png", bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "std_liver_weigth") 
@@ -96,20 +118,16 @@ source("other scripts/dataManipFunctions.R")
   results
   
   # boxplot for std spleen weight
-  young_dissec_spln <- dissecBoxplot(dissec_young,"spleen", stats = TRUE, all.ns = TRUE) 
-  young_dissec_spln
-  ggsave("../../../figures/youngDSS/spln_final.png",
-         young_dissec_spln, bg = "white",height = 4, width =4, dpi = 300)
+  dissecBoxplot(dissec_young,"spleen", stats = TRUE, all.ns = TRUE) 
+  ggsave("../../../figures/youngDSS/spln_final.png", bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "std_spleen_weigth")
   pairwise.wilcox.test(dissec_young$std_spleen_weigth, dissec_young$gg_group, p.adjust.method = "BH")
   
   #boxplot for colon length (non std)
-  young_dissec_cln <- dissecBoxplot(dissec_young,"colon", stats = TRUE, all.ns = TRUE) 
-  young_dissec_cln
-  ggsave("../../../figures/youngDSS/cln_final.png",
-         young_dissec_cln, bg = "white",height = 4, width =4, dpi = 300)
+  dissecBoxplot(dissec_young,"colon", stats = TRUE, all.ns = TRUE) 
+  ggsave("../../../figures/youngDSS/cln_final.png", bg = "white",height = 4, width =4, dpi = 300)
   
   # Statistics
   verifyStatsAssumptions(df = dissec_young, group = "gg_group", measure = "colon_length")
@@ -170,6 +188,11 @@ source("other scripts/dataManipFunctions.R")
   pairwise.wilcox.test(df$iron_concentration, df$gg_group, p.adjust.method = "BH")
   
   
+  df$diet <- factor(df$diet, levels = c("50","500"))
+  df$treatment <- factor(df$treatment, levels = c("water","dss"))
+  pairwise_permuco(df, "iron_concentration", "diet", "treatment")
+  
+  
   #Tf ferrozine assay for liver
   df <- as.data.frame(sheets["Ferrozine Liver"])
   df <- df[1:51,c(3,6,8,14:18)]
@@ -204,6 +227,9 @@ source("other scripts/dataManipFunctions.R")
   verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
   pairwise.wilcox.test(df$iron_concentration, df$gg_group, p.adjust.method = "BH")
   
+  df$diet <- factor(df$diet, levels = c("50","500"))
+  df$treatment <- factor(df$treatment, levels = c("water","dss"))
+  pairwise_permuco(df, "iron_concentration", "diet", "treatment")
   
   #Tf ferrozine assay for spleen
   df <- as.data.frame(sheets["Ferrozine Spleen"])
@@ -225,12 +251,13 @@ source("other scripts/dataManipFunctions.R")
   df$total_iron <- df$iron_concentration*df$spleen_weight*df$dry_to_wet_ratio
   
   p = ironBoxplot(df, "iron_concentration", group = "gg_group", title = "Spleen iron concentration\nat final day", y_axis_title = "yg of iron", custom_colors = c("blue","red","darkblue", "darkred"),
-                  stats = TRUE, test_results = c("n.s.","n.s.","p=0.057","n.s."), text_sizes = c(3,3,3,3))
+                  stats = TRUE, test_results = c("*","n.s.","*","*"), text_sizes = c(5,3,5,5), upper_margin = 290)
   p+
   scale_x_discrete(labels = c("50 ppm\nCtrl","500 ppm\nCtrl","50 ppm\nDSS","500 ppm\nDSS"))+
   labs(y = "µg Fe/g dry weight")+
   guides(color = "none")
-  p
+  ggsave("../../../figures/youngDSS/spln_iron.png", bg = "white",height = 4, width =4, dpi = 300)
+  
   
   # Stats 
   verifyStatsAssumptions(df, "gg_group" , "iron_concentration")
@@ -242,14 +269,17 @@ source("other scripts/dataManipFunctions.R")
   kruskal.test(iron_concentration ~ gg_group, data = df)
   dunnTest(iron_concentration ~ gg_group, data = df, method = "bonferroni")
   
+  df$diet <- factor(df$diet, levels = c("50","500"))
+  df$treatment <- factor(df$treatment, levels = c("water","dss"))
+  pairwise_permuco(df, "iron_concentration", "diet", "treatment")
 }
 
 # PCR validation of B. pseudolongum and F rodentium in young mice + DSS experiment
 {
   # Load pcr df
-  df <- read_excel("experiments/finished exp/young-DSS-exp3/pcr_validation/RT-PCR June 2025.xlsx")
+  df <- read_excel("experiments/finished exp/young-DSS-exp3/pcr_validation/RT-PCR B pseudolongum Primers2.xlsx")
   colnames(df) <- df[3,]
-  colnames(df)[c(1,4,6)] <- c("id","frod","bpse")
+  colnames(df)[c(1,4,6,7,8)] <- c("id","frod","bpse2","pseudolongum","bpse") # T.C. pair of primers B. psed
   df <- df[-c(1:3),]
   
   # Load metadata and bind information to dataframe
@@ -261,9 +291,14 @@ source("other scripts/dataManipFunctions.R")
   df$gg_group <- factor(paste0(df$diet, ":", df$treatment), levels = c("50:water", "500:water", "50:dss", "500:dss"))
   df$frod <- as.numeric(df$frod)
   df$bpse <- as.numeric(df$bpse)
+  df$bpse2 <- as.numeric(df$bpse2)
   
   p <- ironBoxplot(df, "frod", group = "gg_group", title = "F. rodentium qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("blue","red","darkblue","darkred"))
   p
+  
+  pairwise_permuco(df, "frod", "diet", "treatment")
+  pairwise_permuco(df, "bpse", "diet", "treatment")
+  pairwise_permuco(df, "bpse2", "diet", "treatment")
   
   p <- ironBoxplot( df[df$treatment == "dss",], "frod", group = "diet", title = "F. rodentium qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("darkblue","darkred"))
   p
@@ -274,32 +309,27 @@ source("other scripts/dataManipFunctions.R")
   summary(anova)
   results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
   results
+  pairwise.wilcox.test(df$frod, df$gg_group, p.adjust.method = "BH")
+  
+  # DSS groups only
+  p <- ironBoxplot(df[df$treatment == "dss",], "frod", group = "diet", title = "F. rodentium qPCR abundance", y_axis_title = "F. rodentium /16S", custom_colors = c("darkblue","darkred"), stats = FALSE)
+  p
   
   verifyStatsAssumptions(df = df[df$treatment == "dss",], group = "diet", measure = "frod") 
   t.test(frod ~ diet, data = df[df$treatment == "dss",], var.equal = TRUE)
   
-  p <- ironBoxplot(df, "bpse", group = "gg_group", title = "B. pseudolongum qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("blue","red","darkblue","darkred"))
+  p <- ironBoxplot(df[df$treatment == "dss",], "bpse", group = "diet", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("darkblue","darkred"), stats = FALSE)
   p
-  
-  p <- ironBoxplot(df[df$treatment == "dss",], "bpse", group = "diet", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("darkblue","darkred"))
-  p
-  
-  # Removing two outliers
-  df_sub <- df[-c(26,37),]
-  
-  p <- ironBoxplot(df_sub[df_sub$treatment == "dss",], "bpse", group = "diet", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("darkblue","darkred"))
-  p
-  
-  # Stats
-  verifyStatsAssumptions(df = df, group = "gg_group", measure = "bpse")
-  pairwise.wilcox.test(df$bpse, df$gg_group, p.adjust.method = "BH")
-
   
   verifyStatsAssumptions(df = df[df$treatment == "dss",], group = "diet", measure = "bpse") 
   wilcox.test(bpse ~ diet, data = df[df$treatment == "dss",])
   
+  p <- ironBoxplot(df[df$treatment == "dss",], "bpse2", group = "diet", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("darkblue","darkred"), stats = FALSE)
+  p
   
-
+  verifyStatsAssumptions(df = df[df$treatment == "dss",], group = "diet", measure = "bpse2") 
+  wilcox.test(bpse2 ~ diet, data = df[df$treatment == "dss",])
+  
 }
 
 # Young mice + Abx experiment
@@ -513,6 +543,77 @@ source("other scripts/dataManipFunctions.R")
   summary(anova)
   results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
   results
+  
+}
+
+# PCR validation of F rodentium in young mice + Abx experiment
+{
+  # Load pcr df
+  df <- read_excel("experiments/finished exp/young-abx-exp6/RT-PCR F rodentium.xlsx")
+  colnames(df) <- df[3,]
+  colnames(df)[c(1,4)] <- c("id","frod") # F. rodentium primer pair
+  df <- df[-c(1:3),]
+  
+  # Load metadata and bind information to dataframe
+  meta <- read.xlsx("experiments/finished exp/young-abx-exp6/dissection.xlsx")
+  colnames(meta)[2] <- "id"
+  meta$id <- substring(meta$id, first = 1, last = 5)
+  df <- merge(df, meta, by = "id")
+  df$diet <- factor(df$diet, levels = c("50", "500"))
+  df$treatment <- factor(df$treatment, levels = c("water", "abx"))
+  df$gg_group <- factor(paste0(df$diet, ":", df$treatment), levels = c("50:water", "500:water", "50:abx", "500:abx"), labels = c("50 ppm\nCtrl", "500 ppm\nCtrl", "50 ppm\nAbx", "500 ppm\nAbx"))
+  df$frod <- as.numeric(df$frod)
+  df <- df[-c(37,34,18),]# Remove outliers
+  
+  p <- ironBoxplot(df, "frod", group = "gg_group", title = "F. rodentium qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("blue", "red", "deepskyblue", "brown1"), stats = TRUE,
+                   test_results = c("n.s.","P=0.06","P=0.07","n.s."), text_sizes = c(3,3,3,3), upper_margin = 0.1)
+  p
+  ggsave("figures/youngAbx/frod_pcr_tfinal.png", bg = "white",height = 4, width =4, dpi = 300)
+  
+  pairwise_permuco(df, "frod", "diet", "treatment")
+  
+  p <- ironBoxplot(df[df$treatment == "abx",], "frod", group = "diet", title = "F. rodentium qPCR abundance", y_axis_title = "F. rodentium/16S", custom_colors = c("deepskyblue", "brown1"), stats = FALSE)
+  p
+  
+  wilcox.test(frod ~ diet, data = df[df$treatment == "abx",])
+  
+  
+  # Stats
+  verifyStatsAssumptions(df = df, group = "gg_group", measure = "frod") 
+  anova <- aov(frod ~ diet * treatment, data = df) #Fit a ANOVA model
+  summary(anova)
+  results <- TukeyHSD(anova) # Perform Tukey's HSD test and store the results in the list
+  results
+  pairwise.wilcox.test(df$frod, df$gg_group, p.adjust.method = "BH")
+  
+  
+  verifyStatsAssumptions(df = df[df$treatment == "abx",], group = "diet", measure = "frod") 
+  wilcox.test(frod ~ diet, data = df[df$treatment == "dss",], var.equal = TRUE)
+  
+  p <- ironBoxplot(df, "bpse", group = "gg_group", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("blue","red","darkblue","darkred"))
+  p+ylim(NA,NA)
+  
+  p <- ironBoxplot(df[df$treatment == "dss",], "bpse", group = "diet", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("darkblue","darkred"))
+  p
+  
+  # Removing two outliers
+  df_sub <- df[-c(26,37),]
+  
+  p <- ironBoxplot(df_sub[df_sub$treatment == "dss",], "bpse", group = "diet", title = "B. pseudolongum qPCR abundance", y_axis_title = "B. pseudolongum /16S", custom_colors = c("darkblue","darkred"))
+  p
+  
+  # Stats
+  verifyStatsAssumptions(df = df, group = "gg_group", measure = "bpse")
+  pairwise.wilcox.test(df$bpse, df$gg_group, p.adjust.method = "BH")
+  
+  verifyStatsAssumptions(df = df_sub, group = "gg_group", measure = "bpse")
+  pairwise.wilcox.test(df_sub$bpse, df_sub$gg_group, p.adjust.method = "BH")
+  
+  
+  verifyStatsAssumptions(df = df[df$treatment == "dss",], group = "diet", measure = "bpse") 
+  wilcox.test(bpse ~ diet, data = df[df$treatment == "dss",])
+  
+  
   
 }
 

@@ -679,7 +679,7 @@ relabTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCo
 # gg_group must be order with correct order prior to that (as a factor)
 relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, FDR = TRUE,
                         returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path, single_factor_design = FALSE,
-                        additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, displaySignificance = TRUE){
+                        additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, displaySignificance = TRUE, includeUnknownSpecies = FALSE){
   
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
@@ -768,22 +768,22 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   }else{ # If you performed deseq with 2 variables, each with 2 groups
     
     #Partition results for specific pairwise comparaisons
-    res_subset1 <- results(deseq, contrast = list(resultsNames(deseq)[3])) #wt putrescine vs vehicle
+    res_subset1 <- results(deseq, contrast = list(resultsNames(deseq)[3])) #wt putrescine vs vehicle // 50vs500 ctrl
     sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
     sigtab_1$comparaison <- 1
     sigtab_1$vs <- vs[1]
 
-    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle
+    res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle // 50vs500 dss
     sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
     sigtab_2$comparaison <- 2
     sigtab_2$vs <- vs[2]
 
-    res_subset3 <- results(deseq, contrast = list(resultsNames(deseq)[2])) #vehicle wt vs il22 ko
+    res_subset3 <- results(deseq, contrast = list(resultsNames(deseq)[2])) #vehicle wt vs il22 ko // 50 ctrl vs 50 dss
     sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
     sigtab_3$comparaison <- 3
     sigtab_3$vs <- vs[3]
 
-    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko
+    res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko // 500 ctrl vs 500 dss
     sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
     sigtab_4$comparaison <- 4
     sigtab_4$vs <- vs[4]
@@ -830,7 +830,13 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))
   
   #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
-  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  if(taxa == "Species" & includeUnknownSpecies){
+    sigtab[[taxa]][is.na(sigtab[[taxa]])] <- "Unknown" # If includeUnknownSpecies, keep ASVs for which there was Genus tax annotation even if no species annotation
+    sigtab <- sigtab[!is.na(sigtab[["Genus"]]),]
+  }else{
+    sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  }
+  
   
   if(FDR){
     pvalue <- as.character("padj")
@@ -1427,7 +1433,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
 
 #Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint, works with design "~ factor", and is done separately for each week
 relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, returnSigAsvs = FALSE, customColors, path, displayIndivValues = FALSE, dim = c(5,5)){
-  
+
   #Creates directory for taxonomic level
   dir <- paste(path, taxa, sep = "")
   existingDirCheck(path = dir)
@@ -1630,4 +1636,45 @@ relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCo
     }
     
   }
+}
+
+volcanoPlot2Groups <- function(ps, deseq, varToCompare, taxa = "Species", threshold = 0.05, customColors){
+  
+  #Save results at single timepoint
+  res <- results(deseq, name = resultsNames(deseq)[2])
+
+  
+  #Save significance table
+  sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res),], "matrix"))
+  
+  #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
+  sigtab["asv"] <- rownames(sigtab)
+  
+  #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  
+  #Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab$padj[is.na(sigtab$padj)] <- 1
+  
+  res_df <- sigtab %>%
+    mutate(significance = case_when(
+      padj < 0.05 & log2FoldChange >= 1  ~ "Up",
+      padj < 0.05 & log2FoldChange <= -1 ~ "Down",
+      TRUE                               ~ "NotSig"
+    ))
+  
+  EnhancedVolcano(
+    res_df,
+    lab = res_df[[taxa]],
+    x = 'log2FoldChange',
+    y = 'padj',
+    pCutoff = 0.05,
+    FCcutoff = 1,
+    xlab = bquote(~Log[2]~ 'fold change'),
+    ylab = bquote(~-Log[10]~ 'adjusted p'),
+    legendPosition = 'right',
+    title = "50 ppm vs 500 ppm at T35",
+    subtitle = taxa
+  )
+  
 }

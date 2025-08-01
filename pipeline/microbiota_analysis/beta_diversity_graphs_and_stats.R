@@ -479,8 +479,16 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     # Statistics
     if(length(levels(sample_data(ps)[[varToCompare]])) > 2){
       
+      df <- data.frame(sample_data(ps_subset))
+      df <- df[order(df[[varToCompare]]), ]
+      
+      id_order <- df[[sample_id]]
+      mat <- as.matrix(dist_subset)        
+      mat <- mat[id_order, id_order]      # reorder both rows & columns
+      dist_subset <- as.dist(mat)       
+      
       pairwise_results <- pairwise.adonis2(as.formula(paste("dist_subset ~", varToCompare)), 
-                                           data = data.frame(sample_data(ps_subset)), 
+                                           data = df, 
                                            permutations = 999, 
                                            p.adjust.m = "BH")  # Adjust p-values for multiple testing
       

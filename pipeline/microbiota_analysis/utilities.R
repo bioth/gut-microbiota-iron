@@ -194,7 +194,8 @@ my_theme <- function() {
       legend.text = element_text(face = "bold"),
       legend.title = element_text(face = "bold"),
       legend.position = "right",
-      legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5)
+      legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5),
+      axis.ticks.x = element_line()
     )
 }
 
@@ -235,4 +236,35 @@ fbRatioGraphTimeSeries2 <- function(df, group, measure, time, custom_colors, cus
   my_theme()
   
   return(p)
+}
+
+# Equivalent of non-parametric two factor ANOVA => permutation tests + multiple tests correction (BH)
+pairwise_permuco <- function(df, response_var, var1, var2, np = 5000) {
+  # Create interaction group
+  df <- df %>%
+    mutate(.group = interaction(.data[[var1]], .data[[var2]], sep = "_"))
+  
+  # Get all pairwise comparisons
+  combs <- combn(levels(df$.group), 2, simplify = FALSE)
+  
+  # Run pairwise permutation ANOVAs
+  results <- lapply(combs, function(pair) {
+    df_sub <- df %>% filter(.group %in% pair) %>% droplevels()
+    
+    fit <- aovperm(as.formula(paste(response_var, "~ .group")), data = df_sub, np = np)
+    pval <- summary(fit)$`resampled P(>F)`[1]
+    tibble(
+      group1 = pair[1],
+      group2 = pair[2],
+      p_value = pval
+    )
+  })
+  
+  # Combine and adjust p-values
+  results_df <- bind_rows(results) %>%
+    mutate(
+      p_adj = p.adjust(p_value, method = "fdr")
+    )
+  
+  return(results_df)
 }
