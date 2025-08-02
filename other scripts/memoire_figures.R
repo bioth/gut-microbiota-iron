@@ -654,3 +654,282 @@ ps_flt_all <- merge_phyloseq(ps_t0_flt, ps_t35_flt, ps_t49_flt, ps_t54_flt, ps_t
   
   
 }
+
+# Figure 4 - bacteria relative abundance and overall composition of the gut microbiota community
+{
+  # Creating a cauliflower phylogenetic tree
+  {
+    library(ggtree)
+    library(ape)
+    library(metacoder)
+    library(RColorBrewer)
+    
+    tax_table(ps_tree)[is.na(tax_table(ps_tree))] <- "Unknown"
+    
+    tax_data <- parse_phyloseq(ps_tree)
+    all_ids  <- tax_data$taxon_ids()
+    tip_df   <- tax_data$data$tax_data
+    
+    taxa_df <- data.frame(taxon_id = all_ids, Phylum = NA_character_, stringsAsFactors = FALSE)
+    taxa_df$Phylum[match(tip_df$taxon_id, all_ids)] <- as.character(tip_df$Phylum)
+    tax_data$data$taxa <- taxa_df
+    
+    el <- tax_data$edge_list
+    
+    # Initialize propagated Phylum
+    prop_phylum <- setNames(taxa_df$Phylum, taxa_df$taxon_id)
+    
+    # Fill internal nodes by inheriting from their descendants
+    repeat {
+      # Find internals missing Phylum
+      no_phylum_ids <- taxa_df$taxon_id[is.na(prop_phylum)]
+      updated <- FALSE
+      
+      for (nid in no_phylum_ids) {
+        kids <- el$to[el$from == nid]
+        ph_values <- unique(na.omit(prop_phylum[kids]))
+        if (length(ph_values) > 0) {
+          prop_phylum[nid] <- ph_values[1]
+          updated <- TRUE
+        }
+      }
+      if (!updated) break
+    }
+    
+    tax_data$data$taxa$Phylum <- prop_phylum
+    
+    unique_phyla <- sort(unique(prop_phylum))
+    # palette_vec <- colorRampPalette(brewer.pal(min(8, length(unique_phyla)), "Set3"))(length(unique_phyla))
+    palette_vec <- c("#483C46","#70AE6E","#FFC300","#900C3F","#C70039","#3C6E71","#BEEE62","#FF5733","black")
+    palette_vec <- c("#c7522a","#e5c185","#f0daa5","#fbf2c4","#b8cdab","#74a892","#008585","#004343")
+    palette_vec <- c("#003f5c","#58508d","#8a508f","#bc5090","#de5a79","#ff6361","#ff8531","#ffa600")
+    palette_vec <- c()
+    palette_vec <- c("#715660","#846470","#566071","#727f96","#c39f72","#d5bf95","#667762","#879e82")
+    
+    phylum_pal  <- setNames(palette_vec, unique_phyla)
+    # Shuffle (randomize) the values, keeping the same names
+    phylum_pal[] <- sample(phylum_pal)
+    tax_data$data$taxa$color <- phylum_pal[prop_phylum]
+    
+    p_tree <- heat_tree(
+      tax_data,
+      node_color       = color,
+      edge_color       = color,
+      node_label       = "",
+      node_size_trans = "area",
+      node_size = n_obs,
+      node_color_range = phylum_pal,
+      edge_color_range = phylum_pal,
+      make_node_legend = FALSE,
+      node_legend_title = "Phylum",
+      layout           = "davidson-harel",
+      initial_layout = "reingold-tilford"
+      # initial_layout = "fruchterman-reingold"
+    )
+    
+    # Data frame for legend
+    legend_df <- data.frame(
+      Phylum = names(phylum_pal),
+      Color  = phylum_pal
+    )
+    
+    library(forcats)  # For fct_rev
+    
+    legend_df$Phylum <- factor(legend_df$Phylum, levels = rev(legend_df$Phylum)) # For top-down order
+    
+    p_legend <- ggplot(legend_df) +
+      geom_point(aes(x = 0, y = Phylum, color = Phylum), size = 3) +
+      geom_text(aes(x = 0, y = Phylum, label = Phylum), hjust = -0.1, size = 3) + # Play with x/hjust for spacing
+      scale_color_manual(values = phylum_pal) +
+      theme_void() +
+      theme(
+        legend.position = "none",
+        plot.margin = margin(0, 0, 0, 0)
+      ) +
+      labs(title = NULL)
+    
+    cauliflower_tree <- p_tree +
+      inset_element(
+        p_legend +
+          theme(plot.background = element_rect(fill = NA, color = NA)),
+        left = -0.4, bottom = 0.2, right = 0.2, top = 0.8, align_to = "full"
+      )
+    cauliflower_tree
+  }
+  
+  # Stackbar at last day of dss
+  {
+    # First, timepoints and groups must be ordered properly and as factors
+    sample_data(ps_t54_flt)$diet 
+    sample_data(ps_t54_flt)$treatment 
+    sample_data(ps_t54_flt)$gg_group2 <- factor(sample_data(ps_t54_flt)$gg_group2, levels = c("50:water", "50:dss", "500:water","500:dss"))
+    sample_data(ps_t54_flt)$timepoint
+    
+    diet_dss_phyla_fam <- plot_microbiota_2Fac(
+      ps_object = ps_t54_flt,
+      exp_group = "gg_group2",
+      twoFactor = TRUE,
+      fac1 = "diet",
+      refFac1 = "50",
+      fac2 = "treatment",
+      refFac2 = "water",
+      sample_name = 'sample_id',
+      hues = c("Blues","Greens","Purples","Oranges"), # c("Purples", "Blues", "Reds", "Greens", "Oranges", "Greys", "BuPu")
+      differential_analysis = T,
+      sig_lab = T,
+      n_row = 2,
+      n_col = 2,
+      threshold = 1,
+      legend_size = 6,
+      fdr_threshold = 0.05,
+      main_level = "Phylum",
+      sub_level = "Family",
+      n_phy = 4, # number of taxa to show 
+      mult_comp = F, # pairwise comparaisons for diff ab analysis
+      selected_comparisons = list(c("50:water", "50:dss"),
+                                  c("500:water", "500:dss"),
+                                  c("50:water", "500:water"),
+                                  c("50:dss", "500:dss")),
+      showOnlySubLegend = FALSE
+    )
+    
+    print(diet_dss_phyla_fam$plot)
+    print(diet_dss_phyla_fam$significant_table_main)
+    print(diet_dss_phyla_fam$significant_table_sub)
+    
+    library(ggh4x)
+    
+    facet_scales <- list(
+      scale_x_discrete(labels = as.character(1:12)),
+      scale_x_discrete(labels = as.character(25:35)),
+      scale_x_discrete(labels = as.character(13:24)),
+      scale_x_discrete(labels = as.character(36:45))
+    )
+    
+    # Custom the plot
+    stackbar_t54 <- diet_dss_phyla_fam$plot + 
+      facet_wrap2(~ gg_group2, 
+                  scales  = "free_x", nrow = 2, ncol = 2,
+                  strip = strip_themed(background_x = elem_list_rect(fill = c("blue","darkblue","red","darkred"))),
+                  labeller = as_labeller(c("50:water" = "50 ppm Ctrl",
+                                           "50:dss" = "50 ppm DSS",
+                                           "500:water" = "500 ppm Ctrl",
+                                           "500:dss" = "500 ppm DSS")))+
+      theme(text = element_text(family = "Arial"),      # Global text settings
+            strip.text = element_text(size = 14, face = "bold", color = "white"),  # Facet titles
+            plot.title = element_text(size = 20, face = "bold"),  # Main title
+            axis.title = element_text(size = 15, face = "bold"),  # Axis titles
+            axis.text = element_text(size = 12, face = "bold"),   # Axis text
+            axis.title.y = element_text(margin = margin(r = -15)),
+            legend.title = element_text(face = "bold", size = 14)  # Legend title  # Legend text
+      ) +
+      facetted_pos_scales(x = facet_scales)+
+      labs(x = "Mouse ID")
+    stackbar_t54
+    
+    # Saving the plot and the associated stats
+    existingDirCheck("../figures/Thibault_dss/stackbar")
+    ggsave(plot = p, filename = "../figures/Thibault_dss/stackbar/diet_dss_stackbar.png", width = 7, height = 7, dpi = 300)
+    writeStackbarExtendedSigTable(main_table = diet_dss_phyla_fam$significant_table_main, includeSubTable = TRUE, sub_table = diet_dss_phyla_fam$significant_table_sub, filepath = "../figures/Thibault_dss/stackbar/diet_dss_stackbar_stats.xlsx")
+    
+    # pvalues heatmap for the main lvl stats
+    pvalHmapPhyla <- pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/stackbar/diet_dss_stackbar_stats.xlsx")),
+                selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"), displayChangeArrows = TRUE, displayPValues = FALSE,
+                txn_lvl="Phylum", lvl = "main", taxons = diet_dss_phyla_fam$main_names, group = "gg_group2", path)
+    pvalHmapPhyla <- pvalHmapPhyla+
+      theme(axis.text.x = element_blank(),
+            axis.text.y = element_blank())+
+      guides(fill = "none")
+    
+    # pvalues heatmap for the sub lvl stats
+    pvalHmapFamily <- pvaluesHmap(stats = as.data.frame(readxl::read_excel("../figures/Thibault_dss/stackbar/diet_dss_stackbar_stats.xlsx")),
+                    selected_comparisons = c("50:water_vs_50:dss", "500:water_vs_500:dss","50:water_vs_500:water","50:dss_vs_500:dss"),
+                    txn_lvl="Family", lvl = "sub", taxons =  diet_dss_phyla_fam$sub_names, group = "gg_group2", displayPValues = FALSE, displayChangeArrows = TRUE, path) # You can add [!grepl("Others", x = iron_exp_family$sub_names)] to remove "others"
+    pvalHmapFamily <- pvalHmapFamily+scale_x_discrete(labels = c("50 Ctrl vs 50 DSS", "500 Ctrl vs 500 DSS", "50 Ctrl vs 500 Ctrl", "50 DSS vs 500 DSS"))+
+      theme(text = element_text(family = "Arial"),
+            axis.text.y = element_blank(),
+            axis.text.x = element_text(size = 11, face = "bold"))
+    
+    
+    # Final stackbar with stats heatmap
+    # Extract stackbar legend
+    stackbar_lgd <- get_legend(stackbar_t54)
+    
+    # Main plot without legend:
+    stackbar_t54 <- stackbar_t54 + theme(legend.position = "none")
+    
+    # Combine them side-by-side
+    (stackbar_t54 | (pvalHmapPhyla / pvalHmapFamily) | wrap_elements(stackbar_lgd))+
+      plot_layout(widths = c(4, 1, 1), ncol = 3)
+    stackbar_t54_full <- a
+    
+    
+    (stackbar_t54 + plot_spacer() + (pvalHmapPhyla / pvalHmapFamily))+
+      plot_layout(widths = c(4, -12, 4), guides = "collect")
+  }
+  
+  # Chronobiome 
+  {
+    theme_chronobiome <- function() {
+      theme_bw(base_size = 12) +
+        theme(
+          plot.title = element_text(size = 16, face = "bold"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_text(color = "black", face = "bold"),
+          axis.title = element_text(size = 14, face = "bold"),
+          panel.border = element_rect(color = "black", fill = NA),
+          axis.text.y = element_text(size = 12),
+          axis.text.x = element_text(size = 10),
+          panel.spacing = unit(0, "lines"),
+          legend.title = element_text(face = "bold"),
+          strip.text = element_text(face = "bold", color = "white", size = 12)
+        )
+    }
+    
+    sample_data(ps_flt_all)$gg_group2 <- factor(sample_data(ps_flt_all)$gg_group2, labels = c("50 ppm Ctrl","500 ppm Ctrl","50 ppm DSS","500 ppm DSS"))
+    
+    p <- plot_timeline_2_groups(
+      ps_object = ps_flt_all,
+      exp_group =  "gg_group2", # must be as factor
+      time_group = "timepoint", # must be as factor
+      sample_name = "sample_id",
+      main_level = 'Phylum',
+      sub_level = 'Family',
+      average_relab_per_group = TRUE,
+      smoothing = FALSE,
+      n_phy = 4,
+      hues = c("Blues", "Greens", "Purples", "Oranges"),
+      color_bias = 2,
+      custom_theme = theme_chronobiome()
+    )
+    
+    chronobiome <- p+
+      facet_wrap2(~ gg_group2, 
+                  scales  = "free_x", nrow = 2, ncol = 2,
+                  strip = strip_themed(background_x = elem_list_rect(fill = c("blue", "red","darkblue","darkred"))))+
+      scale_x_continuous(breaks = seq(min(as.numeric(levels(sample_data(ps_flt_all)$timepoint))), max(as.numeric(levels(sample_data(ps_flt_all)$timepoint))), by = 7),
+        labels = function(x) paste0("T", x))+
+      theme(axis.text.x = element_text(size = 6, face = "bold"))+
+      labs(x = "Timepoint")+
+        guides(fill = "none", alpha = "none")
+  }
+  
+  # Final figure 4
+  fig4 <- ((cauliflower_tree | stackbar_t54) / chronobiome)+
+    plot_layout()
+  
+  fig4 <- ((cauliflower_tree | stackbar_t54) / chronobiome) +
+    plot_layout(
+      heights = c(1, 1.5),
+      widths  = c(1, 1),
+      guides  = "collect"
+    )+
+    plot_annotation(tag_levels = list(c("A", "","B","C"))) &
+    theme(panel.spacing = unit(0, "pt"),
+          plot.tag = element_text(face = "bold", size = 25))
+  
+  ggsave(filename = "~/CHUM_git/figures/memoire/dss/fig4.png", plot = fig4, width = 11, height = 9, dpi = 500)
+  
+  
+}
