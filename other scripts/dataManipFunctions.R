@@ -417,9 +417,9 @@ dissectionDataManipulation <- function(df,groupInfoCols, numerical = TRUE){
 desired_order <- c("50 water", "500 water", "50 dss", "500 dss")
 
 # Define your custom color palette
-custom_colors_1 <- c("blue","red")
-custom_colors_2 <- c("blue","red","darkblue","darkred")
-custom_colors_3 <- c("darkblue","darkred")
+custom_colors_1 <- c("#95BECF","#F2AA84")
+custom_colors_2 <- c("#95BECF","#F2AA84","#325B6C","#B22222")
+custom_colors_3 <- c("#325B6C","#B22222")
 custom_colors_4 <- c("blue","red", "deepskyblue", "brown1")
 
 # # Ensure consistent themes across all graphs
@@ -442,18 +442,20 @@ custom_colors_4 <- c("blue","red", "deepskyblue", "brown1")
 dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "n.s.", signifPositionShift = 0, signifSize = 6){
   
  plot <- df %>%
-    ggplot(aes(x = time_numeric, y = index, color = diet))+
-    stat_summary(aes(group = gg_group, shape = treatment),fun ="mean", geom = "point", size = 3)+
-    stat_summary(aes(group = gg_group), fun = "mean", geom = "line", size = 1)+
+    ggplot(aes(x = time_numeric, y = index, color = diet, fill = diet))+
     stat_summary(aes(color = diet), fun.data = mean_se, geom="errorbar", size = 1, width = 0.3) + #adding SEM error bars
-   
-    labs(title = "Disease activity index (DAI)\nduring DSS exposure",
-         x = "Day",
-         y = "DAI",
-         color = "Group")+
+    stat_summary(aes(group = gg_group), fun = "mean", geom = "line", size = 1)+
+    stat_summary(aes(group = gg_group, shape = treatment),fun ="mean", geom = "point", size = 2, shape = 22, color = "black")+
+    
+    
+    labs(title = "Disease activity index",
+         x = "Days",
+         y = "Score",
+         color = NULL)+
    scale_x_continuous(breaks = unique(df$time_numeric))+
    scale_color_manual(values = custom_colors_3, labels = c("50 ppm DSS","500 ppm DSS"))+
-    guides(shape = 'none')+
+   scale_fill_manual(values = custom_colors_3, labels = c("50 ppm DSS","500 ppm DSS"))+
+    guides(shape = 'none', fill = "none")+
     my_theme()+
    ylim(0, max(df$index))
  
@@ -472,14 +474,19 @@ dssDiseaseIndexPlot <- function(df, statBarLast = FALSE, signifAnnotation = "n.s
    y_high <- max(df_summary$y)
    
    # x-position for the vertical segment and annotation (slightly to the right of last timepoint)
-   x_pos <- last_day + 0.3
+   x_pos <- last_day
    
    plot <- plot +
      # Vertical bar between lowest and highest mean
-     geom_segment(aes(x = x_pos, xend = x_pos, y = y_low, yend = y_high),
-                  color = "black", linewidth = 0.9, inherit.aes = FALSE) +
+     geom_segment(aes(x = x_pos+0.3, xend = x_pos+0.3, y = y_low, yend = y_high),
+                  color = "black", linewidth = 0.6, inherit.aes = FALSE) +
+     #Complete with short horizontal segments to make the bar look nicer
+     geom_segment(aes(x = x_pos+0.3, xend = x_pos+0.2, y = y_low, yend = y_low),
+                  color = "black", linewidth = 0.6, inherit.aes = FALSE) +
+     geom_segment(aes(x = x_pos+0.3, xend = x_pos+0.2, y = y_high, yend = y_high),
+                  color = "black", linewidth = 0.6, inherit.aes = FALSE) +
      # Add significance annotation on the right side
-     annotate("text", x = x_pos + signifPositionShift, y = (y_low + y_high) / 2, label = signifAnnotation, size = signifSize)
+     annotate("text", x = x_pos + 0.3+ signifPositionShift, y = (y_low + y_high) / 2, label = signifAnnotation, size = signifSize)
  }
   return(plot)
 }
@@ -570,18 +577,21 @@ weightPlot <- function(df, percentage = FALSE, diet_only = FALSE, abxExp = FALSE
   }
   
   plot <- df %>%
-    ggplot(aes(x = nbrDaysStart+time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = if(diet_only) {diet} else {gg_group})) +
-    stat_summary(aes(group = if(diet_only) {diet} else {gg_group}), fun = "mean", geom = "point", size = 3) +
-    stat_summary(fun = "mean", geom = "line", aes(group = if(diet_only) {diet} else {gg_group}), size = 1) + # , linetype = ifelse(diet_only, "solid", ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water"))
-    stat_summary(fun.data="mean_se", geom="errorbar", width=1, aes(group = if(diet_only) {diet} else {gg_group}, color = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
+    ggplot(aes(x = nbrDaysStart+time_numeric, y = if(percentage) { weight_pct_change } else { weight }, color = if(diet_only) {diet} else {gg_group}, fill = if(diet_only) {diet} else {gg_group})) +
+    stat_summary(fun.data="mean_se", geom="errorbar", width=2, aes(group = if(diet_only) {diet} else {gg_group}, color = if(diet_only) {diet} else {gg_group})) + #adding SEM error bars
+    stat_summary(fun = "mean", geom = "line", aes(group = if(diet_only) {diet} else {gg_group}), size = 0.6) + # , linetype = ifelse(diet_only, "solid", ifelse(grepl("dss", gg_group, ignore.case = TRUE), "DSS", "Water"))
+    stat_summary(aes(group = if(diet_only) {diet} else {gg_group}), fun = "mean", geom = "point", size = 2, shape = 21, color = "black") +
+
     labs(title = title,
          x = "Time (days)",
-         y = if(percentage) {"Weight % change"} else {"Weight (g)"},
+         y = if(percentage) {"Weight % change"} else {"g"},
          color = "Diet") +
     scale_x_continuous(breaks = seq(0+nbrDaysStart, max(df$time_numeric)+nbrDaysStart, by = 10))+
     scale_color_manual(values = if(diet_only) {custom_colors_1} else { if(abxExp) {custom_colors_4} else {custom_colors_2}},
                        labels = if(diet_only) {c("50 ppm", "500 ppm")} else {legendLabels})+
-    guides(shape = 'none')+
+    scale_fill_manual(values = if(diet_only) {custom_colors_1} else { if(abxExp) {custom_colors_4} else {custom_colors_2}},
+                       labels = if(diet_only) {c("50 ppm", "500 ppm")} else {legendLabels})+
+    guides(shape = 'none', fill = "none")+
     my_theme()
   
   return(plot)
@@ -614,7 +624,7 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
     responseVariable <- "std_spleen_weigth"
   }else if(organ == "colon"){
     plotTitle <- "Colon length measures"
-    yAxisLabel <- "Colon length (cm)"
+    yAxisLabel <- "cm"
     responseVariable <- "colon_length"
   }
   else if(organ == "colon_nrm"){
@@ -630,17 +640,31 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
   }
   
   # Plot with mean points
-  plot <- ggplot(data = df, aes(x = gg_group,  y = !!sym(responseVariable), color = gg_group)) +
-          geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-          stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
-          stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
-          stat_summary(fun.data="mean_se", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
+  plot <- ggplot(data = df, aes(x = gg_group,  y = !!sym(responseVariable), color = gg_group, fill = gg_group, shape = treatment)) +
+    
+    geom_point(position = position_jitter(width = 0.2),
+               color = "black", inherit.aes = FALSE,
+               mapping = aes(x = gg_group,  y = !!sym(responseVariable), fill = gg_group, shape = treatment)) +
+    
+    stat_summary(fun.data="mean_se", geom="errorbar", width=0.3, size = 0.6, 
+                 mapping = aes(x = gg_group,  y = !!sym(responseVariable), color = gg_group), 
+                 inherit.aes = FALSE) + #adding SEM error bars
+    
+    stat_summary(fun="mean", geom = "segment",
+                 mapping=aes(xend=..x..-0.25, yend=..y..,x = gg_group,  y = !!sym(responseVariable)),
+                 color = "black", size = 0.5, inherit.aes = FALSE)+ #adding horizontal bars representing means
+    
+    stat_summary(fun="mean", geom = "segment", 
+                 mapping=aes(xend=..x..+0.25, yend=..y..,x = gg_group,  y = !!sym(responseVariable)),
+                 color = "black", size = 0.5, inherit.aes = FALSE)+ 
           labs(title = plotTitle,
                x = "",
                y = yAxisLabel,
                color = "")+ 
           scale_color_manual(values = if(abxExp) {custom_colors_4} else {custom_colors_2})+
-          scale_x_discrete(labels = legendLabels)+
+          scale_fill_manual(values = if(abxExp) {custom_colors_4} else {custom_colors_2})+
+          scale_shape_manual(values = c(21,22))+
+    
           my_theme()+
     theme(legend.position = "none")+
           ylim(0, max(df[[responseVariable]])+1/4*max(df[[responseVariable]])+upper_margin)
@@ -673,7 +697,7 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
             y_position = max(df[[responseVariable]]), #
             tip_length = 0,
             color = "black",
-            size = 0.8,
+            size = 0.4,
             textsize = 4,
             margin_top = 0.1, # Moves the top according to this value
             vjust = 0,
@@ -682,10 +706,10 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
     }else{
       
       comparisons_list <- list(
-        c("50 water", "500 water"),
-        c("50 dss", "500 dss"),
-        c("50 water", "50 dss"),
-        c("500 water", "500 dss")
+        c("50:Water", "500:Water"),
+        c("50:DSS", "500:DSS"),
+        c("50:Water", "50:DSS"),
+        c("500:Water", "500:DSS")
       )
       
       y_positions <- c(
@@ -704,7 +728,7 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
             y_position = y_positions[i],
             tip_length = 0.1,
             color = "black",
-            size = 0.8,
+            size = 0.4,
             textsize = text_sizes[i],
             margin_top = 0.1,
             vjust = 0
@@ -719,22 +743,37 @@ dissecBoxplot <- function(df, organ, abxExp = FALSE, stats = TRUE, test_results 
 }
 
 #Function for ior iron measurements, gg_group must be a factor and ordered, diet must be as character
-ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
+ironBoxplot <- function(df, measure, group, shape, title = "", y_axis_title = "", custom_colors,
                         stats = TRUE, test_results = NULL, text_sizes = c(5,5,5,5),
-                        upper_margin = 0, all.ns = FALSE){
+                        upper_margin = 0, all.ns = FALSE, vjustList = c(0,0,0,0)){
   
   #Plot with mean points
   plot <- df %>%
-    ggplot(aes(x = !!sym(group),  y = !!sym(measure), color = !!sym(group))) +
-    geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.75), alpha = 0.5) +
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..-0.25, yend=..y..), color = "black", size = 1)+ #adding horizontal bars representing means
-    stat_summary(fun="mean", geom = "segment", mapping=aes(xend=..x..+0.25, yend=..y..), color = "black", size = 1)+ 
-    stat_summary(fun.data="mean_se", geom="errorbar", width=0.2, size = 0.7) + #adding SEM error bars
+    ggplot(aes(x = !!sym(group),  y = !!sym(measure), color = !!sym(group), fill = !!sym(group), shape = !!sym(shape))) +
+    
+    geom_point(position = position_jitter(width = 0.2),
+               color = "black", inherit.aes = FALSE,
+               mapping = aes(x = !!sym(group),  y = !!sym(measure), fill = !!sym(group), shape = !!sym(shape))) +
+    
+    stat_summary(fun.data="mean_se", geom="errorbar", width=0.3, size = 0.6, 
+                 mapping = aes(x = !!sym(group),  y = !!sym(measure), color = !!sym(group)), 
+                 inherit.aes = FALSE) + #adding SEM error bars
+    
+    stat_summary(fun="mean", geom = "segment",
+                 mapping=aes(xend=..x..-0.25, yend=..y..,x = !!sym(group),  y = !!sym(measure)),
+                 color = "black", size = 0.5, inherit.aes = FALSE)+ #adding horizontal bars representing means
+    
+    stat_summary(fun="mean", geom = "segment", 
+                 mapping=aes(xend=..x..+0.25, yend=..y..,x = !!sym(group),  y = !!sym(measure)),
+                 color = "black", size = 0.5, inherit.aes = FALSE)+ 
+    
     labs(title = title,
          y = y_axis_title,
          x = "",
          color = "Diet")+ 
     scale_color_manual(values = custom_colors)+
+    scale_fill_manual(values = custom_colors)+
+    scale_shape_manual(values = c(21,22))+
     my_theme()+
     theme(legend.position = "none")+
     ylim(0,max(df[[measure]])+1/3*max(df[[measure]])+upper_margin)
@@ -754,7 +793,7 @@ ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
           y_position = max(df[[measure]]), #
           tip_length = 0,
           color = "black",
-          size = 0.8,
+          size = 0.4,
           textsize = 4,
           margin_top = 0.1, # Moves the top according to this value
           vjust = 0,
@@ -785,10 +824,10 @@ ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
                 y_position = y_positions[i],
                 tip_length = 0.05,
                 color = "black",
-                size = 0.8,
+                size = 0.4,
                 textsize = text_sizes[i],
                 margin_top = 0.1,
-                vjust = 0)}
+                vjust = vjustList[i])}
           }
           
           else{
@@ -797,9 +836,9 @@ ironBoxplot <- function(df, measure, group, title, y_axis_title, custom_colors,
             comparisons = list(c(groups[1],groups[2])),
             annotations = test_results,
             y_position = max(df[[measure]]), 
-            tip_length = 0,
+            tip_length = 0.05,
             color = "black",
-            size = 0.8,
+            size = 0.4,
             textsize = text_sizes,
             margin_top = 0.1, # Moves the top according to this value
             vjust = 0,

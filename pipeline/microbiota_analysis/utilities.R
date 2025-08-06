@@ -183,19 +183,20 @@ groupSameSpecies <- function(ps){
 
 # Ensure consistent themes across all graphs generated with ggplot2
 my_theme <- function() {
-  theme_minimal(base_size = 12) +
+  theme_minimal(base_size = 10) +
     theme(
-      plot.title = element_text(size = 16, face = "bold"),
+      plot.title = element_text(size = 10, face = "bold"),
       panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
       axis.text = element_text(color = "black", face = "bold"),
-      axis.title = element_text(size = 14, face = "bold"),
-      axis.line = element_line(color = "black", size = 1),
+      axis.title = element_text(size = 10, face = "bold"),
+      axis.line = element_line(color = "black", size = 0.5),
       legend.text = element_text(face = "bold"),
       legend.title = element_text(face = "bold"),
       legend.position = "right",
       legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5),
-      axis.ticks.x = element_line()
+      axis.ticks.x = element_line(),
+      axis.ticks.y = element_line()
     )
 }
 

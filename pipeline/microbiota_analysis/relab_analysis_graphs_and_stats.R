@@ -1643,7 +1643,6 @@ volcanoPlot2Groups <- function(ps, deseq, varToCompare, taxa = "Species", thresh
   #Save results at single timepoint
   res <- results(deseq, name = resultsNames(deseq)[2])
 
-  
   #Save significance table
   sigtab <- cbind(as(res, "data.frame"), as(tax_table(ps)[rownames(res),], "matrix"))
   
@@ -1675,6 +1674,94 @@ volcanoPlot2Groups <- function(ps, deseq, varToCompare, taxa = "Species", thresh
     legendPosition = 'right',
     title = "50 ppm vs 500 ppm at T35",
     subtitle = taxa
+  )
+  
+}
+
+volcanoPlot2GroupsMultifactorDesign <- function(ps, deseq, varToCompare, taxa = "Species", threshold = 0.05, FCcutoff = 1,
+                                                customColors, FDR = TRUE, includeUnknownSpecies = TRUE, selectedComparison = 1,
+                                                title = ""){
+  
+  #Partition results for specific pairwise comparaisons
+  res_subset1 <- results(deseq, contrast = list(resultsNames(deseq)[3])) #wt putrescine vs vehicle // 50vs500 ctrl
+  sigtab_1 <- cbind(as(res_subset1, "data.frame"), as(tax_table(ps)[rownames(res_subset1), ], "matrix"))
+  sigtab_1$comparaison <- 1
+  
+  res_subset2 <- results(deseq, contrast = list(c(resultsNames(deseq)[3], resultsNames(deseq)[4]))) #il22 ko putrescine vs vehicle // 50vs500 dss
+  sigtab_2 <- cbind(as(res_subset2, "data.frame"), as(tax_table(ps)[rownames(res_subset2), ], "matrix"))
+  sigtab_2$comparaison <- 2
+  
+  res_subset3 <- results(deseq, contrast = list(resultsNames(deseq)[2])) #vehicle wt vs il22 ko // 50 ctrl vs 50 dss
+  sigtab_3 <- cbind(as(res_subset3, "data.frame"), as(tax_table(ps)[rownames(res_subset3), ], "matrix"))
+  sigtab_3$comparaison <- 3
+  
+  res_subset4 <- results(deseq, contrast = list(c(resultsNames(deseq)[2], resultsNames(deseq)[4]))) #putrescine wt vs il22 ko // 500 ctrl vs 500 dss
+  sigtab_4 <- cbind(as(res_subset4, "data.frame"), as(tax_table(ps)[rownames(res_subset4), ], "matrix"))
+  sigtab_4$comparaison <- 4
+  
+  # Append the sigtabs together
+  sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4) 
+  
+  # Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
+  sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))
+  
+  # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  if(taxa == "Species" & includeUnknownSpecies){
+    sigtab[[taxa]][is.na(sigtab[[taxa]])] <- "unknown" # If includeUnknownSpecies, keep ASVs for which there was Genus tax annotation even if no species annotation
+    sigtab <- sigtab[!is.na(sigtab[["Genus"]]),]
+  }else{
+    sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  }
+  
+  # If taxa == species prepare names that are displayed 
+  if(taxa == "Species"){
+    sigtab[[taxa]] <- paste(sigtab[["Genus"]],sigtab[[taxa]], sep = "\n")
+  }
+  
+  # FDR corrected pvalues or uncorrected pvalues
+  if(FDR){
+    pvalue <- as.character("padj")
+  }else{
+    pvalue <- as.character("pvalue")
+  }
+  
+  # Keeping only ASVs for which they were taxa found at the taxonomical level of interest
+  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  
+  # Replacing NA padj by 1 (they correspond to this anyways)
+  sigtab$padj[is.na(sigtab$padj)] <- 1
+  
+  # Select values of interest
+  sigtab <- sigtab[sigtab$comparaison == selectedComparison,]
+  
+  res_df <- sigtab %>%
+    mutate(significance = case_when(
+      padj < threshold & log2FoldChange >= FCcutoff  ~ "Up",
+      padj < threshold & log2FoldChange <= -FCcutoff ~ "Down",
+      TRUE                               ~ "NotSig"
+    ))
+  
+  EnhancedVolcano(
+    res_df,
+    lab = res_df[[taxa]],
+    x = 'log2FoldChange',
+    y = 'padj',
+    pCutoff = threshold,
+    FCcutoff = FCcutoff,
+    xlab = bquote(bold(~Log[2]~ 'fold change')),
+    ylab = bquote(bold(~-Log[10]~ 'adjusted p')),
+    legendPosition = 'bottom',
+    title = title,
+    subtitle = NULL,
+    ylim = c(NA,max(-log10(res_df$padj))),
+    xlim = c(-max(abs(res_df$log2FoldChange)),max(abs(res_df$log2FoldChange))),
+    caption = NULL,
+    labSize = 2,
+    legendLabels = c("n.s.",bquote(bold(Log[2]~ 'FC')),"C",bquote(bold('p-value and'~Log[2]~ 'FC'))),
+    legendIconSize = 2
+
+    
+    
   )
   
 }
