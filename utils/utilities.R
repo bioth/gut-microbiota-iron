@@ -1,5 +1,4 @@
 # Utilities functions used accross different higher level functions
-
 #function to add SEM (1.96 for 95% confidence interval)
 mean_cl_normal <- function(x, mult = 1.96) { #mult is 1.96 for a 95% confidence interval
   # Calculate the mean of the input vector x
@@ -326,7 +325,6 @@ pairwise_permuco2 <- function(df, response_var, var1, var2, np = 5000, seed = NU
   dplyr::bind_rows(results) %>%
     dplyr::mutate(p_adj = p.adjust(p_value, method = "BH"))
 }
-
 
 # Function that takes last layer(s) added and put it in the back
 # Move the last nLayers to the back (bottom) of the plot's z-order

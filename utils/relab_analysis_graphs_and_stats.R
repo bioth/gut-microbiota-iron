@@ -1,4 +1,4 @@
-
+# Deprecated
 relabSpeciesPairwise <- function(ps, deseq, measure = "log2fold", gg_group, pairs, threshold = 0.01, customColors, path){
 
   #Get normalized counts from DESeq2 object
@@ -168,6 +168,7 @@ relabSpeciesPairwise <- function(ps, deseq, measure = "log2fold", gg_group, pair
   }
 }
 
+# Deprecated
 relabSpeciesTimePoint <- function(ps, deseq, measure = "log2fold", timeVariable, varToCompare, threshold = 0.01, customColors, path){
   
   #Get normalized counts from DESeq2 object
@@ -328,6 +329,7 @@ relabSpeciesTimePoint <- function(ps, deseq, measure = "log2fold", timeVariable,
   }
 }
 
+# Deprecated
 relabSpeciesTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCompare, threshold = 0.01, customColors, path){
   
   #Get normalized counts from DESeq2 object
@@ -491,7 +493,7 @@ relabSpeciesTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, 
     
 }
 
-#Can creates relative abundance graph for a single varToCompare and for several time points, works at any taxonomic level
+# Can create relative abundance graph for a single varToCompare and for several time points, works at any taxonomic level
 relabTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, customColors, path){
   
   #Creates directory for taxonomic level
@@ -675,7 +677,7 @@ relabTimeline <- function(ps, deseq, measure = "log2fold", timeVariable, varToCo
   }
 }
 
-#For design with 4 groups based on 2 conditions - this the latest version used
+# For design with 4 groups based on 2 conditions - this the latest version used
 # gg_group must be order with correct order prior to that (as a factor)
 relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, FDR = TRUE,
                         returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path, single_factor_design = FALSE,
@@ -999,8 +1001,8 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
     
 }
 
-#For design with 4 groups based on 2 conditions - this the latest version used
-#gg_group must be order with correct order prior to that (as a factor)
+# For design with 4 groups based on 2 conditions - this the latest version used
+# gg_group must be order with correct order prior to that (as a factor)
 relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Species", threshold = 0.01, displayPvalue = FALSE, returnSigAsvs = FALSE, normalizeCounts = FALSE, customColors, pairs, path){
   
   #Creates directory for taxonomic level
@@ -1214,7 +1216,7 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
   
 }
 
-#Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
+# Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
 relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE, includeUnknownSpecies = TRUE,
                                  LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, blockFactor = FALSE, displaySampleID = FALSE){
   
@@ -1439,7 +1441,7 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   }
 }
 
-#Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint, works with design "~ factor", and is done separately for each week
+# Produces the timeline with stats calculated with same fashion as for relabSingleTimepoint, works with design "~ factor", and is done separately for each week
 relabTimelineRevised <- function(ps, measure = "log2fold", timeVariable, varToCompare, taxa = "Species", threshold = 0.01, returnSigAsvs = FALSE, customColors, path, displayIndivValues = FALSE, dim = c(5,5)){
 
   #Creates directory for taxonomic level
@@ -1824,7 +1826,6 @@ asvRelAbDistributionTimeline <- function(ps, asv, taxon, group, time, custom_col
   print(p+my_theme())
   
 }
-
 
 # Returns graph of ASV relative abundance, use a ps at timepoint of interest
 # with annotations at the species level and choose asv of interest

@@ -427,7 +427,7 @@ plot_timeline_2_groups <- function(
 }
 
 
-# Function that creates a timeline for gut microbiota relative abundance composition - specific to a main_level taxa and its assoicated sub_level taxons, multiple graphs
+# Saves into a folder graphs of relative abundance overtime, one for each main_taxa chosen, with sub_taxa abundance
 plot_timeline_taxa <- function(
     ps_object,
     exp_group, # must be as factor

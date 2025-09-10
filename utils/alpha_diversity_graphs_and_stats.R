@@ -2,7 +2,7 @@ library(ggplot2)
 library(phyloseq)
 library(dplyr)
 
-#requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
+# requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
 alphaDiversityGgGroup <- function(ps, path, group){
   
   #Save name of path where graphs will be saved
@@ -75,7 +75,7 @@ alphaDiversityGgGroup <- function(ps, path, group){
     }}
 }
 
-#requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
+# requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
 alphaDiversityTimeSeries<- function(ps, path, time, group){
   
   #Save name of path where graphs will be saved
@@ -148,7 +148,7 @@ alphaDiversityTimeSeries<- function(ps, path, time, group){
     }}
 }
 
-#Plots alpha diversity but for all groups combinaisons
+# Plots alpha diversity but for all groups combinaisons
 alphaDiversityGgGroup2 <- function(ps, path, gg_group, statPairs = NA, customColors){ #var1, var2
   
   #Save name of path where graphs will be saved
@@ -266,7 +266,7 @@ alphaDiversityGgGroup2 <- function(ps, path, gg_group, statPairs = NA, customCol
       
 }
 
-#requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
+# requires a ps object, with metadata present, gg_group annotated as a factor with right group order. Requires path where graph is saved
 alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE, saveFig = FALSE){
   
   # Empty list for graphs and data

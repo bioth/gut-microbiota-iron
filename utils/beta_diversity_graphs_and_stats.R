@@ -1,5 +1,3 @@
-#Revised version, not doing separate distance calculations and adding path option
-
 #Beta diversity analysis for different timepoints. You must provide a filtered ps object, the timeVariable and the varToCompare (present in sample_data)
 betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, customColors, font, dim = c(6,6), path){
   
@@ -87,7 +85,6 @@ betaDiversityTimepoint <- function(ps, timeVariable, varToCompare, distMethod, c
     
   }
 }
-
 
 #Beta diversity analysis for pairwise comparaisons, provide filtered ps object and pairs to compare
 #WARNING: Formula assumes that the id of samples is named "sample_id" and is not flexible contrary to gg_group variable
@@ -209,115 +206,8 @@ betaDiversityPairwise <- function(ps, gg_group, pairs, distMethod, customColors,
   }
 }
 
-
 #Beta diversity analysis for all groups
 #WARNING: Formula assumes that the id of samples is named "sample_id" and is not flexible contrary to gg_group variable
-# betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displayPValue = TRUE, dim = c(6,6), transform = FALSE, variancePlot = FALSE, path){
-#   
-#   #Transform abundance into relative abundances or log_transformed values
-#   if(transform == "rel_ab"){
-#     ps <- transformCounts(ps, transformation = "rel_ab")
-#   } else if(transform == "log"){
-#     ps <- transformCounts(ps, transformation = "log", log_base = 10)
-#   }
-#   
-#   #calculating distance matrix
-#   dist <- phyloseq::distance(ps, method = distMethod)
-#   
-#   #Save distance method variable as string for titles
-#   if(distMethod == "bray"){
-#     distCharacter = "Bray-Curtis"
-#   }
-#   else if (distMethod == "wunifrac"){
-#     distCharacter = "Weighted Unifrac"
-#   }
-#   
-#   #Perform PCoA
-#   pcoa_results <- ordinate(ps, method = "PCoA", distance = dist)
-#   colnames(pcoa_results$vectors) <- gsub("Axis.", "PC", colnames(pcoa_results$vectors)) #Replace colnames "Axis.n" by "PCn"
-#   
-#   #Plot portion of variance explained by each PCs
-#   if(variancePlot){
-#     
-#     # Extract eigenvalues from PCoA results
-#     variance_explained <- pcoa_results$values$Relative_eig*100
-#     
-#     # Create a data frame for plotting
-#     variance_df <- data.frame(PC = paste0("PC", 1:length(variance_explained)),
-#                               VarianceExplained = variance_explained)
-#     
-#     #Display only for the first 5
-#     variance_df <- variance_df[1:5,]
-#     
-#     
-#     # Plot the variance explained by each principal component
-#     variance_plot <- ggplot(variance_df, aes(x = PC, y = VarianceExplained)) +
-#       geom_point() +
-#       geom_line(group = 1)+
-#       theme_minimal() +
-#       labs(title = paste("Variance Explained by Principal Components\n(", distCharacter, " distance)", sep = ""),
-#            x = "Principal Component", y = "Variance Explained (%)") +
-#       ylim(0,NA)+
-#       theme(plot.title = element_text(size = 14, face = "bold"),
-#             axis.title.x = element_text(size = 12, face = "bold"),
-#             axis.title.y = element_text(size = 12, face = "bold"),
-#             axis.text.x = element_text(size = 12, face = "bold"),
-#             axis.text.y = element_text(size = 12, face = "bold"))
-#     
-#     # Save the variance explained plot
-#     ggsave(plot = variance_plot, filename = paste(path, distMethod, "_variance_explained.png", sep = ""), dpi = 300, height = 6, width = 6, bg = 'white')
-#     
-#   }
-#   
-#   #Statistics, and save table in folder
-#   test.adonis <- adonis(as.formula(paste("dist ~", gg_group)), data = data.frame(sample_data(ps)))
-#   test.adonis <- as.data.frame(test.adonis$aov.tab)
-#   p_value <- test.adonis[["Pr(>F)"]][1]  #Extract p-value from adonis result
-#   print(test.adonis)
-#   write.table(test.adonis, file = paste(path,distMethod,"_all_groups.tsv", sep = ""), col.names = NA, row.names = TRUE, sep = '\t', quote = FALSE)
-#   
-#   #Ordination plot
-#   p <- plot_ordination(ps, pcoa_results, type = "samples", 
-#                        color = gg_group) + 
-#     theme_classic() +
-#     theme(strip.background = element_blank())+
-#     stat_ellipse(aes(group = !!sym(gg_group)),      # Add ellipses grouping points by genotype
-#                  type = "t",  # t-distribution for better fit
-#                  level = 0.95,  # Confidence level for the ellipse                     
-#                  geom = "polygon", alpha = 0)+
-#     labs(title = paste("PCoA of", distCharacter, "distance matrix.", sep = " ")) +
-#     scale_color_manual(values = customColors)+
-#     labs(color = "Groups")+
-#     theme(aspect.ratio = 1)+ #Scale the x and y axis the same 
-#     
-#     theme(
-#       plot.title = element_text(size = 12, face = "bold", family = font),  # Adjust title font size and style
-#       axis.title.x = element_text(size = 12, face = "bold", family = font),
-#       axis.title.y = element_text(size = 12, face = "bold", family = font),# Adjust y-axis label font size and style          axis.title.y = element_text(size = 14, face = "bold"),  # Adjust y-axis label font size and style
-#       axis.text.x = element_text(size = 12, face = "bold", family = font, color = "black"),  # Adjust x-axis tick label font size
-#       axis.text.y = element_text(size = 12, face = "bold", family = font, color = "black"),  # Adjust y-axis tick label font size
-#       legend.title = element_text(size = 10, face = "bold", family = font),  # Remove legend title
-#       legend.text = element_text(size = 9, face = "bold", family = font),  # Adjust legend font size
-#       panel.grid.major = element_blank(),  # Add major grid lines
-#       panel.grid.minor = element_blank(),  # Remove minor grid lines
-#       axis.line = element_line(color = "black", size = 1))+ # Include axis lines  # Include axis bars
-#     
-#     # Add the p-value under the legend
-#     if(displayPValue){
-#       annotate("text", 
-#                x = Inf, y = -Inf,  # Position at bottom right, under the legend
-#                label = paste("p =", round(p_value, 3)), 
-#                hjust = 1, vjust = -0.5, 
-#                size = 4, color = "black", 
-#                fontface = "bold",
-#                family = font)  # Make the entire text bold
-#     }
-#   
-#   ggsave(plot = p, filename = paste(path,distMethod,"_all_groups.png", sep = ""), dpi = 300, height = dim[1], width = dim[2], bg = 'white')
-#   
-# }
-
-
 betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displayPValue = TRUE, dim = c(6,6), transform = FALSE, variancePlot = FALSE, display3PCs = FALSE, path){
   
   # Transform abundance into relative abundances or log-transformed values
@@ -688,7 +578,6 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     }
   }
 }
-
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
