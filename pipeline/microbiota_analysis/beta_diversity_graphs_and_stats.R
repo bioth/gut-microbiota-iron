@@ -442,11 +442,13 @@ betaDiversityAll <- function(ps, gg_group, distMethod, customColors, font, displ
 
 #Beta diversity analysis for different timepoints, and for design with multiple groups. 
 #You must provide a filtered ps object, the timeVariable and the varToCompare and fac1 fac2 (present in sample_data) must be ordered factors
-betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, distMethod,
+betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCompare, shape, distMethod,
                                            transform = "none", displaySampleIDs = FALSE, customColors,
                                            dim = c(6,6), font, path, additionnalAes = NULL, displayPValue = FALSE,
                                            combineGraphs = FALSE, returnFig = FALSE, customTitles = NULL,
-                                           pairwiseAdonis = TRUE, hideLegend = FALSE, positionPvalue = "left"){
+                                           pairwiseAdonis = TRUE, hideLegend = FALSE, positionPvalue = "left",
+                                           printPairwiseSigtable = FALSE, pvalueToDisplay = NULL, selectShape = NULL, subGraph = FALSE,
+                                           size =2, stroke=0.3, selectedPairwise = NULL){
   
   #Transform abundance into relative abundances or log_transformed values
   if(transform == "rel_ab"){
@@ -478,6 +480,16 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     
     #Creates subset for each different timepoint
     ps_subset <- prune_samples(sample_data(ps)[[timeVariable]] == timepoint, ps)
+    
+    if(!is.null(selectedPairwise)){
+      
+      #calculating distance matrix
+      dist_subset <- as.dist(as.matrix(dist_subset)[sample_data(ps_subset)[[sample_id]][sample_data(ps_subset)[[varToCompare]] %in% selectedPairwise],sample_data(ps_subset)[[sample_id]][sample_data(ps_subset)[[varToCompare]] %in% selectedPairwise]])
+      
+      #Creates subset for each different timepoint
+      ps_subset <- prune_samples(sample_data(ps_subset)[[varToCompare]]  %in% selectedPairwise, ps_subset)
+      
+    }
     
     #Define dir path where graphs and stats are gonna be saved
     dir <- paste(path,"week_",as.character(timepoint), sep = "")
@@ -516,6 +528,11 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
         # Add the result to the data frame
         stats_res <- rbind(stats_res, data.frame(comparison = comparison_name, pvalue = p_value))
       }
+      
+      if(printPairwiseSigtable){
+        print(stats_res)
+      }
+      
     }else{
       test.adonis <- adonis2(as.formula(paste("dist_subset ~", varToCompare)), data = data.frame(sample_data(ps_subset)))
       stats_res <- as.data.frame(test.adonis)
@@ -543,19 +560,48 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     pcoa_results <- ordinate(ps_subset, method = "PCoA", distance = dist_subset)
     colnames(pcoa_results$vectors) <- gsub("Axis.", "PC", colnames(pcoa_results$vectors)) #Replace colnames "Axis.n" by "PCn"
     
+    # Shapes scale
+    if (is.null(selectShape)) {
+      shapesVal <- c(21, 22)
+    } else {
+      shapesVal <- selectShape
+    }
+    
     #Ordination plot
     p <- plot_ordination(ps_subset, pcoa_results, type = "samples", 
-                         color = varToCompare) + 
+                         color = NULL, shape = NULL) + 
       theme_classic() +
       theme(strip.background = element_blank())+
-      stat_ellipse(aes(group = !!sym(varToCompare)),      # Add ellipses grouping points by genotype
+      
+      annotate("rect", # Cover up rectangle to cover points from plot_ordination
+                   xmin = -Inf, xmax = Inf,   # x range to cover
+                   ymin = -Inf, ymax = Inf, # y range to cover
+                   fill = "white",       # or your plot bg color
+                   color = NA)+
+      
+      # Replace sample points with custom ones
+      geom_point(
+        aes(x = PC1, y = PC2,
+            fill = !!sym(varToCompare),
+            shape = !!sym(shape)),
+        color = "black",
+        size = size,
+        stroke = stroke,
+        inherit.aes = FALSE
+      )+
+      
+      stat_ellipse(aes(group = !!sym(varToCompare), color = !!sym(varToCompare)),      # Add ellipses grouping points by genotype
                    type = "t",  # t-distribution for better fit
                    level = 0.95,  # Confidence level for the ellipse                     
                    geom = "polygon", alpha = 0)+
+      
       labs(title = ifelse(!is.null(customTitles),customTitles[[timepoint]],paste0("Timepoint T", timepoint))) +
+      scale_fill_manual(values = customColors)+
       scale_color_manual(values = customColors)+
+      scale_shape_manual(values = shapesVal)+
       # labs(color = "Group")+
       labs(color = "Diet")+
+      guides(shape = "none", fill = "none")+
       theme(aspect.ratio = 1) + # Scale the x and y axis the same +
       theme(
         plot.title = element_text(size = 16, face = "bold", family = font, hjust = 0.5),  # Adjust title font size and style
@@ -584,23 +630,34 @@ betaDiversityTimepoint2Factors <- function(ps, sample_id, timeVariable, varToCom
     
     # Add the p-value under the legend
     if(displayPValue){
+      if(!is.null(pvalueToDisplay)){
+        pvalue <- pvalueToDisplay
+      }
+      if(pvalue<0.05 & pvalue > 0.01){
+        pvalue <- 0.05
+      }else if(pvalue<0.01 & pvalue > 0.001){
+        pvalue <- 0.01
+      }else if(pvalue == 0.001){
+        pvalue <- 0.001
+      }
       if(positionPvalue == "right"){
+
         p <- p + annotate("text", 
                           x = Inf, y = -Inf,
-                          label = ifelse(pvalue < 0.05, sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue) , "bold('n.s.')"),
+                          label = ifelse(pvalue > 0.05, "bold('n.s.')", sprintf("bolditalic(P)~'<'~bold('%.1g')", pvalue)),
                           parse = TRUE,
                           hjust = 1, vjust = -0.5,
-                          size = ifelse(pvalue < 0.05, 5, 6),
+                          size = ifelse(subGraph,ifelse(pvalue < 0.05, 2.5, 3),ifelse(pvalue < 0.05, 5, 6)),
                           color = "black",
                           family = font
         )
       }else if(positionPvalue == "left"){
         p <- p + annotate("text", 
                           x = -Inf, y = -Inf,
-                          label = ifelse(pvalue < 0.05, sprintf("bolditalic(P)~'='~bold('%.3f')", pvalue) , "bold('n.s.')"),
+                          label = ifelse(pvalue > 0.05, "bold('n.s.')", sprintf("bolditalic(P)~'<'~bold('%.1g')", pvalue)),
                           parse = TRUE,
                           hjust = -0.1, vjust = -0.8,
-                          size = ifelse(pvalue < 0.05, 5, 6),
+                          size =ifelse(subGraph,ifelse(pvalue < 0.05, 2.5, 3),ifelse(pvalue < 0.05, 5, 6)),
                           color = "black",
                           family = font
                           )
@@ -656,7 +713,6 @@ betaDiversityTimepoint2FactorsRDA <- function(ps, sample_id, timeVariable, varTo
     # Hellinger transform
     otu_table <- t(decostand(otu_table(ps_subset), method = "hellinger"))
 
-    
     # Extract metadata
     metadata <- data.frame(sample_data(ps_subset))
     model_formula <- as.formula(paste0("otu_table ~", formula)) 

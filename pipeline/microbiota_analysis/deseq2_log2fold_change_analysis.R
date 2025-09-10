@@ -138,7 +138,7 @@ log2foldChangeGraphMultipleGroups <- function(ps, deseq, gg_group, taxa = "Speci
   }
 }
 
-log2foldChangeGraphSingleTimepoint <- function(ps, deseq, gg_group, timePoint, taxa = "Species", threshold = 0.05, FDR = TRUE,
+log2foldChangeGraphSingleTimepoint <- function(ps, deseq, gg_group, timePoint, taxa = "Species", threshold = 0.05, FDR = TRUE, includeUnknownSpecies = TRUE,
                                               customColors, customPhylaColors = NULL, path, single_factor_design = FALSE,additionnalAes = NULL,
                                               dim = c(6,6)){
   
@@ -156,7 +156,12 @@ log2foldChangeGraphSingleTimepoint <- function(ps, deseq, gg_group, timePoint, t
   sigtab["asv"] <- rownames(sigtab)
   
   #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
-  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  if(taxa == "Species" & includeUnknownSpecies){
+    sigtab[[taxa]][is.na(sigtab[[taxa]])] <- "Unknown" # If includeUnknownSpecies, keep ASVs for which there was Genus tax annotation even if no species annotation
+    sigtab <- sigtab[!is.na(sigtab[["Genus"]]),]
+  }else{
+    sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  }
   
   if(FDR){
     pvalue <- as.character("padj")

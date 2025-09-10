@@ -315,7 +315,7 @@ alphaDiversityTimeSeries2<- function(ps, path, time, group, writeData = TRUE, sa
 }
 
 # Plots alpha diversity as timeline, time must numeric and group must be a factor
-alphaDiversityTimeline <- function(ps, time, group, custom_colors, semRibbons = TRUE){
+alphaDiversityTimeline <- function(ps, time, group, shape, custom_colors, semRibbons = TRUE){
   
   # measures <- c("Shannon", "Simpson","InvSimpson","Chao1","Observed")
   measures <- c("Chao1", "Shannon", "InvSimpson", "Observed")
@@ -331,12 +331,12 @@ alphaDiversityTimeline <- function(ps, time, group, custom_colors, semRibbons = 
   
   for(measure in measures){
     
-    p <- ggplot(data = alpha_data, aes(x = .data[[time]], y = .data[[measure]], group = .data[[group]], color = .data[[group]])) +
-      stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
-      stat_summary(fun = mean, geom = "point", size = 1, color = "black") +
-
+    p <- ggplot(data = alpha_data, aes(x = .data[[time]], y = .data[[measure]], group = .data[[group]], fill = .data[[group]], color = .data[[group]], shape = .data[[shape]])) +
+      stat_summary(fun = mean, geom = "line", linewidth = 0.6) +
+      stat_summary(fun = mean, geom = "point", size = 1.5, color = "black" ) +
       scale_color_manual(values = custom_colors)+
       scale_fill_manual(values = custom_colors)+
+      scale_shape_manual(values = c(21,22))+
       labs(x = "Time", y = measure, title = measure)+
       my_theme()
     
@@ -350,6 +350,45 @@ alphaDiversityTimeline <- function(ps, time, group, custom_colors, semRibbons = 
         aes(color = .data[[group]])
       )
     }
+    
+    # Append graph to graph list
+    graphs <- append(graphs, list(p))
+    
+  }
+  return(graphs)
+}
+
+# Plots alpha diversity as boxplots for each group, for a single timepoint
+alphaDiversityBoxplot <- function(ps, group, shape, custom_colors){
+  
+  # measures <- c("Shannon", "Simpson","InvSimpson","Chao1","Observed")
+  measures <- c("Chao1", "Shannon", "InvSimpson")
+  
+  #Estinate richness measures for dataset
+  alpha_data <- estimate_richness(ps, measures = measures)
+  
+  #Add sample metadata to richness dataframe
+  alpha_data <- cbind(as.data.frame(sample_data(ps)), alpha_data)
+  
+  # Empty list for graphs and data
+  graphs <- list()
+  
+  for(measure in measures){
+    
+    p <- ggplot(data = alpha_data, aes(x = !!sym(group), y = !!sym(measure), fill = !!sym(group), color = !!sym(group), shape = !!sym(shape))) +
+      geom_boxplot(inherit.aes = FALSE,
+                   mapping = aes(fill = !!sym(group), x = !!sym(group), y = !!sym(measure)),
+                   colour = "black", # crans
+                   alpha = 0.7)+ # transparence
+      
+      # stat_summary(fun = mean, geom = "", linewidth = 0.6) +
+      # stat_summary(fun = mean, geom = "point", size = 1.5, color = "black" ) +
+      scale_color_manual(values = custom_colors)+
+      scale_fill_manual(values = custom_colors)+
+      # scale_shape_manual(values = c(21,22))+
+      labs(x = "", y = "Index", title = measure, fill = NULL)+
+      guides(fill = "none", shape = "none")+
+      my_theme()
     
     # Append graph to graph list
     graphs <- append(graphs, list(p))

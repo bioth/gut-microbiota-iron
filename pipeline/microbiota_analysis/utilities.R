@@ -191,10 +191,29 @@ my_theme <- function() {
       axis.text = element_text(color = "black", face = "bold"),
       axis.title = element_text(size = 10, face = "bold"),
       axis.line = element_line(color = "black", size = 0.5),
+      legend.text = element_text(face = "bold", size = 7),
+      legend.title = element_text(face = "bold", size = 7),
+      legend.position = "right",
+      legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5),
+      axis.ticks.x = element_line(),
+      axis.ticks.y = element_line()
+    )
+}
+
+# Theme for small sub beta diversity plots
+theme_beta_d <- function() {
+  theme_minimal(base_size = 6) +
+    theme(
+      plot.title = element_text(size = 6, face = "bold"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = "black", face = "bold"),
+      axis.title = element_text(size = 6, face = "bold"),
+      axis.line = element_line(color = "black", size = 0.3),
       legend.text = element_text(face = "bold"),
       legend.title = element_text(face = "bold"),
       legend.position = "right",
-      legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.5),
+      legend.background = element_rect(color = "black", fill  = "white", linewidth = 0.3),
       axis.ticks.x = element_line(),
       axis.ticks.y = element_line()
     )
@@ -269,3 +288,57 @@ pairwise_permuco <- function(df, response_var, var1, var2, np = 5000) {
   
   return(results_df)
 }
+
+# Pairwise permutation tests on the interaction cells (permuco)
+# installs: install.packages("permuco"); also needs dplyr, tibble
+pairwise_permuco2 <- function(df, response_var, var1, var2, np = 5000, seed = NULL) {
+  if (!is.null(seed)) set.seed(seed)
+  
+  df <- df %>%
+    dplyr::mutate(
+      .group = interaction(.data[[var1]], .data[[var2]], sep = "_", drop = TRUE)
+    ) %>%
+    dplyr::filter(!is.na(.data[[response_var]]), !is.na(.group)) %>%
+    droplevels()
+  
+  lv <- levels(df$.group)
+  if (length(lv) < 2) stop("Fewer than 2 observed groups.")
+  
+  combs <- combn(lv, 2, simplify = FALSE)
+  
+  results <- lapply(combs, function(pair) {
+    df_sub <- dplyr::filter(df, .group %in% pair) %>% droplevels()
+    if (nlevels(df_sub$.group) < 2) return(NULL)
+    
+    fit <- permuco::aovperm(
+      stats::as.formula(paste(response_var, "~ .group")),
+      data = df_sub,
+      np = np
+    )
+    # permuco: p-values are in summary(fit)[, "Pr(>F)"]
+    print(summary(fit))
+    return(NULL)
+    pval <- as.data.frame(summary(fit))[1, "Pr(>F)"]
+    
+    tibble::tibble(group1 = pair[1], group2 = pair[2], p_value = pval)
+  })
+  
+  dplyr::bind_rows(results) %>%
+    dplyr::mutate(p_adj = p.adjust(p_value, method = "BH"))
+}
+
+
+# Function that takes last layer(s) added and put it in the back
+# Move the last nLayers to the back (bottom) of the plot's z-order
+putGgLastLayerBack <- function(p, nLayers = 1) {
+  stopifnot(inherits(p, "ggplot"))
+  L <- length(p$layers)
+  if (L == 0 || nLayers <= 0) return(p)
+  n <- min(nLayers, L)
+  
+  idx_keep <- seq_len(L - n)            # layers to stay on top
+  idx_move <- (L - n + 1L):L            # last n layers to move behind
+  p$layers <- c(p$layers[idx_move], p$layers[idx_keep])
+  p
+}
+

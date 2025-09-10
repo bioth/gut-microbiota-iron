@@ -826,6 +826,9 @@ relabGroups <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "Speci
   #Append the sigtabs together
   sigtab <- bind_rows(sigtab_1, sigtab_2, sigtab_3, sigtab_4) #sigtab_interaction
   
+  View(sigtab)
+  return(NULL)
+  
   #Add ASV variable col to sigtab (enables to store asv names, not only as rownames, because they will be changed when using rowbind)
   sigtab["asv"] <- gsub("\\..*", "", rownames(sigtab))
   
@@ -1212,7 +1215,7 @@ relabSingleGroup <- function(ps, deseq, measure = "log2fold", gg_group, taxa = "
 }
 
 #Revised function that does deseq analysis but only for one factor with two groups (ex: diet 50 vs 500)
-relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE,
+relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, timePoint, taxa = "Species", threshold = 0.01, FDR = TRUE, includeUnknownSpecies = TRUE,
                                  LDA = FALSE, customColors, path, additionnalAes = NULL, dim = c(6,6), displayPvalue = TRUE, blockFactor = FALSE, displaySampleID = FALSE){
   
   #Creates directory for taxonomic level
@@ -1236,7 +1239,12 @@ relabSingleTimepoint <- function(ps, deseq, measure = "log2fold", varToCompare, 
   sigtab["asv"] <- rownames(sigtab)
   
   #Keeping only ASVs for which they were taxa found at the taxonomical level of interest
-  sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  if(taxa == "Species" & includeUnknownSpecies){
+    sigtab[[taxa]][is.na(sigtab[[taxa]])] <- "Unknown" # If includeUnknownSpecies, keep ASVs for which there was Genus tax annotation even if no species annotation
+    sigtab <- sigtab[!is.na(sigtab[["Genus"]]),]
+  }else{
+    sigtab <- sigtab[!is.na(sigtab[[taxa]]),]
+  }
   
   if(FDR){
     pvalue <- as.character("padj")
@@ -1715,7 +1723,7 @@ volcanoPlot2GroupsMultifactorDesign <- function(ps, deseq, varToCompare, taxa = 
   
   # If taxa == species prepare names that are displayed 
   if(taxa == "Species"){
-    sigtab[[taxa]] <- paste(sigtab[["Genus"]],sigtab[[taxa]], sep = "\n")
+    sigtab[[taxa]] <- paste0(substring(sigtab[["Genus"]], first = 1, last = 1), ". ", sigtab[[taxa]])
   }
   
   # FDR corrected pvalues or uncorrected pvalues
@@ -1741,6 +1749,34 @@ volcanoPlot2GroupsMultifactorDesign <- function(ps, deseq, varToCompare, taxa = 
       TRUE                               ~ "NotSig"
     ))
   
+  # Create a custom color vector
+  # custom_colors <- ifelse(res_df$significance == "Up", "#B22222",
+  #                         ifelse(res_df$significance == "Down", "#325B6C", "black"))
+  
+  
+  custom_colors <- ifelse(
+    res_df$significance == "NotSig", "grey",
+    ifelse(
+      res_df$significance %in% c("Up","Down") &
+        grepl("unknown", res_df[[taxa]], ignore.case = TRUE), "black",
+      ifelse(
+        res_df$significance == "Up",   "#B22222",
+        ifelse(res_df$significance == "Down", "#325B6C", "grey")
+      )
+    )
+  )
+  
+  names(custom_colors)[custom_colors == '#B22222'] <- 'Up'
+  names(custom_colors)[custom_colors == 'black'] <- 'Unknown species'
+  names(custom_colors)[custom_colors == 'grey'] <- "n.s."
+  names(custom_colors)[custom_colors == '#325B6C'] <- 'Down'  
+  names(custom_colors) <- factor(
+    names(custom_colors),
+    levels = c("n.s.", "Unknown species", "Up", "Down")
+  )
+  
+  View(res_df)
+  
   EnhancedVolcano(
     res_df,
     lab = res_df[[taxa]],
@@ -1757,11 +1793,61 @@ volcanoPlot2GroupsMultifactorDesign <- function(ps, deseq, varToCompare, taxa = 
     xlim = c(-max(abs(res_df$log2FoldChange)),max(abs(res_df$log2FoldChange))),
     caption = NULL,
     labSize = 2,
-    legendLabels = c("n.s.",bquote(bold(Log[2]~ 'FC')),"C",bquote(bold('p-value and'~Log[2]~ 'FC'))),
-    legendIconSize = 2
+    legendLabels = c("n.s.", "Unknown species", "Up", "Down"),
+    legendIconSize = 2,drawConnectors = TRUE,labFace = "bold",colCustom = custom_colors,colAlpha = 0.8
+    
+    # col = c("grey30","grey30","red","red"),
 
     
     
   )
+  
+}
+
+# Returns graph of ASV relative abundance, use a ps with multiple timepoints
+# with annotations at the taxon level of interest and choose asv of interest
+# Does not include statistics
+asvRelAbDistributionTimeline <- function(ps, asv, taxon, group, time, custom_colors,displayASVNumber = TRUE){
+  
+  # Relative abundance of otu_table
+  ps <- transformCounts(ps, transformation = "rel_ab")
+  asv_ab <- t(otu_table(ps)[asv])
+  asv_ab <- merge(asv_ab, sample_data(ps), by = 'row.names') # Bind metadata information
+  taxa <- as.data.frame(tax_table(ps))
+  p <- ggplot(data = asv_ab, aes(x = .data[[time]], y = .data[[asv]], group = .data[[group]], color = .data[[group]])) +
+    stat_summary(fun.data = mean_se, geom = "errorbar", width = 2, aes(color = .data[[group]]))+
+    stat_summary(fun = mean, geom = "line", linewidth = 0.6) +
+    stat_summary(fun = mean, geom = "point", size = 1, color = "black") +
+    scale_color_manual(values = custom_colors)+
+    scale_fill_manual(values = custom_colors)+
+    labs(y = "Relative abundance (%)", title = paste(ifelse(taxon == "Species",paste(taxa[asv,"Genus"],taxa[asv,"Species"]), taxa[asv,taxon]), ifelse(displayASVNumber, asv, "")))
+  print(p+my_theme())
+  
+}
+
+
+# Returns graph of ASV relative abundance, use a ps at timepoint of interest
+# with annotations at the species level and choose asv of interest
+asvRelAbDistribution <- function(ps, asv, group, shape, custom_colors,
+                                 test_results =  c("n.s.","n.s.","n.s.","n.s."), text_sizes = c(5,5,5,5),
+                                 vjustList = c(1,1,1,1),
+                                 displayAsvNumber = FALSE, displayTitle = FALSE, stats = TRUE, relativeAbundance = TRUE){
+  
+  # Relative abundance of otu_table
+  if(relativeAbundance){
+    ps <- transformCounts(ps, transformation = "rel_ab")
+    asv_ab <- t(otu_table(ps)[asv])
+  }else
+  {
+    asv_ab <- as.data.frame(otu_table(ps))[asv]
+  }
+ 
+  asv_ab <- merge(asv_ab, sample_data(ps), by = 'row.names') # Bind metadata information
+  ironBoxplot(asv_ab, measure = asv, group = group, 
+              title = ifelse(displayTitle, paste0(tax_table(ps)[asv][asv,"Genus"]," ",tax_table(ps)[asv][asv,"Species"], 
+                                        ifelse(displayAsvNumber, paste0(" (", asv, ")"), "")),""),
+              y_axis_title = ifelse(relativeAbundance, "Relative abundance (%)", "Absolute Counts"),
+              custom_colors = custom_colors, stats = stats, shape = shape,
+              test_results = test_results, text_sizes = text_sizes, vjustList = vjustList)
   
 }

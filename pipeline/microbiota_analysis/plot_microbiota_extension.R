@@ -46,7 +46,7 @@ plot_microbiota_2Fac <- function(ps_object = ps,
                             minmu = if (fitType == "glmGamPoi") 1e-06 else 0.5,
                             parallel = FALSE,
                             showOnlySubLegend = FALSE,
-                            fullMainAndSubTables = FALSE
+                            fullMainAndSubTables = TRUE
 ) {
   
   
@@ -279,7 +279,7 @@ plot_microbiota_2Fac <- function(ps_object = ps,
   # Differential abundance analysis on sub_level using DESeq2 : 2 groups only
   if (differential_analysis &&
       length(unique(meta[[exp_group]])) == 2) {
-    fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+    fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -375,7 +375,7 @@ plot_microbiota_2Fac <- function(ps_object = ps,
   # Differential abundance analysis on main_level using DESeq2 : 2 groups only
   if (differential_analysis &&
       length(unique(meta[[exp_group]])) == 2) {
-    main_glom <- tax_glom(ps_object, taxrank = main_level)
+    main_glom <- tax_glom(ps_object, taxrank = main_level , NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -475,7 +475,7 @@ plot_microbiota_2Fac <- function(ps_object = ps,
   # Differential abundance analysis on sub_level using DESeq2 : multiple comparisons
   if (differential_analysis && mult_comp == T) {
     
-    fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+    fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
@@ -542,6 +542,9 @@ plot_microbiota_2Fac <- function(ps_object = ps,
     # Using correctly formatted contrasts based on results names
     results_list <- list()
     if(twoFactor){
+      
+      # print(resultsNames(diag))
+      # return(NULL)
       
       #Partition results for specific pairwise comparaisons
       res_subset1 <- results(diag, contrast = list(c(resultsNames(diag)[3]))) #wt putrescine vs vehicle
@@ -626,7 +629,7 @@ plot_microbiota_2Fac <- function(ps_object = ps,
   # Differential abundance analysis on main_level using DESeq2 : multiple comparisons
   if (differential_analysis && mult_comp == T) {
     
-    main_glom <- tax_glom(ps_object, taxrank = main_level)
+    main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -697,10 +700,10 @@ plot_microbiota_2Fac <- function(ps_object = ps,
     if(twoFactor){
       
       #Partition results for specific pairwise comparaisons
-      res_subset1 <- results(diag, contrast = list(c(resultsNames(diag)[3]))) #wt putrescine vs vehicle
-      res_subset2 <- results(diag, contrast = list(c(resultsNames(diag)[3], resultsNames(diag)[4]))) #il22 ko putrescine vs vehicle
-      res_subset3 <- results(diag, contrast = list(c(resultsNames(diag)[2]))) #vehicle wt vs il22 ko
-      res_subset4 <- results(diag, contrast = list(c(resultsNames(diag)[2], resultsNames(diag)[4]))) #putrescine wt vs il22 ko
+      res_subset1 <- results(diag, contrast = list(c(resultsNames(diag)[3]))) #wt putrescine vs vehicle / 50 vs 500 ctrl
+      res_subset2 <- results(diag, contrast = list(c(resultsNames(diag)[3], resultsNames(diag)[4]))) #il22 ko putrescine vs vehicle / 50 dss vs 500 DSS
+      res_subset3 <- results(diag, contrast = list(c(resultsNames(diag)[2]))) #vehicle wt vs il22 ko / 50 ctrl vs 50 dss
+      res_subset4 <- results(diag, contrast = list(c(resultsNames(diag)[2], resultsNames(diag)[4]))) #putrescine wt vs il22 ko / / 500 ctrl vs 500 dss
       results_list <- append(results_list, list(res_subset1, res_subset2, res_subset3, res_subset4)) #Append elements
       
     }else{
@@ -749,13 +752,13 @@ plot_microbiota_2Fac <- function(ps_object = ps,
           significant_features,
           tax_table(main_glom)[rownames(tax_table(main_glom)) %in% rownames(significant_features), , drop = FALSE]
         )
-        
-        
+      
         # Convert to data frame and add to the list
         significant_features <- as.data.frame(significant_features)
         significant_features_main[[comparison_name]] <- significant_features
         
       }
+      
     }
     
     # Create a table with all results for main taxonomic level 
@@ -1435,7 +1438,7 @@ plot_microbiota_timepoints <- function(ps_object = ps,
   # Differential abundance analysis on sub_level using DESeq2 : multiple comparisons
   if (differential_analysis && mult_comp == T) {
     
-    fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+    fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -1559,7 +1562,7 @@ plot_microbiota_timepoints <- function(ps_object = ps,
   # Differential abundance analysis on main_level using DESeq2 : multiple comparisons
   if (differential_analysis && mult_comp == T) {
     
-    main_glom <- tax_glom(ps_object, taxrank = main_level)
+    main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -1661,7 +1664,7 @@ plot_microbiota_timepoints <- function(ps_object = ps,
   # Differential abundance analysis on sub_level using DESeq2 : multiple timepoints
   if (differential_analysis && timePoints == T) {
     
-    fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+    fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -1791,7 +1794,7 @@ plot_microbiota_timepoints <- function(ps_object = ps,
   # Differential abundance analysis on main_level using DESeq2 : multiple timepoints
   if (differential_analysis && timePoints == T) {
     
-    main_glom <- tax_glom(ps_object, taxrank = main_level)
+    main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
     
     #remove OTU with 0 count across the dataset
     
@@ -2283,7 +2286,7 @@ plot_microbiota_multiFac_timepoints <- function(
     # -- Two-group (if only 2 groups and not using multiple comparisons) --
     if (!mult_comp && length(unique(meta[[exp_group]])) == 2) {
       # Sub-level analysis
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+      fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
       if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
         fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
       }
@@ -2330,7 +2333,7 @@ plot_microbiota_multiFac_timepoints <- function(
       }
       
       # Main-level analysis
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
+      main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
       if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
         main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
       }
@@ -2381,7 +2384,7 @@ plot_microbiota_multiFac_timepoints <- function(
     # -- Multiple Comparisons Differential Analysis (if mult_comp is TRUE) --
     if (mult_comp) {
       # Sub-level multiple comparisons
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+      fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
       if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
         fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
       }
@@ -2451,7 +2454,7 @@ plot_microbiota_multiFac_timepoints <- function(
       }
       
       # Main-level multiple comparisons
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
+      main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
       if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
         main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
       }
@@ -2524,7 +2527,7 @@ plot_microbiota_multiFac_timepoints <- function(
     # -- Timepoints-Specific Differential Analysis --
     if (timePoints) {
       ## Sub-level analysis per timepoint
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+      fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
       if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
         fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
       }
@@ -2573,7 +2576,7 @@ plot_microbiota_multiFac_timepoints <- function(
       }
       
       ## Main-level analysis per timepoint
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
+      main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
       if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
         main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
       }
@@ -2907,7 +2910,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
     # -- Two-group (if only 2 groups and not using multiple comparisons) --
     if (!mult_comp && length(unique(meta[[exp_group]])) == 2) {
       # Sub-level analysis
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+      fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
       if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
         fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
       }
@@ -2954,7 +2957,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
       }
       
       # Main-level analysis
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
+      main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
       if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
         main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
       }
@@ -3005,7 +3008,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
     # -- Multiple Comparisons Differential Analysis (if mult_comp is TRUE) --
     if (mult_comp) {
       # Sub-level multiple comparisons
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+      fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
       if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
         fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
       }
@@ -3075,7 +3078,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
       }
       
       # Main-level multiple comparisons
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
+      main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
       if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
         main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
       }
@@ -3148,7 +3151,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
     # -- Timepoints-Specific Differential Analysis --
     if (timePoints) {
       ## Sub-level analysis per timepoint
-      fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+      fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
       if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
         fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 0, fam_glom)
       }
@@ -3197,7 +3200,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
       }
       
       ## Main-level analysis per timepoint
-      main_glom <- tax_glom(ps_object, taxrank = main_level)
+      main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
       if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
         main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 0, main_glom)
       }
@@ -3362,7 +3365,7 @@ plot_microbiota_multiFac_timepoints2 <- function(
 
 
 # Function to write and save stackbarExtended sig_table
-writeStackbarExtendedSigTable <- function(main_table, includeSubTable = FALSE, sub_table = NULL, filepath){
+writeStackbarExtendedSigTable <- function(main_table, includeSubTable = FALSE, sub_table = NULL, filepath, mainTaxa = "Phylum", subTaxa = "Family", removeUnknownTaxa = TRUE){
   
   # Initialize empty dataframe to append tables to
   table_to_write <- data.frame()
@@ -3384,6 +3387,10 @@ writeStackbarExtendedSigTable <- function(main_table, includeSubTable = FALSE, s
     
   }
   
+  if(removeUnknownTaxa){
+    table_to_write <- table_to_write[!is.na(table_to_write[[mainTaxa]]),]
+  }
+  
   if(includeSubTable){
     
     # Iterate over the list of tables for sub table
@@ -3402,6 +3409,10 @@ writeStackbarExtendedSigTable <- function(main_table, includeSubTable = FALSE, s
       table_to_write <- rbind(table_to_write, table)
       
     }
+    
+    if(removeUnknownTaxa){
+      table_to_write <- table_to_write[!(is.na(table_to_write[[subTaxa]]) & table_to_write$level == "sub") ,]
+    }
   }
   
   write_xlsx(x = table_to_write, path = filepath)
@@ -3411,7 +3422,7 @@ writeStackbarExtendedSigTable <- function(main_table, includeSubTable = FALSE, s
 # Function that takes a stats excel file generated by the function above and generates
 # heatmap for the pvalues
 pvaluesHmap <- function(stats, selected_comparisons,
-                        taxons, lvl, txn_lvl, group, displayPValues = TRUE, displayChangeArrows = FALSE, path){
+                        taxons, lvl, txn_lvl, group, displayPValues = TRUE, displayChangeArrows = FALSE, verticalTilesSpacing = 1, lineWidth = 0.5, path){
   
   stats=stats[stats$level==lvl,] # Table with only stats for taxon level of interest
   stat_hmap=matrix(nrow = length(selected_comparisons), ncol = length(taxons)) # Initiate matrix with comparisons as rows and taxa as cols
@@ -3452,7 +3463,7 @@ pvaluesHmap <- function(stats, selected_comparisons,
   
   # Plot heatmap with ggplot2
   p <- ggplot(stat_hmap, aes(y = .data[[txn_lvl]], x = comparaison, fill = significance)) +
-    geom_tile(color = "black", lwd = 0.5, linetype = 1) +
+    geom_tile(color = "black", lwd = lineWidth, linetype = 1, width = verticalTilesSpacing, height = verticalTilesSpacing) +
     coord_fixed() + # Makes thing squared
     scale_fill_manual(
       values = c("n.s." = "white", "<0.05" = "#F4A3A8", "<0.01" = "#E04B54", "<0.001" = "#A40000"))+
@@ -3707,7 +3718,7 @@ function (ps_object = ps, exp_group = "group", subset_group = NULL,
   }
   if (differential_analysis && length(unique(meta[[exp_group]])) == 
       2) {
-    fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+    fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
     if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
       fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 
                                0, fam_glom)
@@ -3761,7 +3772,7 @@ function (ps_object = ps, exp_group = "group", subset_group = NULL,
   }
   if (differential_analysis && length(unique(meta[[exp_group]])) == 
       2) {
-    main_glom <- tax_glom(ps_object, taxrank = main_level)
+    main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
     if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
       main_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 
                                 0, main_glom)
@@ -3818,7 +3829,7 @@ function (ps_object = ps, exp_group = "group", subset_group = NULL,
     }
   }
   if (differential_analysis && mult_comp == T) {
-    fam_glom <- tax_glom(ps_object, taxrank = sub_level)
+    fam_glom <- tax_glom(ps_object, taxrank = sub_level, NArm = FALSE)
     if (sum(rowSums(otu_table(fam_glom)) == 0) > 0) {
       fam_glom <- prune_taxa(rowSums(otu_table(fam_glom)) > 
                                0, fam_glom)
@@ -3881,7 +3892,7 @@ function (ps_object = ps, exp_group = "group", subset_group = NULL,
     }
   }
   if (differential_analysis && mult_comp == T) {
-    main_glom <- tax_glom(ps_object, taxrank = main_level)
+    main_glom <- tax_glom(ps_object, taxrank = main_level, NArm = FALSE)
     if (sum(rowSums(otu_table(main_glom)) == 0) > 0) {
       fam_glom <- prune_taxa(rowSums(otu_table(main_glom)) > 
                                0, main_glom)
