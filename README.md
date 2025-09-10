@@ -78,7 +78,7 @@ Custom functions for visualizations, stats, and analysis can be found in the [`u
 
 ---
 
-## 4. Custom Visualization Extensions
+## Extensions of a previously existing package for microbiota visualization
 
 ###  StackbarExtended
 
@@ -88,33 +88,22 @@ We leveraged the [**StackbarExtended**](https://github.com/ThibaultCuisiniere/St
 - The customization script is available here: [plot_microbiota_extension.R](utils/plot_microbiota_extension.R).
 
 <p align="center">
-  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/stackbarextended_example.png?raw=true" width="70%">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/stackbar.png?raw=true" width="70%">
 </p>
 
 ---
 
-###  Chronobiome (Custom Tool)
+###  Chronobiome (Custom tool)
 
-Inspired by StackbarExtended’s annotation logic, we developed a custom framework—**Chronobiome**—for visualizing longitudinal microbiota data. Features include:
+Inspired by StackbarExtended’s logic to assign colors to taxa, we developed a custom framework—**Chronobiome**—for visualizing longitudinal microbiota data. Features include:
 
 - Group-averaged relative abundance over time  
 - Flexible taxonomic-depth views (either comprehensive or targeted)  
 
-This is an in-house script, not a publicly released R package.
-
 <p align="center">
-  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/chronobiome_example.png?raw=true" width="70%">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/chronobiome.png?raw=true" width="70%">
 </p>
 
----
-
-## Summary
-
-This repository provides:
-
-- A reproducible pipeline for **16S V5–V6 microbiota analysis**  
-- **Scripted workflows** from trimming to statistical outputs  
-- Visual tools: **StackbarExtended** (extended version) and **Chronobiome** (longitudinal custom visualizations)
-
----
-
+<p align="center">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/e.png?raw=true" width="70%">
+</p>
