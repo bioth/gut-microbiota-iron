@@ -1,47 +1,120 @@
-# Welcome to the gut microbiota analysis pipeline!
-<p align="center">
-  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/pipeline.png?raw=true"/>
-</p>
-
-Here is a walkthrough of the pipeline as well as the instructions to run it properly. Pipeline is designed to function with MiSeq V3-V4 16S sequencing data (see example below).
-
-# The requirements:
-Running this pipeline cannot be done without the required versions and packages:
-
-- A bash command line (not powershell)
-- Python (3.0 or later)
-- pandas (python library)
-- R (4.3.0 or later)
-- R tools (build packages)
-- BiocManager (version 3.18)
-- DADA2 (version 3.18)
-- ggplot2 (version 3.4.4 or later)
-- phyloseq (version 1.46.0 or later)
-
-# 1- Prepare you data folder:
-You data folder should contain a file with your compressed reads, and a folder called metadata which contains the metadata as well as the MiSeqReadSet excel file which contains all the information about the primers and adapters.
+# Early-life Iron Supplementation Impact on the Gut Microbiota  
+*A pipeline for microbiota analysis*
 
 <p align="center">
-  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/data_folder_format.png?raw=true" height="100" />
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/pipeline.png?raw=true"/>
 </p>
+
+This is a walkthrough of the analysis pipeline built for analysis of the NovaSeq sequencing of the 16S V5–V6 region. It covers preprocessing, ASV construction, taxonomic annotation, and downstream visualizations and analyses.
+
+---
+
+## Requirements
+
+Main packages and softwares required to run the pipeline include:
+
+- **R** (version ≥ 4.3.0)  
+- **R tools**  
+- **BiocManager** (v3.18)  
+- **DADA2** (v3.18)  
+- **ggplot2** (v3.4.4)  
+- **phyloseq** (v1.52)  
+- **DESeq2** (v1.48.1)  
+- **Cutadapt** (v4.8)  
+
+---
+
+## 1. Primer Trimming
+
+Primer sequences were removed with:
+
+[cutAdapt.sh](1-Primer%20trimming/cutAdapt.sh)
+
+This script leverages Cutadapt in paired-end mode to trim primers efficiently.
+
+---
+
+## 2. DADA2 – ASV Construction & Taxonomic Annotation
+
+ASV inference—including filtering, denoising, and chimera removal—was executed with:
+
+[1-Building ASVs dataset.R](2-DADA/1-Building%20ASVs%20dataset.R)
+
+A custom error model was implemented to account for binned quality scores in FASTQ files, enabling more accurate error modeling ([DADA2 issue #1307](https://github.com/benjjneb/dada2/issues/1307)).
+
+Execution occurred on Alliance Canada’s HPC infrastructure to leverage its computational power.
+
+### Quality Profiles
+<p align="center">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/quality_profileR1.png?raw=true" width="45%">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/quality_profileR2.png?raw=true" width="45%">
+</p>
+
+*Figure: Quality profiles of forward (R1) and reverse (R2) reads. The plots show per-base quality scores across sequencing cycles, used to select truncation and filtering parameters in DADA2.*
+
+### Error Model
+<p align="center">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/dada_plotR1_m1.png?raw=true" width="45%">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/dada_plotR2_m1.png?raw=true" width="45%">
+</p>
+
+*Figure: DADA2 error models for forward (R1) and reverse (R2) reads. Black points show observed error rates for each nucleotide transition, while the red line represents the fitted error model used during ASV inference.*
+
+Taxonomic annotation was performed via:
+
+[2-Taxonomic annotation.R](2-DADA/2-Taxonomic%20annotation.R)
+
+The script uses the **SILVA v138.1** database. See [Silva 138.1 prokaryotic SSU taxonomic training data formatted for DADA2](https://zenodo.org/records/4587955).
+
+---
+
+## 3. Downstream Analysis
+
+Alpha diversity, beta diversity, and differential abundance analyses were run with:
+
+[microbiota_analysis.R](3-Analysis/microbiota_analysis.R)
+
+Custom functions for visualizations, stats, and analysis can be found in the [`utils`](utils) folder.
+
+---
+
+## 4. Custom Visualization Extensions
+
+###  StackbarExtended
+
+We leveraged the [**StackbarExtended**](https://github.com/ThibaultCuisiniere/StackbarExtended) R package—a peer-reviewed tool for visualizing taxa relative abundance with integrated phylogenetic information and differential abundance statistics.
+
+- We extended its main functionality to accommodate our experimental design (~ treatment * diet).
+- The customization script is available here: [plot_microbiota_extension.R](utils/plot_microbiota_extension.R).
 
 <p align="center">
-  <img src="https://github.com/bioth/gut-microbiota-iron/blob/main/pipeline/photos/metadata_folder_format.png?raw=true" height="100" />
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/stackbarextended_example.png?raw=true" width="70%">
 </p>
 
+---
 
-# 2- Remove the primers at the end of the reads (trimming of non-biological bases):
+###  Chronobiome (Custom Tool)
 
-## First uncompress the fastq files with: 
-bash uncompress.sh
+Inspired by StackbarExtended’s annotation logic, we developed a custom framework—**Chronobiome**—for visualizing longitudinal microbiota data. Features include:
 
-## Secondly create files listing the forward and reverse primers:
-py create_primers_fasta_file.py
+- Group-averaged relative abundance over time  
+- Flexible taxonomic-depth views (either comprehensive or targeted)  
 
-## Thirdly use cutadapt to remove the primers (it will automatically select reverse and forward primers accordingly): 
-bash cutadapt.sh
+This is an in-house script, not a publicly released R package.
 
-# 3- Filtering of the reads using DADA2:
+<p align="center">
+  <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/chronobiome_example.png?raw=true" width="70%">
+</p>
 
-## dada2Tests.r
+---
+
+## Summary
+
+This repository provides:
+
+- A reproducible pipeline for **16S V5–V6 microbiota analysis**  
+- **Scripted workflows** from trimming to statistical outputs  
+- Visual tools: **StackbarExtended** (extended version) and **Chronobiome** (longitudinal custom visualizations)
+
+---
 
