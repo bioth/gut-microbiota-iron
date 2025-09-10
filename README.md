@@ -5,7 +5,7 @@
   <img src="https://github.com/bioth/gut-microbiota-iron/blob/scripts/photos/pipeline.png?raw=true"/>
 </p>
 
-This is a walkthrough of the analysis pipeline built for analysis of the NovaSeq sequencing of the 16S V5–V6 region. It covers preprocessing, ASV construction, taxonomic annotation, and downstream visualizations and analyses.
+This is a walkthrough of the analysis pipeline built for analysis of the NovaSeq sequencing of the 16S V5–V6 region data generated for this project. It covers preprocessing, ASV construction, taxonomic annotation, and downstream visualizations and analyses.
 
 ---
 
@@ -30,19 +30,19 @@ Primer sequences were removed with:
 
 [cutAdapt.sh](1-Primer%20trimming/cutAdapt.sh)
 
-This script leverages Cutadapt in paired-end mode to trim primers efficiently.
+This script uses Cutadapt in paired-end mode to trim primers.
 
 ---
 
 ## 2. DADA2 – ASV Construction & Taxonomic Annotation
 
-ASV inference—including filtering, denoising, and chimera removal—was executed with:
+ASV inference—including filtering, denoising, and chimera removal—was performed with:
 
 [1-Building ASVs dataset.R](2-DADA/1-Building%20ASVs%20dataset.R)
 
 A custom error model was implemented to account for binned quality scores in FASTQ files, enabling more accurate error modeling ([DADA2 issue #1307](https://github.com/benjjneb/dada2/issues/1307)).
 
-Execution occurred on Alliance Canada’s HPC infrastructure to leverage its computational power.
+Execution occurred on Alliance Canada’s servers to benefit from the computational power.
 
 ### Quality Profiles
 <p align="center">
@@ -70,7 +70,7 @@ The script uses the **SILVA v138.1** database. See [Silva 138.1 prokaryotic SSU 
 
 ## 3. Downstream Analysis
 
-Alpha diversity, beta diversity, and differential abundance analyses were run with:
+Alpha diversity, beta diversity, and differential abundance testing were run with:
 
 [microbiota_analysis.R](3-Analysis/microbiota_analysis.R)
 
@@ -82,9 +82,9 @@ Custom functions for visualizations, stats, and analysis can be found in the [`u
 
 ###  StackbarExtended
 
-We leveraged the [**StackbarExtended**](https://github.com/ThibaultCuisiniere/StackbarExtended) R package—a peer-reviewed tool for visualizing taxa relative abundance with integrated phylogenetic information and differential abundance statistics.
+We leveraged the [**StackbarExtended**](https://github.com/ThibaultCuisiniere/StackbarExtended) R package—a tool for visualizing taxononic relative abundance across all subjects of a study and that performs differential abundance testing.
 
-- We extended its main functionality to accommodate our experimental design (~ treatment * diet).
+- We modified the script and added a way to accommodate to our experimental design in the differential abundance testing (~ treatment * diet).
 - The customization script is available here: [plot_microbiota_extension.R](utils/plot_microbiota_extension.R).
 
 <p align="center">
@@ -95,7 +95,7 @@ We leveraged the [**StackbarExtended**](https://github.com/ThibaultCuisiniere/St
 
 ###  Chronobiome (Custom tool)
 
-Inspired by StackbarExtended’s logic to assign colors to taxa, we developed a custom framework—**Chronobiome**—for visualizing longitudinal microbiota data. Features include:
+Inspired by StackbarExtended’s logic to assign colors to taxa associated with a higher taxonomic level, we developed a custom framework—**Chronobiome**—for visualizing longitudinal microbiota data. Features include:
 
 - Group-averaged relative abundance over time  
 - Flexible taxonomic-depth views (either comprehensive or targeted)  
