@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# Changing directory to access the FASTQ files
-#cd ../../../Microbiota_18/2106590411
-cd ../../../Microbiota_19/1068099565
+# Directory to access the FASTQ files
+cd MY_DIRECTORY
 
 # Check if destination directory exists, create it if not
 mkdir -p "../trimmed_fastq"
@@ -10,9 +9,9 @@ mkdir -p "../trimmed_fastq"
 # Delete existing log files if there are any
 rm -f ../trimmed_fastq/combined_cutadapt_logs.txt
 
-# Define adapter sequences (modify these accordingly)
-FWD_PRIMER="^GGMTTAGATACCCBDGTA" # 
-REV_PRIMER="^GGGTYKCGCTCGTTR" # 
+# Define adapter sequences
+FWD_PRIMER="^GGMTTAGATACCCBDGTA" 
+REV_PRIMER="^GGGTYKCGCTCGTTR" 
 
 for r1_file in *R1.fastq.gz; do
 
@@ -31,6 +30,3 @@ for r1_file in *R1.fastq.gz; do
     rm "../trimmed_fastq/${filename}_cutadapt_log.txt"
     
 done
-
-        #> $LOG_FILE 2>&1  # Redirect output and errors to the log file
-        #--report=minimal --discard-untrimmed --cores 0
