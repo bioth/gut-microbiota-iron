@@ -1,6 +1,6 @@
-library("dada2"); packageVersion("dada2")
-library(ggplot2)
-library(dplyr)
+require("dada2"); packageVersion("dada2")
+require(ggplot2)
+require(dplyr)
 
 # Function checking if a dir exists and creating it otherwise
 existingDirCheck <- function(path){
@@ -195,10 +195,10 @@ existingDirCheck <- function(path){
   }
 }
 
-set.seed(100) # set seed to ensure that randomized steps are replicatable
+set.seed(100) # Set seed to ensure that randomized steps are repeatable
 
-#loading filtered files of interest
-setwd("~/projects/def-santosmm/jr34106/Microbiota_18_optimization/data/trimmed_fastq")
+# Loading filtered files of interest
+setwd("path/to/trimmed_fastq/files")
 
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
 r1_fastq <- sort(list.files(pattern="R1_trimmed.fastq", full.names = TRUE)) 
@@ -236,7 +236,7 @@ sink(run)
 
 out <- filterAndTrim(r1_fastq, filtR1, r2_fastq, filtR2, truncLen=c(270,250),
                      maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE, matchIDs=TRUE) # On Windows set multithread=FALSE
+                     compress=TRUE, multithread=TRUE, matchIDs=TRUE)
 
 #Check how many reads made it out
 print("Mean number of reads that passed filter:")
@@ -253,20 +253,20 @@ names(derepR1) <- sample_names
 names(derepR2) <- sample_names
 
 # Error rates estimation
-errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
-errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+errR1 <- learnErrors(derepR1, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1) 
+errR2 <- learnErrors(derepR2, multithread=TRUE, randomize = TRUE, errorEstimationFunction = loessErrfun_mod1)
 plotErrors(errR1, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/error_plotR1_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "../r_console_output/error_plotR1.png", height = 10, width = 10)
 plotErrors(errR2, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/error_plotR2_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "../r_console_output/error_plotR2.png", height = 10, width = 10)
 
 # Running the inference algorithm => based on trimmed/filtered fastq and error rates
-dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
-dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = TRUE, errorEstimationFunction = loessErrfun_mod1) # , errorEstimationFunction = loessErrfun_mod4
+dadaR1 <- dada(derepR1, err=errR1, multithread=TRUE, pool = TRUE, errorEstimationFunction = loessErrfun_mod1) 
+dadaR2 <- dada(derepR2, err=errR2, multithread=TRUE, pool = TRUE, errorEstimationFunction = loessErrfun_mod1)
 plotErrors(dadaR1, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/dada_plotR1_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "../r_console_output/dada_plotR1.png", height = 10, width = 10)
 plotErrors(dadaR2, nominalQ=TRUE)
-ggsave(dpi = 300, filename = "../r_console_output/dada_plotR2_m1.png", height = 10, width = 10)
+ggsave(dpi = 300, filename = "../r_console_output/dada_plotR2.png", height = 10, width = 10)
 
 # Merge paired reads 
 mergers <- mergePairs(dadaR1, derepR1, dadaR2, derepR2, verbose=TRUE, maxMismatch = 0, justConcatenate = FALSE)
@@ -298,5 +298,5 @@ rownames(track) <- sample_names
 print("Tracking of reads that made it through the pipeline:")
 print(track)
 
-# Stop writing things in the output file
+# Stop writing content in the output file
 sink()
